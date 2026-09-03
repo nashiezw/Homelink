@@ -79,6 +79,9 @@ assert(/if \(count && !pathname\?\.startsWith\("\/library\/checkout"\)\) return;
 assert(/dedupeActiveVisitors[\s\S]*activeVisitorIdentityKey[\s\S]*user:\$\{visitor\.userId\}[\s\S]*phone:\$\{phone\}[\s\S]*email:\$\{email\}/.test(liveChatRepository), "live chat active visitors dedupe same user, phone, or email sessions");
 assert(/analytics: \{[\s\S]*activeVisitors: activeVisitors\.filter\(\(visitor\) => visitor\.presenceStatus === "LIVE"\)\.length/.test(liveChatRepository), "live chat active visitor metric uses deduped live visitors");
 assert(/LIVE_VISITORS_REFRESH_MS = 5_000[\s\S]*source\.addEventListener\("heartbeat"[\s\S]*panel === "visitors"[\s\S]*scheduleLiveRefresh/.test(liveChatHub), "live chat visitors panel refreshes automatically in near real time");
+assert(/grid min-w-0 grid-cols-2 gap-2 border-b[\s\S]*<span className="min-w-0 truncate">\{label\}<\/span>/.test(liveChatHub), "live chat admin tabs fit narrow mobile screens");
+assert(/function QuickReplies[\s\S]*flex-wrap[\s\S]*overflow-wrap:anywhere/.test(liveChatHub), "live chat quick replies wrap on mobile");
+assert(/function AdminMessage[\s\S]*max-w-\[88%\][\s\S]*overflow-wrap:anywhere/.test(liveChatHub), "live chat admin messages stay inside mobile viewport");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");

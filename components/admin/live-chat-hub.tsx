@@ -420,7 +420,7 @@ export function LiveChatHub() {
   }
 
   return (
-    <div className="min-w-0 space-y-4 overflow-hidden">
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
       {data.setupRequired ? (
         <section className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-4 text-amber-100">
           <p className="text-sm font-black uppercase tracking-wider">Live Chat database setup required</p>
@@ -434,14 +434,14 @@ export function LiveChatHub() {
         <Metric icon={UserPlus} label="Hot leads" value={data.analytics.hotLeads} tone="cyan" />
       </div>
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/20">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/20">
         <div className="flex flex-col gap-3 border-b border-white/10 bg-slate-900/70 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">HouseLink Live</p>
             <h2 className="text-xl font-black leading-tight">Support and sales inbox</h2>
             <p className="text-sm leading-6 text-slate-400">Live conversations, visitor journeys, proactive help, and follow-up leads.</p>
           </div>
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+          <div className="grid w-full grid-cols-1 gap-2 min-[380px]:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap">
             <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void load()} disabled={loadingInbox}>{loadingInbox ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} Refresh</Button>
             {desktopAlerts !== "granted" ? (
               <Button className="w-full sm:w-auto" variant="secondary" onClick={() => void enableDesktopAlerts()} disabled={desktopAlerts === "denied"}>
@@ -453,15 +453,15 @@ export function LiveChatHub() {
             </Button>
           </div>
         </div>
-        <div className="flex min-w-0 gap-2 overflow-x-auto border-b border-white/10 px-3 py-3 [scrollbar-width:none] sm:px-4">
+        <div className="grid min-w-0 grid-cols-2 gap-2 border-b border-white/10 px-3 py-3 sm:flex sm:flex-wrap sm:px-4">
           {([
             ["inbox", MessageSquare, "Inbox"],
             ["visitors", Wifi, `Visitors: ${visitorCounts.live} live, ${visitorCounts.recent} recent`],
             ["profile", UserCog, "My profile"],
             ["settings", SlidersHorizontal, "Settings"],
           ] satisfies Array<[LiveChatPanel, LucideIcon, string]>).map(([id, Icon, label]) => (
-            <button key={id} type="button" onClick={() => setPanel(id)} className={cn("inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold", panel === id ? "border-emerald-400 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10")}>
-              <Icon className="size-4" /> {label}
+            <button key={id} type="button" onClick={() => setPanel(id)} className={cn("inline-flex min-w-0 items-center justify-center gap-2 rounded-md border px-3 py-2 text-center text-xs font-bold sm:text-sm", panel === id ? "border-emerald-400 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10")}>
+              <Icon className="size-4 shrink-0" /> <span className="min-w-0 truncate">{label}</span>
             </button>
           ))}
         </div>
@@ -478,8 +478,8 @@ export function LiveChatHub() {
         {panel === "settings" ? <SettingsPanel data={data} action={action} busy={busy} /> : null}
         {panel === "visitors" ? <VisitorsPanel visitors={data.activeVisitors.filter((visitor) => !deletedVisitorIds.includes(visitor.id))} startConversation={startConversation} openConversation={openConversation} startingVisitorId={startingVisitorId} currentAgentName={data.currentAgent?.displayName} /> : null}
 
-        {panel === "inbox" ? <div className="grid min-w-0 gap-0 lg:min-h-[660px] lg:grid-cols-[minmax(280px,330px)_minmax(0,1fr)_minmax(320px,380px)]">
-          <aside className="border-b border-white/10 bg-slate-950/80 lg:border-b-0 lg:border-r lg:border-white/10">
+        {panel === "inbox" ? <div className="grid min-w-0 max-w-full gap-0 overflow-x-hidden lg:min-h-[660px] lg:grid-cols-[minmax(280px,330px)_minmax(0,1fr)_minmax(320px,380px)]">
+          <aside className="min-w-0 max-w-full border-b border-white/10 bg-slate-950/80 lg:border-b-0 lg:border-r lg:border-white/10">
             <div className="space-y-3 p-3">
               <label className="flex min-h-10 min-w-0 items-center gap-2 rounded-md border border-white/10 bg-slate-900 px-3 text-sm">
                 <Search className="size-4 text-slate-500" />
@@ -518,9 +518,9 @@ export function LiveChatHub() {
             </div>
           </aside>
 
-          <main className="flex min-h-[70dvh] min-w-0 flex-col lg:min-h-[620px]">
+          <main className="flex min-h-[70dvh] min-w-0 max-w-full flex-col overflow-x-hidden lg:min-h-[620px]">
             <ConversationHeader conversation={activeConversation} data={data} action={action} busy={busy} onDelete={deleteConversation} />
-            <div className="max-h-[52dvh] flex-1 space-y-4 overflow-y-auto bg-slate-950/70 p-3 sm:p-4 lg:max-h-none">
+            <div className="max-h-[52dvh] min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto bg-slate-950/70 p-3 sm:p-4 lg:max-h-none">
               {data.messages.length ? data.messages.map((message) => <AdminMessage key={message.id} message={message} />) : <Empty label="Select a conversation or start one from Active Visitors." />}
               {data.typing?.visitorTyping ? <AdminTypingIndicator /> : null}
             </div>
@@ -543,7 +543,7 @@ export function LiveChatHub() {
             ) : null}
           </main>
 
-          <aside className="border-t border-white/10 lg:border-l lg:border-t-0">
+          <aside className="min-w-0 max-w-full border-t border-white/10 lg:border-l lg:border-t-0">
             <div className="max-h-none space-y-4 overflow-y-visible p-3 sm:p-4 lg:max-h-[680px] lg:overflow-y-auto">
               <ContextPanel conversation={activeConversation} events={data.events} startConversation={startConversation} visitors={data.activeVisitors} />
               <ManagementPanel data={data} activeConversation={activeConversation} action={action} busy={busy} />
@@ -648,7 +648,7 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
             </div>
           ) : null}
         </div>
-        <div className="rounded-xl border border-white/10 bg-slate-900 p-3">
+        <div className="min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900 p-3">
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-xs font-black uppercase tracking-wider text-slate-400">Routing</p>
             <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-black uppercase text-emerald-200">Live desk</span>
@@ -665,7 +665,7 @@ function ConversationHeader({ conversation, data, action, busy, onDelete }: { co
               <option value="">Unassigned</option>
               {data.agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.displayName}</option>)}
             </ControlSelect>
-            <div className="mt-1 flex flex-wrap gap-2">
+            <div className="mt-1 grid gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap">
               <Button variant="secondary" onClick={() => void action({ action: "leave_conversation", conversationId: conversation.id }, "You left the conversation.")} disabled={busy === "leave_conversation"} className="w-full justify-self-start sm:w-auto">
                 {busy === "leave_conversation" ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />} Leave
               </Button>
@@ -714,9 +714,9 @@ function formatSlaSeconds(seconds: number) {
 
 function ControlSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
   return (
-    <label className="grid gap-1 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center">
+    <label className="grid min-w-0 max-w-full gap-1 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center">
       <span className="text-[10px] font-black uppercase text-slate-500">{label}</span>
-      <select className="h-10 min-w-0 rounded-md border border-white/10 bg-slate-950 px-2 text-sm text-white outline-none focus:border-emerald-400" value={value} onChange={(event) => onChange(event.target.value)}>
+      <select className="h-10 min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-2 text-sm text-white outline-none focus:border-emerald-400" value={value} onChange={(event) => onChange(event.target.value)}>
         {children}
       </select>
     </label>
@@ -730,10 +730,10 @@ function AdminMessage({ message }: { message: LiveChatMessageView }) {
   if (system) return <p className="mx-auto max-w-xl rounded-full bg-slate-800 px-4 py-2 text-center text-xs font-semibold text-slate-300 shadow-sm ring-1 ring-white/10">{message.body}</p>;
   const card = message.metadata && typeof message.metadata === "object" ? message.metadata as { url?: string; title?: string; kind?: string } : null;
   return (
-    <div className={cn("flex min-w-0", staff ? "justify-end" : "justify-start")}>
-      <div className={cn("max-w-[92%] break-words rounded-[18px] border px-3.5 py-2.5 text-sm shadow-sm [overflow-wrap:anywhere] sm:max-w-[78%]", internal ? "rounded-bl-md border-amber-400/30 bg-amber-400/10 text-amber-100" : staff ? "rounded-br-md border-emerald-500/20 bg-emerald-600 text-white" : "rounded-bl-md border-white/10 bg-slate-900 text-slate-100")}>
+    <div className={cn("flex min-w-0 max-w-full", staff ? "justify-end" : "justify-start")}>
+      <div className={cn("min-w-0 max-w-[88%] break-words rounded-[18px] border px-3.5 py-2.5 text-sm shadow-sm [overflow-wrap:anywhere] sm:max-w-[78%]", internal ? "rounded-bl-md border-amber-400/30 bg-amber-400/10 text-amber-100" : staff ? "rounded-br-md border-emerald-500/20 bg-emerald-600 text-white" : "rounded-bl-md border-white/10 bg-slate-900 text-slate-100")}>
         <p className={cn("mb-1 text-[10px] font-black uppercase", staff ? "text-emerald-50/80" : "text-emerald-600 dark:text-emerald-300")}>{internal ? "Internal note" : message.senderName || message.senderKind}</p>
-        <p className="whitespace-pre-wrap leading-6">{message.body}</p>
+        <p className="max-w-full whitespace-pre-wrap break-words leading-6 [overflow-wrap:anywhere]">{message.body}</p>
         {card?.url ? <a className="mt-2 block break-words rounded-md bg-white/15 px-3 py-2 text-xs font-bold underline-offset-2 [overflow-wrap:anywhere] hover:underline" href={card.url} target="_blank" rel="noreferrer">{card.title || card.url}</a> : null}
         <p className={cn("mt-1 flex items-center justify-end gap-1 text-[10px]", staff ? "text-emerald-50/80" : "text-slate-400")}>
           <span>{new Date(message.createdAt).toLocaleString()}</span>
@@ -770,7 +770,7 @@ function ContextActions({ conversation, action }: { conversation: LiveChatConver
   const messageType = isLibrary ? "PRODUCT_CARD" : isProperty ? "PROPERTY_CARD" : isAcademy ? "COURSE_CARD" : "LINK";
   const Icon = isLibrary ? BookOpen : isProperty ? Building2 : isAcademy ? GraduationCap : MessageSquare;
   return (
-    <div className="grid gap-2 sm:flex sm:flex-wrap">
+    <div className="grid min-w-0 max-w-full gap-2 sm:flex sm:flex-wrap">
       <Button
         className="w-full sm:w-auto"
         variant="secondary"
@@ -790,9 +790,9 @@ function ContextActions({ conversation, action }: { conversation: LiveChatConver
 
 function QuickReplies({ data, onPick }: { data: LiveChatInboxView; onPick: (body: string) => void }) {
   return (
-    <div className="flex min-w-0 gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+    <div className="flex min-w-0 max-w-full flex-wrap gap-2 pb-1">
       {data.quickReplies.filter((reply) => reply.active).slice(0, 8).map((reply) => (
-        <button key={reply.id} type="button" onClick={() => onPick(reply.body)} className="shrink-0 rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-300 hover:border-emerald-400 hover:text-emerald-200">
+        <button key={reply.id} type="button" onClick={() => onPick(reply.body)} className="min-w-0 max-w-full rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-left text-xs font-bold text-slate-300 [overflow-wrap:anywhere] hover:border-emerald-400 hover:text-emerald-200">
           {reply.shortcut} {reply.title}
         </button>
       ))}
@@ -802,12 +802,12 @@ function QuickReplies({ data, onPick }: { data: LiveChatInboxView; onPick: (body
 
 function ContextPanel({ conversation, events, visitors, startConversation }: { conversation: LiveChatConversationView | null; events: LiveChatInboxView["events"]; visitors: LiveChatInboxView["activeVisitors"]; startConversation: (visitorId: string, message?: string) => Promise<void> }) {
   return (
-    <section className="min-w-0 rounded-2xl border border-white/10 bg-slate-900 p-3 sm:p-4">
+    <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-900 p-3 sm:p-4">
       <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Users className="size-4 text-emerald-300" /> Visitor profile</h3>
       {conversation ? (
         <div className="mt-4 space-y-3 text-sm">
-          <div className="rounded-xl border border-white/10 bg-slate-950 p-3">
-            <p className="text-base font-black text-white">{visitorDisplayName(conversation.visitor)}</p>
+          <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950 p-3">
+            <p className="break-words text-base font-black text-white [overflow-wrap:anywhere]">{visitorDisplayName(conversation.visitor)}</p>
             <p className="mt-1 text-xs text-slate-400">{conversation.visitor.deviceType || "Unknown device"} visitor</p>
           </div>
           <Info label="Contact" value={[conversation.visitor.phone, conversation.visitor.email].filter(Boolean).join(" / ") || "Not captured yet"} />
@@ -889,7 +889,7 @@ function VisitorsPanel({
           <p className="mt-1 text-2xl font-black text-white">{recentVisitors.length}</p>
         </div>
       </div>
-      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
       {orderedVisitors.length ? orderedVisitors.map((visitor) => {
         const hasConversation = Boolean(visitor.conversationId);
         const loading = startingVisitorId === visitor.id;
@@ -1013,20 +1013,20 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
   }
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-      <section className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+    <div className="grid min-w-0 max-w-full grid-cols-1 gap-4 overflow-hidden p-3 sm:p-4 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-slate-900">
         <div className="border-b border-white/10 bg-gradient-to-br from-emerald-500/20 via-slate-900 to-slate-950 p-4">
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-200"><UserCog className="size-4" /> Public team profile</p>
-          <div className="mt-5 flex min-w-0 items-center gap-4">
+          <div className="mt-5 flex min-w-0 max-w-full items-center gap-3 sm:gap-4">
             <span
               className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/15 bg-emerald-500 bg-cover bg-center text-2xl font-black text-white shadow-lg shadow-emerald-950/30"
               style={avatarPreviewUrl ? { backgroundImage: `url(${avatarPreviewUrl})` } : undefined}
             >
               {avatarPreviewUrl ? null : (displayName || "H").slice(0, 1).toUpperCase()}
             </span>
-            <div className="min-w-0">
-              <p className="truncate text-lg font-black text-white">{displayName || "HouseLink Team"}</p>
-              <p className="text-sm text-slate-300">{title || "HouseLink Support"}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-black text-white sm:text-lg">{displayName || "HouseLink Team"}</p>
+              <p className="break-words text-sm text-slate-300 [overflow-wrap:anywhere]">{title || "HouseLink Support"}</p>
               <p className="mt-2 inline-flex rounded-full bg-emerald-400/15 px-2 py-1 text-[11px] font-black uppercase text-emerald-200">{availability}</p>
             </div>
           </div>
@@ -1039,14 +1039,14 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
           </div>
         </div>
       </section>
-      <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="e.g. Tendai from HouseLink" />
           <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Property & Library Support" />
           <label className="block">
             <span className="text-xs font-black uppercase text-slate-500">Profile photo</span>
-            <div className="mt-1 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <input className="h-11 min-w-0 rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="Paste image URL or upload" />
+            <div className="mt-1 grid min-w-0 max-w-full gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <input className="h-11 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="Paste image URL or upload" />
               <Button type="button" variant="secondary" onClick={() => inputRef.current?.click()} disabled={uploadingAvatar} className="w-full sm:w-auto sm:shrink-0">
                 {uploadingAvatar ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
                 {uploadingAvatar ? "Uploading" : "Upload"}
@@ -1056,23 +1056,23 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
           </label>
           <label className="block">
             <span className="text-xs font-black uppercase text-slate-500">Availability</span>
-            <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none" value={availability} onChange={(event) => setAvailability(event.target.value)}>
+            <select className="mt-1 h-11 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none" value={availability} onChange={(event) => setAvailability(event.target.value)}>
               {["ONLINE", "AWAY", "BUSY", "OFFLINE"].map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </label>
           <label className="block md:col-span-2">
             <span className="text-xs font-black uppercase text-slate-500">Department</span>
-            <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none" value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
+            <select className="mt-1 h-11 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none" value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
               <option value="">General support</option>
               {data.departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
             </select>
           </label>
           <label className="block md:col-span-2">
             <span className="text-xs font-black uppercase text-slate-500">Short public intro</span>
-            <textarea className="mt-1 min-h-24 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none" value={publicIntro} onChange={(event) => setPublicIntro(event.target.value)} placeholder="Friendly line shown internally for consistent support tone." />
+            <textarea className="mt-1 min-h-24 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none" value={publicIntro} onChange={(event) => setPublicIntro(event.target.value)} placeholder="Friendly line shown internally for consistent support tone." />
           </label>
         </div>
-        <Button className="mt-4" onClick={() => void action({ action: "profile", displayName, title, avatarUrl, availability, departmentId, publicIntro }, "Profile saved.")} disabled={busy === "profile"}>
+        <Button className="mt-4 w-full sm:w-auto" onClick={() => void action({ action: "profile", displayName, title, avatarUrl, availability, departmentId, publicIntro }, "Profile saved.")} disabled={busy === "profile"}>
           {busy === "profile" ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save profile
         </Button>
       </section>
@@ -1094,14 +1094,14 @@ function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action
   const [retentionDays, setRetentionDays] = useState(String(data.settings.retentionDays || 180));
   const [mobilePosition, setMobilePosition] = useState(data.settings.mobilePosition || "bottom-right");
   return (
-    <div className="min-w-0 p-3 sm:p-4">
-      <section className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-slate-900">
+    <div className="min-w-0 max-w-full overflow-hidden p-3 sm:p-4">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-slate-900">
         <div className="border-b border-white/10 bg-slate-950/70 p-4">
           <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-200"><SlidersHorizontal className="size-4 text-emerald-300" /> Live Chat settings</h3>
           <p className="mt-1 text-sm text-slate-400">Control the public widget, routing defaults, contact capture, retention, and the exact words visitors see.</p>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
-          <div className="space-y-4">
+        <div className="grid min-w-0 max-w-full grid-cols-1 gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+          <div className="min-w-0 max-w-full space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
               <Toggle label="Chat enabled" checked={enabled} onChange={setEnabled} />
               <Toggle label="Proactive messages" checked={proactiveEnabled} onChange={setProactiveEnabled} />
@@ -1124,31 +1124,31 @@ function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action
             <div className="grid gap-3 md:grid-cols-2">
               <label className="block">
                 <span className="text-xs font-black uppercase text-slate-500">Default department</span>
-                <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={defaultDepartmentId} onChange={(event) => setDefaultDepartmentId(event.target.value)}>
+                <select className="mt-1 h-11 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={defaultDepartmentId} onChange={(event) => setDefaultDepartmentId(event.target.value)}>
                   <option value="">General routing</option>
                   {data.departments.filter((department) => department.active).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
                 </select>
               </label>
               <label className="block">
                 <span className="text-xs font-black uppercase text-slate-500">Business timezone</span>
-                <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={businessTimezone} onChange={(event) => setBusinessTimezone(event.target.value)}>
+                <select className="mt-1 h-11 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={businessTimezone} onChange={(event) => setBusinessTimezone(event.target.value)}>
                   {["Africa/Harare", "Africa/Johannesburg", "UTC"].map((zone) => <option key={zone} value={zone}>{zone}</option>)}
                 </select>
               </label>
               <label className="block">
                 <span className="text-xs font-black uppercase text-slate-500">Keep chat history</span>
-                <input className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" inputMode="numeric" value={retentionDays} onChange={(event) => setRetentionDays(event.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="180" />
+                <input className="mt-1 h-11 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" inputMode="numeric" value={retentionDays} onChange={(event) => setRetentionDays(event.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="180" />
               </label>
               <label className="block">
                 <span className="text-xs font-black uppercase text-slate-500">Mobile launcher position</span>
-                <select className="mt-1 h-11 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={mobilePosition} onChange={(event) => setMobilePosition(event.target.value)}>
+                <select className="mt-1 h-11 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-400" value={mobilePosition} onChange={(event) => setMobilePosition(event.target.value)}>
                   <option value="bottom-right">Bottom right</option>
                   <option value="bottom-left">Bottom left</option>
                 </select>
               </label>
             </div>
           </div>
-          <aside className="min-w-0 rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-50">
+          <aside className="min-w-0 max-w-full rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-50">
             <p className="flex items-center gap-2 text-sm font-black"><Sparkles className="size-4" /> HouseLink standard</p>
             <div className="mt-4 space-y-3 text-sm leading-6 text-emerald-50/85">
               <p>Use proactive messages for checkout, Library samples, payment help, and high-intent listing visitors.</p>
@@ -1200,10 +1200,10 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
   const [replyTitle, setReplyTitle] = useState("");
   const [replyBody, setReplyBody] = useState("");
   return (
-    <div className="min-w-0 space-y-4">
-      <section className="min-w-0 rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 sm:p-4">
+    <div className="min-w-0 max-w-full space-y-4 overflow-hidden">
+      <section className="min-w-0 max-w-full rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-amber-100"><Clock className="size-4" /> Missed-sales report</h3>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-2 text-xs min-[360px]:grid-cols-2 sm:grid-cols-3">
           <ReportStat label="Need reply" value={data.analytics.unreadNeedingReply} />
           <ReportStat label="Missed" value={data.analytics.missedChats} />
           <ReportStat label="Recovered" value={data.analytics.recoveredChats} />
@@ -1213,20 +1213,20 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
         </div>
       </section>
 
-      <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Tag className="size-4" /> Tags and leads</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {data.tags.filter((tag) => tag.active).slice(0, 10).map((tag) => <span key={tag.id} className="rounded-full px-2 py-1 text-[11px] font-bold" style={{ backgroundColor: `${tag.color}22`, color: tag.color }}>{tag.name}</span>)}
         </div>
         {activeConversation ? (
           <div className="mt-4 space-y-2">
-            <select className="h-10 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm" value={leadType} onChange={(event) => setLeadType(event.target.value)}>
+            <select className="h-10 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm" value={leadType} onChange={(event) => setLeadType(event.target.value)}>
               {["GENERAL", "LIBRARY", "PROPERTY", "ACADEMY", "SUPPORT"].map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
-            <textarea className="min-h-20 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm outline-none" placeholder="Lead note or follow-up context" value={leadNote} onChange={(event) => setLeadNote(event.target.value)} />
+            <textarea className="min-h-20 w-full min-w-0 max-w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm outline-none" placeholder="Lead note or follow-up context" value={leadNote} onChange={(event) => setLeadNote(event.target.value)} />
             <div className="grid gap-2">
               <Button className="w-full" onClick={() => void action({ action: "lead", conversationId: activeConversation.id, leadType, notes: leadNote }, "Lead created.")} disabled={busy === "lead"}><UserPlus className="size-4" /> Convert chat to CRM</Button>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
                 {["PROPERTY", "LIBRARY", "ACADEMY", "SUPPORT"].map((type) => (
                   <button key={type} type="button" className="rounded-md border border-white/10 bg-slate-950 px-2 py-2 text-xs font-black text-slate-300 hover:border-emerald-400 hover:text-emerald-100" onClick={() => void action({ action: "lead", conversationId: activeConversation.id, leadType: type, notes: leadNote || `${type} lead from live chat.` }, `${type} CRM record created.`)}>
                     {type}
@@ -1257,7 +1257,7 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
         </section>
       ) : null}
 
-      <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Shield className="size-4" /> Settings</h3>
         <div className="mt-3 space-y-2 text-sm text-slate-400">
           <p><CheckCircle2 className="mr-1 inline size-4 text-emerald-300" /> Widget: {data.settings.enabled ? "enabled" : "disabled"}</p>
@@ -1266,7 +1266,7 @@ function ManagementPanel({ data, activeConversation, action, busy }: { data: Liv
         </div>
       </section>
 
-      <section className="min-w-0 rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-slate-900 p-3 sm:p-4">
         <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-300"><Headphones className="size-4" /> Quick reply</h3>
         <input className="mt-3 h-10 w-full rounded-md border border-white/10 bg-slate-950 px-3 text-sm outline-none" placeholder="Title" value={replyTitle} onChange={(event) => setReplyTitle(event.target.value)} />
         <textarea className="mt-2 min-h-20 w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm outline-none" placeholder="Response text" value={replyBody} onChange={(event) => setReplyBody(event.target.value)} />
