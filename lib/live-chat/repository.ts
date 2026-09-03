@@ -2062,21 +2062,24 @@ function proactiveMessageForVisitor(visitor?: { currentPath?: string | null; cur
   const path = visitor?.currentPath?.toLowerCase() ?? "";
   const intro = agentName ? `Hi, this is ${agentName} from HouseLink.` : "Hi, welcome to HouseLink.";
   if (path.includes("failed") || path.includes("cancelled") || path.includes("proof")) {
-    return `${intro}\n\nI noticed you may need help completing payment or uploading proof. I can help you finish the order now so you do not lose access to the item.`;
+    return `${intro}\n\nI can see you may be stuck around payment or proof upload. Do you want me to help you complete the order and confirm what happens after payment is approved?`;
   }
   if (path.includes("/library/checkout") || path.includes("payment")) {
-    return `${intro}\n\nI can help with payment, proof upload, or choosing another payment option so your order is completed smoothly.`;
+    return `${intro}\n\nI noticed you are at checkout. I can help with payment method, proof upload, invoice details, or confirming when your Library access will open. Which part should I help with?`;
   }
   if (path.includes("/library/")) {
-    return `${intro}\n\nI noticed you are viewing ${title || "this book"}. I can help you choose the right format, confirm payment steps, or answer any questions before you buy.`;
+    return `${intro}\n\nI noticed you are viewing ${title || "this book"}. If you are deciding whether to buy it, I can quickly help with what is inside, whether digital or printed is better for you, and how access works after payment. What are you planning to use it for?`;
+  }
+  if (path === "/library" || title.toLowerCase().includes("property books")) {
+    return `${intro}\n\nI noticed you are browsing the HouseLink Library. Are you looking for help with property development, real estate sales, investment, rentals, or contracts? Tell me your goal and I will point you to the most useful guide.`;
   }
   if (path.includes("/academy")) {
-    return `${intro}\n\nI can help with course details, registration, payment, or choosing the right course${title ? ` for ${title}` : ""}.`;
+    return `${intro}\n\nI noticed you are looking at ${title || "HouseLink Academy"}. Are you trying to enrol yourself, train a team, or check if the course fits your level? I can help you choose the right next step.`;
   }
   if (path.includes("/listings/") || path.includes("/rent/") || path.includes("/property-for-sale/")) {
-    return `${intro}\n\nI noticed you are viewing ${title || "this property"}. I can help with viewing details, location questions, price checks, or the next step.`;
+    return `${intro}\n\nI noticed you are viewing ${title || "this property"}. I can help confirm availability, viewing steps, location details, or whether this property matches your budget. What would you like to know first?`;
   }
-  return `${intro}\n\nI can help with the next step, pricing, payment, delivery, viewings, or any question before you decide.`;
+  return `${intro}\n\nI am here with the HouseLink team. Tell me what you are trying to do on this page and I will help with the exact next step.`;
 }
 
 function cleanHouseLinkTitle(value?: string | null) {
@@ -2084,7 +2087,7 @@ function cleanHouseLinkTitle(value?: string | null) {
 }
 
 function sanitizeMessage(value: string) {
-  return value.replace(/\s+/g, " ").trim().slice(0, MAX_MESSAGE_LENGTH);
+  return value.replace(/[^\S\r\n]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, MAX_MESSAGE_LENGTH);
 }
 
 function cleanText(value: unknown, max = 200) {

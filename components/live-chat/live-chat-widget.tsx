@@ -264,7 +264,7 @@ export function LiveChatWidget() {
         } : current);
       }
     });
-    source.onerror = () => source.close();
+    source.onerror = () => undefined;
     return () => source.close();
   }, [boot?.visitorId, boot?.conversation?.id, bootstrap, hiddenOnThisRoute, showPreviewMessage]);
 
@@ -395,22 +395,23 @@ export function LiveChatWidget() {
 
   const launcherOnLeft = boot?.settings.mobilePosition === "bottom-left";
   const launcherPosition = launcherOnLeft ? "left-4 items-start sm:left-5" : "right-4 items-end sm:right-5";
-  const agentName = boot?.supportAgent?.displayName || boot?.settings.teamDisplayName || "HouseLink Live";
+  const recentStaff = latestRecentStaffActivity(messages, typing);
+  const agentName = boot?.supportAgent?.displayName || recentStaff?.name || boot?.settings.teamDisplayName || "HouseLink Live";
   const supportAvatarUrl = displayImageUrl(boot?.supportAgent?.avatarUrl, { width: 96, height: 96, crop: "fill" });
   const agentTitle = boot?.supportAgent?.title || "HouseLink Support";
   const agentDepartment = boot?.conversation?.department?.name || boot?.supportAgent?.department?.name || "Support team";
-  const availabilityLabel = supportAvailabilityLabel(boot?.supportAgent?.availability);
-  const availabilityOnline = Boolean(boot?.supportAgent);
+  const availabilityOnline = Boolean(boot?.supportAgent || recentStaff);
+  const availabilityLabel = availabilityOnline ? supportAvailabilityLabel(boot?.supportAgent?.availability || "ONLINE") : "After hours";
   const availabilityNotice = availabilityOnline
     ? "Ready now. Type your message and the team can reply here in real time."
     : "After hours. Type your message anytime; we will attach this page context for the team.";
-  const agentIntro = boot?.supportAgent
-    ? boot.supportAgent.publicIntro || `${agentTitle} is online`
+  const agentIntro = availabilityOnline
+    ? boot?.supportAgent?.publicIntro || `${agentTitle} is online`
     : "Leave your name and WhatsApp number, the team will follow up";
-  const currentContext = context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle || "this page";
+  const currentContext = visitorContextLabel(context);
   const onLibraryProductBuyDock = bottomDock === "library-product-buy" && isLibraryProductPath(pathname);
   const quickReplies: Array<{ label: string; body: string; icon: typeof Sparkles; contactField?: "phone" | "email" }> = [
-    ...(!boot?.supportAgent ? [{ label: "Request callback", body: "Hi, please call or WhatsApp me back. My name is ", icon: Phone }] : []),
+    ...(!availabilityOnline ? [{ label: "Request callback", body: "Hi, please call or WhatsApp me back. My name is ", icon: Phone }] : []),
     { label: "Is this right for me?", body: `Hi, I am looking at ${currentContext}. Can you help me decide if it is the right fit for what I need?`, icon: Sparkles },
     { label: "Payment help", body: `Hi, I want to buy ${currentContext}, but I need help with payment or proof upload.`, icon: ShieldCheck },
     { label: "WhatsApp me", body: "", icon: Phone, contactField: "phone" as const },
@@ -468,7 +469,7 @@ export function LiveChatWidget() {
                 <div className="flex justify-start">
                   <div className="max-w-[88%] rounded-[22px] rounded-tl-md bg-white px-4 py-3 text-sm text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-800">
                     <p className="font-black text-slate-950 dark:text-white">Hi, welcome to HouseLink.</p>
-                    <p className="mt-1 leading-6">{boot?.supportAgent ? `Ask about ${currentContext}, payment, delivery, or the next best step. If we need your number, we will ask nicely.` : `Tell us what you need about ${currentContext}, then leave your WhatsApp number so the team can recover the sale even if you leave this page.`}</p>
+                    <p className="mt-1 leading-6">{availabilityOnline ? `Ask about ${currentContext}, payment, delivery, or the next best step. If we need your number, we will ask nicely.` : `Tell us what you need about ${currentContext}, then leave your WhatsApp number so the team can recover the sale even if you leave this page.`}</p>
                     <span className="mt-3 inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
                       <Sparkles className="size-3" /> <span className="truncate">Viewing: {currentContext}</span>
                     </span>
@@ -724,6 +725,37 @@ function supportAvailabilityLabel(availability?: string | null) {
   if (value === "BUSY") return "Busy";
   if (value === "ONLINE") return "Online";
   return "After hours";
+}
+
+function visitorContextLabel(context: LiveChatVisitorContext) {
+  const viewed = context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle;
+  if (viewed) return viewed;
+  const title = cleanPageTitle(context.title);
+  if (title) return title;
+  const path = context.path?.split("?")[0] || "";
+  if (path === "/library") return "the HouseLink Library";
+  if (path) {
+    const parts = path.split("/").filter(Boolean);
+    return humanize(parts[parts.length - 1] || "this page");
+  }
+  return "this page";
+}
+
+function cleanPageTitle(value?: string | null) {
+  return String(value || "")
+    .replace(/\s*[|–-]\s*HouseLink.*$/i, "")
+    .replace(/\s*[|–-]\s*Library.*$/i, "")
+    .trim();
+}
+
+function latestRecentStaffActivity(messages: LiveChatMessageView[], typing?: LiveChatTypingView | null) {
+  const typingStaff = typing?.staffTyping[0];
+  if (typingStaff) return { name: typingStaff.displayName };
+  const latest = [...messages].reverse().find((message) => message.senderKind !== "VISITOR" && message.messageType !== "SYSTEM" && !message.internal);
+  if (!latest) return null;
+  const time = new Date(latest.createdAt).getTime();
+  if (!Number.isFinite(time) || Date.now() - time > 5 * 60_000) return null;
+  return { name: latest.senderName || "HouseLink Live" };
 }
 
 function inferViewedContext(path: string) {

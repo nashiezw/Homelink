@@ -44,7 +44,7 @@ const checks = [
   {
     file: "components/live-chat/live-chat-widget.tsx",
     label: "public live chat opens as ready while history syncs in the background",
-    pattern: /Ready now\. Type your message anytime/,
+    pattern: /Ready now\. Type your message and the team can reply here in real time/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
@@ -174,7 +174,7 @@ const checks = [
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin proactive messages are context-aware",
-    pattern: /function proactiveMessageForVisitor[\s\S]*payment, proof upload[\s\S]*right format[\s\S]*viewing details/,
+    pattern: /function proactiveMessageForVisitor[\s\S]*What are you planning to use it for[\s\S]*browsing the HouseLink Library[\s\S]*confirm availability/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
@@ -189,7 +189,7 @@ const checks = [
   {
     file: "lib/live-chat/repository.ts",
     label: "server fallback proactive messages are context-aware",
-    pattern: /function proactiveMessageForVisitor[\s\S]*payment, proof upload[\s\S]*right format[\s\S]*viewing details/,
+    pattern: /function proactiveMessageForVisitor[\s\S]*What are you planning to use it for[\s\S]*browsing the HouseLink Library[\s\S]*confirm availability/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
@@ -289,7 +289,7 @@ const checks = [
   {
     file: "app/api/v1/admin/live-chat/stream/route.ts",
     label: "admin inbox has a realtime stream without aggressive database polling",
-    pattern: /subscribeLiveChatAdminRealtime[\s\S]*heartbeat[\s\S]*25_000/,
+    pattern: /subscribeLiveChatAdminRealtime[\s\S]*admin_stream_heartbeat[\s\S]*20_000/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
@@ -374,7 +374,27 @@ const checks = [
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin visitors tab refreshes without pressing the manual refresh button",
-    pattern: /panel === "inbox" \|\| panel === "visitors"[\s\S]*panel === "visitors" \? 10000[\s\S]*refreshOnVisible/,
+    pattern: /panel === "inbox" \|\| panel === "visitors"[\s\S]*LIVE_VISITORS_REFRESH_MS[\s\S]*refreshOnVisible/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin proactive sends stop spinner before background inbox refresh",
+    pattern: /setStartingVisitorId\(null\);[\s\S]*void load\(\{ conversationId, silent: true \}\)/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public widget keeps SSE available for reconnects after transient errors",
+    pattern: /source\.onerror = \(\) => undefined/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public widget treats recent staff replies as online activity",
+    pattern: /latestRecentStaffActivity[\s\S]*Date\.now\(\) - time > 5 \* 60_000/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "staff chat messages preserve paragraphs instead of flattening text",
+    pattern: /replace\(\/\[\^\\S\\r\\n\]\+\/g,\s*" "\)\.replace\(\s*\/\\n\{3,\}\/g,\s*"\\n\\n"\s*\)/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
