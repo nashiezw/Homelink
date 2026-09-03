@@ -130,6 +130,7 @@ export function LibraryProductPage({
   const [reviewNotice, setReviewNotice] = useState("");
   const [softcopyBadgeVariant, setSoftcopyBadgeVariant] = useState("control");
   const [sampleTouched, setSampleTouched] = useState(false);
+  const [displayViewCount, setDisplayViewCount] = useState(product.viewCount);
 
   useEffect(() => {
     setSoftcopyBadgeVariant(getExperimentVariant("library_softcopy_badge", ["control", "save_callout"]));
@@ -297,7 +298,7 @@ export function LibraryProductPage({
   const urgencySignals = [
     product.bestSeller ? "Best seller" : "",
     product.newRelease ? "New release" : "",
-    product.viewCount >= 25 ? `Viewed ${product.viewCount} times` : "",
+    displayViewCount >= 25 ? `Viewed ${displayViewCount} times` : "",
     selectedFormat?.type === "PRINTED_BOOK" && product.stock != null && product.stock <= Math.max(1, product.lowStockThreshold) && product.stock > 0
       ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} left`
       : "",
@@ -348,6 +349,12 @@ export function LibraryProductPage({
       slug: product.slug,
       title: product.title,
       productId: product.id,
+    });
+    void apiFetch<{ tracked: boolean; viewCount?: number }>(`/api/v1/library/products/${encodeURIComponent(product.slug)}`, {
+      method: "POST",
+      body: JSON.stringify({ action: "view" }),
+    }).then((result) => {
+      if (typeof result.data?.viewCount === "number") setDisplayViewCount(result.data.viewCount);
     });
   }, [product.id, product.slug, product.title]);
 

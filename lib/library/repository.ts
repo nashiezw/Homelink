@@ -427,11 +427,13 @@ export async function getLibraryProductSampleFile(slug: string) {
 }
 
 export async function recordLibraryProductView(slug: string) {
-  if (!shouldUsePostgresLibrary()) return;
-  await getMainPrisma().libraryProduct.update({
+  if (!shouldUsePostgresLibrary()) return null;
+  const product = await getMainPrisma().libraryProduct.update({
     where: { slug },
     data: { viewCount: { increment: 1 } },
+    select: { viewCount: true },
   }).catch(() => null);
+  return product ? { viewCount: product.viewCount } : null;
 }
 
 export async function getAdminLibraryData() {

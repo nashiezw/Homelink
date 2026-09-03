@@ -24,6 +24,9 @@ const presence = readFileSync(join(root, "lib/analytics/presence.ts"), "utf8");
 const panel = readFileSync(join(root, "components/admin/site-analytics-panel.tsx"), "utf8");
 const tracker = readFileSync(join(root, "components/analytics/site-analytics-tracker.tsx"), "utf8");
 const cart = readFileSync(join(root, "lib/library/cart-client.ts"), "utf8");
+const libraryProductPage = readFileSync(join(root, "components/library/library-product-page.tsx"), "utf8");
+const libraryProductRoute = readFileSync(join(root, "app/api/v1/library/products/[slug]/route.ts"), "utf8");
+const libraryRepository = readFileSync(join(root, "lib/library/repository.ts"), "utf8");
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
 const prodSchema = readFileSync(join(root, "lib/db/production-schema.ts"), "utf8");
 
@@ -54,6 +57,9 @@ assert(/kind: "presence"|kind === "presence"|presence/.test(tracker), "tracker s
 assert(/library_cart_removed|CART_REMOVE/.test(cart), "cart client tracks removes");
 assert(/CART_QTY_CHANGE/.test(cart), "cart client tracks qty changes");
 assert(/CART_CLEAR/.test(cart), "cart client tracks clears");
+assert(/data: \{ viewCount: \{ increment: 1 \} \ }|viewCount: \{ increment: 1 \}/.test(libraryRepository), "library product view counter increments stored product count");
+assert(/export async function POST[\s\S]*action !== "view"[\s\S]*recordLibraryProductView/.test(libraryProductRoute), "library product API records view actions");
+assert(/displayViewCount[\s\S]*Viewed \$\{displayViewCount\} times[\s\S]*\/api\/v1\/library\/products/.test(libraryProductPage), "library product viewed badge updates from recorded view count");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");
