@@ -20,7 +20,7 @@ import type {
 } from "@/lib/live-chat/types";
 
 const OPEN_STATUSES = ["NEW", "OPEN", "WAITING_FOR_CUSTOMER", "FOLLOW_UP"];
-const LIVE_VISITOR_MS = 90_000;
+const LIVE_VISITOR_MS = 120_000;
 const RECENT_VISITOR_MS = 5 * 60_000;
 const ACTIVE_VISITOR_MS = LIVE_VISITOR_MS;
 const MAX_MESSAGE_LENGTH = 2_000;
@@ -512,7 +512,7 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
       take: input.filter === "needs-reply" || input.filter === "all" ? 80 : 30,
     }),
     prisma.liveChatVisitor.findMany({
-      where: { lastSeenAt: { gte: new Date(Date.now() - ACTIVE_VISITOR_MS) }, blockedAt: null },
+      where: { lastSeenAt: { gte: new Date(Date.now() - RECENT_VISITOR_MS) }, blockedAt: null },
       orderBy: { lastSeenAt: "desc" },
       take: 40,
     }),
@@ -1854,8 +1854,12 @@ function memoryInbox(): LiveChatInboxView {
   return {
     conversations: conversations.map((conversation) => shapeMemoryConversation(conversation, visitors.find((visitor) => visitor.id === conversation.visitorId)!)),
     activeVisitors: visitors
-      .filter((visitor) => Date.now() - visitor.lastSeenAt.getTime() <= ACTIVE_VISITOR_MS)
-      .map((visitor) => ({ ...shapeMemoryVisitor(visitor), conversationId: conversations.find((conversation) => conversation.visitorId === visitor.id)?.publicId ?? null, presenceStatus: "LIVE" as const, presenceLabel: "Live now", sessionSeconds: 0, pageSeconds: 0 })),
+      .filter((visitor) => Date.now() - visitor.lastSeenAt.getTime() <= RECENT_VISITOR_MS)
+      .map((visitor) => {
+        const ageMs = Date.now() - visitor.lastSeenAt.getTime();
+        const presenceStatus = ageMs <= ACTIVE_VISITOR_MS ? "LIVE" as const : "RECENT" as const;
+        return { ...shapeMemoryVisitor(visitor), conversationId: conversations.find((conversation) => conversation.visitorId === visitor.id)?.publicId ?? null, presenceStatus, presenceLabel: presenceStatus === "LIVE" ? "Live now" : `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago`, sessionSeconds: 0, pageSeconds: 0 };
+      }),
     messages: memory.messages.filter((message) => message.conversationId === selected?.id).map(shapeMemoryMessage),
     events: memory.events.map((event) => ({ id: event.id, eventType: event.eventType, path: event.path, title: event.title, metadata: event.metadata, createdAt: event.createdAt.toISOString() })),
     departments: DEFAULT_DEPARTMENTS.map(([name, slug, color, welcomeMessage]) => ({ id: slug, name, slug, color, active: true, welcomeMessage })),

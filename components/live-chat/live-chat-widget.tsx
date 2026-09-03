@@ -169,7 +169,7 @@ export function LiveChatWidget() {
         body: JSON.stringify({ context, contact: normalizeContact(contactRef.current) }),
       });
     };
-    const interval = window.setInterval(postActivity, 30_000);
+    const interval = window.setInterval(postActivity, 20_000);
     const handleVisibility = () => postActivity();
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {

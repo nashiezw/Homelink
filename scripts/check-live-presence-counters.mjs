@@ -21,8 +21,9 @@ const checks = [
       && /context\.analyticsSessionId/.test(repository),
   },
   {
-    label: "live chat KPI uses the same visitor source as the live visitors tab",
+    label: "live chat KPI stays on true live visitors while the tab can include recent visitors",
     pass: /prisma\.liveChatVisitor\.count\(\{ where: \{ lastSeenAt: \{ gte: new Date\(Date\.now\(\) - ACTIVE_VISITOR_MS\) \}, blockedAt: null \} \}\)/.test(repository)
+      && /gte: new Date\(Date\.now\(\) - RECENT_VISITOR_MS\)/.test(repository)
       && /activeVisitors: activeVisitorsRaw\.map/.test(repository)
       && !/activeVisitors: sharedPresence/.test(repository),
   },

@@ -353,8 +353,8 @@ const checks = [
   },
   {
     file: "lib/live-chat/repository.ts",
-    label: "live visitors are limited to a true 90-second online window",
-    pattern: /const LIVE_VISITOR_MS = 90_000[\s\S]*ACTIVE_VISITOR_MS = LIVE_VISITOR_MS/,
+    label: "live visitors keep a true live window and a recent visitor window",
+    pattern: /const LIVE_VISITOR_MS = 120_000[\s\S]*const RECENT_VISITOR_MS = 5 \* 60_000[\s\S]*gte: new Date\(Date\.now\(\) - RECENT_VISITOR_MS\)/,
   },
   {
     file: "lib/live-chat/repository.ts",
@@ -364,7 +364,12 @@ const checks = [
   {
     file: "components/live-chat/live-chat-widget.tsx",
     label: "public widget sends recurring visitor activity heartbeats",
-    pattern: /setInterval\(postActivity, 30_000\)[\s\S]*visibilitychange/,
+    pattern: /setInterval\(postActivity, 20_000\)[\s\S]*visibilitychange/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin visitors tab separates live and recent counts",
+    pattern: /Visitors: \$\{visitorCounts\.live\} live, \$\{visitorCounts\.recent\} recent[\s\S]*Recently active/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",

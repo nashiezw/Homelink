@@ -197,6 +197,11 @@ export function LiveChatHub() {
     [activeId, data?.conversations],
   );
   const needsReplyCount = useMemo(() => data?.conversations.filter(needsReply).length ?? 0, [data?.conversations]);
+  const visitorCounts = useMemo(() => {
+    const live = data?.activeVisitors.filter((visitor) => visitor.presenceStatus === "LIVE").length ?? 0;
+    const recent = data?.activeVisitors.filter((visitor) => visitor.presenceStatus === "RECENT").length ?? 0;
+    return { live, recent };
+  }, [data?.activeVisitors]);
 
   useEffect(() => {
     const conversationId = activeConversation?.id;
@@ -434,7 +439,7 @@ export function LiveChatHub() {
         <div className="flex min-w-0 gap-2 overflow-x-auto border-b border-white/10 px-3 py-3 [scrollbar-width:none] sm:px-4">
           {([
             ["inbox", MessageSquare, "Inbox"],
-            ["visitors", Wifi, `Live visitors (${data.activeVisitors.length})`],
+            ["visitors", Wifi, `Visitors: ${visitorCounts.live} live, ${visitorCounts.recent} recent`],
             ["profile", UserCog, "My profile"],
             ["settings", SlidersHorizontal, "Settings"],
           ] satisfies Array<[LiveChatPanel, LucideIcon, string]>).map(([id, Icon, label]) => (
@@ -852,9 +857,23 @@ function VisitorsPanel({
   startingVisitorId: string | null;
   currentAgentName?: string | null;
 }) {
+  const liveVisitors = visitors.filter((visitor) => visitor.presenceStatus === "LIVE");
+  const recentVisitors = visitors.filter((visitor) => visitor.presenceStatus === "RECENT");
+  const orderedVisitors = [...liveVisitors, ...recentVisitors, ...visitors.filter((visitor) => visitor.presenceStatus !== "LIVE" && visitor.presenceStatus !== "RECENT")];
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 p-3 sm:p-4 md:grid-cols-2 xl:grid-cols-3">
-      {visitors.length ? visitors.map((visitor) => {
+    <div className="min-w-0 p-3 sm:p-4">
+      <div className="mb-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-3">
+          <p className="text-[11px] font-black uppercase text-emerald-200">Live now</p>
+          <p className="mt-1 text-2xl font-black text-white">{liveVisitors.length}</p>
+        </div>
+        <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3">
+          <p className="text-[11px] font-black uppercase text-amber-200">Recently active</p>
+          <p className="mt-1 text-2xl font-black text-white">{recentVisitors.length}</p>
+        </div>
+      </div>
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {orderedVisitors.length ? orderedVisitors.map((visitor) => {
         const hasConversation = Boolean(visitor.conversationId);
         const loading = startingVisitorId === visitor.id;
         const page = pageLabel(visitor.currentTitle, visitor.currentPath);
@@ -933,7 +952,8 @@ function VisitorsPanel({
             </div>
           </article>
         );
-      }) : <Empty label="No visitors are live in the last 90 seconds." />}
+      }) : <Empty label="No live or recently active visitors in the last five minutes." />}
+      </div>
     </div>
   );
 }
@@ -1383,7 +1403,7 @@ function visitorPresence(value: string) {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return { label: "Offline", dotClass: "bg-slate-500" };
   const seconds = Math.max(0, Math.round((Date.now() - time) / 1000));
-  if (seconds <= 90) return { label: "Live now", dotClass: "bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]" };
+  if (seconds <= 120) return { label: "Live now", dotClass: "bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]" };
   if (seconds <= 5 * 60) return { label: `Seen ${Math.round(seconds / 60)}m ago`, dotClass: "bg-amber-300" };
   return { label: "Offline", dotClass: "bg-slate-500" };
 }
