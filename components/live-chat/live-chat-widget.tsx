@@ -10,7 +10,7 @@ import { getOrCreateSessionId, getOrCreateVisitorId } from "@/lib/analytics/visi
 import { displayImageUrl } from "@/lib/images/display-image";
 import { isLiveChatFloatingOpen, setLiveChatFloatingOpen, useLibraryBagFloatingOpen } from "@/lib/live-chat/floating-state";
 import { playLiveChatNotificationSound, unlockLiveChatNotificationSound } from "@/lib/live-chat/notification-sound";
-import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
+import { isLibraryProductPath, useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 import type { LiveChatBootstrapView, LiveChatMessageView, LiveChatTypingView, LiveChatVisitorContext } from "@/lib/live-chat/types";
 
@@ -393,6 +393,7 @@ export function LiveChatWidget() {
     ? boot.supportAgent.publicIntro || `${agentTitle} is online`
     : "Leave your name and WhatsApp number, the team will follow up";
   const currentContext = context.viewed?.productTitle || context.viewed?.propertyTitle || context.viewed?.courseTitle || "this page";
+  const onLibraryProductBuyDock = bottomDock === "library-product-buy" && isLibraryProductPath(pathname);
   const quickReplies: Array<{ label: string; body: string; icon: typeof Sparkles; contactField?: "phone" | "email" }> = [
     ...(!boot?.supportAgent ? [{ label: "Request callback", body: "Hi, please call or WhatsApp me back. My name is ", icon: Phone }] : []),
     { label: "Is this right for me?", body: `Hi, I am looking at ${currentContext}. Can you help me decide if it is the right fit for what I need?`, icon: Sparkles },
@@ -402,7 +403,9 @@ export function LiveChatWidget() {
   ];
   const bottomClass = open
     ? "bottom-4 sm:bottom-5"
-    : bottomDock
+    : onLibraryProductBuyDock
+      ? "bottom-[calc(10.75rem+env(safe-area-inset-bottom))]"
+      : bottomDock
       ? "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
       : "bottom-[max(1.25rem,env(safe-area-inset-bottom))] sm:bottom-5";
 

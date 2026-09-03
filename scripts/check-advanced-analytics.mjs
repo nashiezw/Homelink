@@ -25,6 +25,8 @@ const panel = readFileSync(join(root, "components/admin/site-analytics-panel.tsx
 const tracker = readFileSync(join(root, "components/analytics/site-analytics-tracker.tsx"), "utf8");
 const cart = readFileSync(join(root, "lib/library/cart-client.ts"), "utf8");
 const libraryProductPage = readFileSync(join(root, "components/library/library-product-page.tsx"), "utf8");
+const libraryCartFab = readFileSync(join(root, "components/library/library-cart-fab.tsx"), "utf8");
+const liveChatWidget = readFileSync(join(root, "components/live-chat/live-chat-widget.tsx"), "utf8");
 const libraryProductRoute = readFileSync(join(root, "app/api/v1/library/products/[slug]/route.ts"), "utf8");
 const libraryRepository = readFileSync(join(root, "lib/library/repository.ts"), "utf8");
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
@@ -69,6 +71,8 @@ assert(/setHouseLinkBottomDock\(showDock \? "library-product-buy" : null\)/.test
 assert(/openSamplePreview\("mobile_buy_bar"\)/.test(libraryProductPage), "mobile buy dock keeps preview as a secondary action");
 assert(/id="library-bundle-offer"[\s\S]*Bundle saves/.test(libraryProductPage), "mobile bundle offer is optional below the primary buy action");
 assert(!/Add bundle ·/.test(libraryProductPage), "mobile product page no longer leads with bundle pricing");
+assert(/bottomDock === "library-product-buy"[\s\S]*isLibraryProductPath\(pathname\)/.test(liveChatWidget), "live chat lifts above the mobile product buy dock");
+assert(/bottomDock === "library-product-buy"[\s\S]*isLibraryProductPath\(pathname\)/.test(libraryCartFab), "library bag stays visible above the mobile product buy dock");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");

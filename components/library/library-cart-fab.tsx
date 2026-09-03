@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { LibraryBagDrawer } from "@/components/library/library-bag-drawer";
 import { useLibraryCart } from "@/lib/library/cart-client";
 import { setLibraryBagFloatingOpen, useLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
-import { useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
+import { isLibraryProductPath, useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
 /** Mobile / tablet Library bag FAB (right). Hidden at lg+ — desktop uses header bag. */
@@ -17,6 +17,7 @@ export function LibraryCartFab({ className }: { className?: string }) {
   const [pulse, setPulse] = useState(false);
   const bottomDock = useHouseLinkBottomDock();
   const liveChatOpen = useLiveChatFloatingOpen();
+  const onLibraryProductBuyDock = bottomDock === "library-product-buy" && isLibraryProductPath(pathname);
 
   useEffect(() => {
     function onAdded() {
@@ -40,7 +41,9 @@ export function LibraryCartFab({ className }: { className?: string }) {
       className={cn(
         "fixed right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden",
         // Keep the Library bag above the closed HouseLink Live launcher on mobile.
-        bottomDock
+        onLibraryProductBuyDock
+          ? "bottom-[calc(15.25rem+env(safe-area-inset-bottom))]"
+          : bottomDock
           ? "bottom-[calc(12.5rem+env(safe-area-inset-bottom))]"
           : "bottom-[calc(7rem+env(safe-area-inset-bottom))]",
         className,
