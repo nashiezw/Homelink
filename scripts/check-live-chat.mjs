@@ -373,6 +373,11 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
+    label: "admin visitors tab refreshes without pressing the manual refresh button",
+    pattern: /panel === "inbox" \|\| panel === "visitors"[\s\S]*panel === "visitors" \? 10000[\s\S]*refreshOnVisible/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
     label: "admin dashboard can request desktop notification permission",
     pattern: /Notification\.requestPermission/,
   },

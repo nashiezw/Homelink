@@ -152,10 +152,19 @@ export function LiveChatHub() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible" && panel === "inbox") void load({ silent: true });
-    }, activeId ? 20000 : 30000);
+      if (document.visibilityState !== "visible") return;
+      if (panel === "inbox" || panel === "visitors") void load({ silent: true });
+    }, panel === "visitors" ? 10000 : activeId ? 20000 : 30000);
     return () => window.clearInterval(interval);
   }, [activeId, load, panel]);
+
+  useEffect(() => {
+    const refreshOnVisible = () => {
+      if (document.visibilityState === "visible" && panel === "visitors") void load({ silent: true });
+    };
+    document.addEventListener("visibilitychange", refreshOnVisible);
+    return () => document.removeEventListener("visibilitychange", refreshOnVisible);
+  }, [load, panel]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("EventSource" in window)) return;
