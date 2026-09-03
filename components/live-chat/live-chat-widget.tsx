@@ -404,7 +404,7 @@ export function LiveChatWidget() {
   const bottomClass = open
     ? "bottom-4 sm:bottom-5"
     : onLibraryProductBuyDock
-      ? "bottom-[calc(10.75rem+env(safe-area-inset-bottom))]"
+      ? "bottom-[calc(8.75rem+env(safe-area-inset-bottom))]"
       : bottomDock
       ? "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
       : "bottom-[max(1.25rem,env(safe-area-inset-bottom))] sm:bottom-5";

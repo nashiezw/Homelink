@@ -42,7 +42,7 @@ export function LibraryCartFab({ className }: { className?: string }) {
         "fixed right-4 z-[60] flex flex-col items-end gap-3 sm:right-5 lg:hidden",
         // Keep the Library bag above the closed HouseLink Live launcher on mobile.
         onLibraryProductBuyDock
-          ? "bottom-[calc(15.25rem+env(safe-area-inset-bottom))]"
+          ? "bottom-[calc(13rem+env(safe-area-inset-bottom))]"
           : bottomDock
           ? "bottom-[calc(12.5rem+env(safe-area-inset-bottom))]"
           : "bottom-[calc(7rem+env(safe-area-inset-bottom))]",
