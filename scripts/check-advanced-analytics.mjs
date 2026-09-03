@@ -73,6 +73,7 @@ assert(/id="library-bundle-offer"[\s\S]*Bundle saves/.test(libraryProductPage), 
 assert(!/Add bundle ·/.test(libraryProductPage), "mobile product page no longer leads with bundle pricing");
 assert(/bottomDock === "library-product-buy"[\s\S]*isLibraryProductPath\(pathname\)/.test(liveChatWidget), "live chat lifts above the mobile product buy dock");
 assert(/bottomDock === "library-product-buy"[\s\S]*isLibraryProductPath\(pathname\)/.test(libraryCartFab), "library bag stays visible above the mobile product buy dock");
+assert(/if \(count && !pathname\?\.startsWith\("\/library\/checkout"\)\) return;[\s\S]*setLibraryBagFloatingOpen\(false\)/.test(libraryCartFab), "library bag clears its open state when the cart empties");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");

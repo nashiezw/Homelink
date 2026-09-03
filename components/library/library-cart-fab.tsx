@@ -33,6 +33,12 @@ export function LibraryCartFab({ className }: { className?: string }) {
     return () => setLibraryBagFloatingOpen(false);
   }, [open]);
 
+  useEffect(() => {
+    if (count && !pathname?.startsWith("/library/checkout")) return;
+    if (open) setOpen(false);
+    setLibraryBagFloatingOpen(false);
+  }, [count, open, pathname]);
+
   if (!count || liveChatOpen || pathname?.startsWith("/library/checkout")) return null;
 
   return (
