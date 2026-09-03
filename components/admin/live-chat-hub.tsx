@@ -36,6 +36,7 @@ const FILTERS = [
 type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
 
 const LIVE_VISITORS_REFRESH_MS = 5_000;
+const PROACTIVE_SEND_TIMEOUT_MS = 12_000;
 
 export function LiveChatHub() {
   const [data, setData] = useState<LiveChatInboxView | null>(null);
@@ -291,7 +292,9 @@ export function LiveChatHub() {
     } else {
       setNotice(success);
       window.setTimeout(() => setNotice(null), 2500);
-      await load();
+      setBusy(null);
+      void load({ silent: true });
+      return;
     }
     setBusy(null);
   }
@@ -314,32 +317,37 @@ export function LiveChatHub() {
     setStartingVisitorId(visitorId);
     setError(null);
     const visitor = data?.activeVisitors.find((item) => item.id === visitorId) ?? data?.conversations.find((conversation) => conversation.visitor.id === visitorId)?.visitor;
-    const result = await apiFetch<{ conversationId: string }>("/api/v1/admin/live-chat", {
-      method: "POST",
-      body: JSON.stringify({
-        action: "start_conversation",
-        visitorId,
-        body: message || proactiveMessageForVisitor(visitor),
-      }),
-    });
-    if (result.error) {
-      setError(result.error.message);
-    } else {
-      const conversationId = result.data?.conversationId;
-      setNotice("Proactive message sent.");
-      window.setTimeout(() => setNotice(null), 2500);
-      if (conversationId) {
-        setActiveId(conversationId);
-        activeIdRef.current = conversationId;
-        setPanel("inbox");
-        setStartingVisitorId(null);
-        void load({ conversationId, silent: true });
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), PROACTIVE_SEND_TIMEOUT_MS);
+    try {
+      const result = await apiFetch<{ conversationId: string }>("/api/v1/admin/live-chat", {
+        method: "POST",
+        signal: controller.signal,
+        body: JSON.stringify({
+          action: "start_conversation",
+          visitorId,
+          body: message || proactiveMessageForVisitor(visitor),
+        }),
+      });
+      if (result.error) {
+        setError(result.error.code === "NETWORK_ERROR" ? "The message is taking too long to confirm. The inbox will refresh shortly so you can see whether it was sent." : result.error.message);
       } else {
-        setStartingVisitorId(null);
-        void load({ silent: true });
+        const conversationId = result.data?.conversationId;
+        setNotice("Proactive message sent.");
+        window.setTimeout(() => setNotice(null), 2500);
+        if (conversationId) {
+          setActiveId(conversationId);
+          activeIdRef.current = conversationId;
+          setPanel("inbox");
+          void load({ conversationId, silent: true });
+        } else {
+          void load({ silent: true });
+        }
       }
+    } finally {
+      window.clearTimeout(timeout);
+      setStartingVisitorId(null);
     }
-    setStartingVisitorId(null);
   }
 
   function openConversation(conversationId: string) {

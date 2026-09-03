@@ -667,8 +667,6 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         lastMessageAt: internal ? conversation.lastMessageAt : message.createdAt,
       },
     });
-    const participant = await ensureParticipant(conversation.id, user.id, agent.id);
-    if (participant?.joinedNow || participant?.rejoined) await createSystemTimelineMessage(conversation.id, `${agent.displayName} joined the conversation.`, conversation.publicId, conversation.visitor.publicId);
     setTypingState(conversation.publicId, agent.id, agent.displayName, false);
     const shaped = shapeMessage(message);
     if (!internal) publishLiveChatRealtime({
@@ -678,8 +676,9 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
       message: shaped,
       createdAt: new Date().toISOString(),
     });
+    void recordParticipantActivity(conversation.id, user.id, agent.id, agent.displayName, conversation.publicId, conversation.visitor.publicId);
     if (!internal) void handleMissedChatRecovery(conversation, agent.displayName, text).catch(() => null);
-    await auditEvent(conversation.visitorId, conversation.id, internal ? "INTERNAL_NOTE" : "STAFF_MESSAGE", user.id, { messageType: message.messageType });
+    void auditEvent(conversation.visitorId, conversation.id, internal ? "INTERNAL_NOTE" : "STAFF_MESSAGE", user.id, { messageType: message.messageType });
     return shaped;
   }
   if (action === "start_conversation") {
@@ -704,8 +703,6 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         },
       });
     }
-    const participant = await ensureParticipant(conversation.id, user.id, agent.id);
-    if (participant?.joinedNow || participant?.rejoined) await createSystemTimelineMessage(conversation.id, `${agent.displayName} joined the conversation.`, conversation.publicId, visitor.publicId);
     const text = sanitizeMessage(String(body.body || proactiveMessageForVisitor(visitor, agent.displayName)));
     const message = await prisma.liveChatMessage.create({
       data: {
@@ -736,8 +733,9 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
       message: shaped,
       createdAt: new Date().toISOString(),
     });
+    void recordParticipantActivity(conversation.id, user.id, agent.id, agent.displayName, conversation.publicId, visitor.publicId);
     void handleMissedChatRecovery({ ...conversation, visitor }, agent.displayName, text).catch(() => null);
-    await auditEvent(visitor.id, conversation.id, "PROACTIVE_STAFF_MESSAGE", user.id);
+    void auditEvent(visitor.id, conversation.id, "PROACTIVE_STAFF_MESSAGE", user.id);
     return { conversationId: conversation.publicId, message: shaped };
   }
   if (action === "typing") {
@@ -1282,6 +1280,13 @@ async function ensureParticipant(conversationId: string, userId: string, agentPr
     create: { conversationId, userId, agentProfileId, role: "AGENT" },
   }).catch(() => null);
   return participant ? { ...participant, joinedNow: !existing, rejoined: Boolean(existing?.leftAt) } : null;
+}
+
+async function recordParticipantActivity(conversationId: string, userId: string, agentProfileId: string, agentName: string, publicConversationId: string, publicVisitorId?: string | null) {
+  const participant = await ensureParticipant(conversationId, userId, agentProfileId).catch(() => null);
+  if (participant?.joinedNow || participant?.rejoined) {
+    await createSystemTimelineMessage(conversationId, `${agentName} joined the conversation.`, publicConversationId, publicVisitorId);
+  }
 }
 
 async function createSystemTimelineMessage(conversationId: string, body: string, publicConversationId?: string, publicVisitorId?: string | null) {

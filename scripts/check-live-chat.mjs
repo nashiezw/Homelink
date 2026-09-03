@@ -379,7 +379,12 @@ const checks = [
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin proactive sends stop spinner before background inbox refresh",
-    pattern: /setStartingVisitorId\(null\);[\s\S]*void load\(\{ conversationId, silent: true \}\)/,
+    pattern: /PROACTIVE_SEND_TIMEOUT_MS[\s\S]*controller\.abort\(\)[\s\S]*setStartingVisitorId\(null\)/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "admin staff sends return before non-critical audit work",
+    pattern: /publishLiveChatRealtime\([\s\S]*void recordParticipantActivity[\s\S]*void auditEvent/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
