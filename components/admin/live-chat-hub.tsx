@@ -35,6 +35,8 @@ const FILTERS = [
 
 type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
 
+const LIVE_VISITORS_REFRESH_MS = 5_000;
+
 export function LiveChatHub() {
   const [data, setData] = useState<LiveChatInboxView | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -154,7 +156,7 @@ export function LiveChatHub() {
     const interval = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
       if (panel === "inbox" || panel === "visitors") void load({ silent: true });
-    }, panel === "visitors" ? 10000 : activeId ? 20000 : 30000);
+    }, panel === "visitors" ? LIVE_VISITORS_REFRESH_MS : activeId ? 20000 : 30000);
     return () => window.clearInterval(interval);
   }, [activeId, load, panel]);
 
@@ -169,6 +171,12 @@ export function LiveChatHub() {
   useEffect(() => {
     if (typeof window === "undefined" || !("EventSource" in window)) return;
     const source = new EventSource("/api/v1/admin/live-chat/stream");
+    source.addEventListener("ready", () => {
+      if (panel === "visitors") scheduleLiveRefresh();
+    });
+    source.addEventListener("heartbeat", () => {
+      if (panel === "visitors") scheduleLiveRefresh();
+    });
     source.addEventListener("message", () => {
       scheduleLiveRefresh();
     });

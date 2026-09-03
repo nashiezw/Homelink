@@ -27,8 +27,10 @@ const cart = readFileSync(join(root, "lib/library/cart-client.ts"), "utf8");
 const libraryProductPage = readFileSync(join(root, "components/library/library-product-page.tsx"), "utf8");
 const libraryCartFab = readFileSync(join(root, "components/library/library-cart-fab.tsx"), "utf8");
 const liveChatWidget = readFileSync(join(root, "components/live-chat/live-chat-widget.tsx"), "utf8");
+const liveChatHub = readFileSync(join(root, "components/admin/live-chat-hub.tsx"), "utf8");
 const libraryProductRoute = readFileSync(join(root, "app/api/v1/library/products/[slug]/route.ts"), "utf8");
 const libraryRepository = readFileSync(join(root, "lib/library/repository.ts"), "utf8");
+const liveChatRepository = readFileSync(join(root, "lib/live-chat/repository.ts"), "utf8");
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
 const prodSchema = readFileSync(join(root, "lib/db/production-schema.ts"), "utf8");
 
@@ -74,6 +76,9 @@ assert(!/Add bundle ·/.test(libraryProductPage), "mobile product page no longer
 assert(/bottomDock === "library-product-buy"[\s\S]*isLibraryProductPath\(pathname\)/.test(liveChatWidget), "live chat lifts above the mobile product buy dock");
 assert(/bottomDock === "library-product-buy"[\s\S]*isLibraryProductPath\(pathname\)/.test(libraryCartFab), "library bag stays visible above the mobile product buy dock");
 assert(/if \(count && !pathname\?\.startsWith\("\/library\/checkout"\)\) return;[\s\S]*setLibraryBagFloatingOpen\(false\)/.test(libraryCartFab), "library bag clears its open state when the cart empties");
+assert(/dedupeActiveVisitors[\s\S]*activeVisitorIdentityKey[\s\S]*user:\$\{visitor\.userId\}[\s\S]*phone:\$\{phone\}[\s\S]*email:\$\{email\}/.test(liveChatRepository), "live chat active visitors dedupe same user, phone, or email sessions");
+assert(/analytics: \{[\s\S]*activeVisitors: activeVisitors\.filter\(\(visitor\) => visitor\.presenceStatus === "LIVE"\)\.length/.test(liveChatRepository), "live chat active visitor metric uses deduped live visitors");
+assert(/LIVE_VISITORS_REFRESH_MS = 5_000[\s\S]*source\.addEventListener\("heartbeat"[\s\S]*panel === "visitors"[\s\S]*scheduleLiveRefresh/.test(liveChatHub), "live chat visitors panel refreshes automatically in near real time");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");

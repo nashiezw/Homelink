@@ -552,9 +552,12 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
   for (const conversation of activeVisitorConversations) {
     if (!conversationByVisitor.has(conversation.visitorId)) conversationByVisitor.set(conversation.visitorId, shapeConversation(conversation));
   }
+  const activeVisitors = dedupeActiveVisitors(
+    activeVisitorsRaw.map((visitor) => shapeActiveVisitor(visitor, conversationByVisitor.get(visitor.id) ?? null)),
+  );
   return {
     conversations: visibleConversations.map((conversation) => shapeConversation(conversation)),
-    activeVisitors: activeVisitorsRaw.map((visitor) => shapeActiveVisitor(visitor, conversationByVisitor.get(visitor.id) ?? null)),
+    activeVisitors,
     messages: messages.map(shapeMessage),
     events: events.map(shapeEvent),
     departments: departments.map(shapeDepartment),
@@ -572,7 +575,10 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
     })),
     tags: tags.map((tag) => ({ id: tag.id, name: tag.name, slug: tag.slug, color: tag.color, active: tag.active })),
     settings,
-    analytics,
+    analytics: {
+      ...analytics,
+      activeVisitors: activeVisitors.filter((visitor) => visitor.presenceStatus === "LIVE").length,
+    },
   };
 }
 
@@ -1699,6 +1705,62 @@ function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; 
   };
 }
 
+function dedupeActiveVisitors(visitors: LiveChatInboxView["activeVisitors"]) {
+  const grouped = new Map<string, LiveChatInboxView["activeVisitors"][number]>();
+  for (const visitor of visitors) {
+    const key = activeVisitorIdentityKey(visitor);
+    const existing = grouped.get(key);
+    grouped.set(key, existing ? mergeActiveVisitorSessions(existing, visitor) : visitor);
+  }
+  return [...grouped.values()].sort((a, b) => {
+    const rank = (visitor: LiveChatInboxView["activeVisitors"][number]) =>
+      visitor.presenceStatus === "LIVE" ? 0 : visitor.presenceStatus === "RECENT" ? 1 : 2;
+    return rank(a) - rank(b) || new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime();
+  });
+}
+
+function activeVisitorIdentityKey(visitor: LiveChatInboxView["activeVisitors"][number]) {
+  if (visitor.userId) return `user:${visitor.userId}`;
+  const email = visitor.email?.trim().toLowerCase();
+  const phone = visitor.phone?.replace(/\D/g, "");
+  if (phone) return `phone:${phone}`;
+  if (email) return `email:${email}`;
+  return `visitor:${visitor.id}`;
+}
+
+function mergeActiveVisitorSessions(a: LiveChatInboxView["activeVisitors"][number], b: LiveChatInboxView["activeVisitors"][number]) {
+  const latest = new Date(b.lastSeenAt).getTime() > new Date(a.lastSeenAt).getTime() ? b : a;
+  const other = latest === a ? b : a;
+  const devices = uniqueLabels([a.deviceType, b.deviceType]);
+  const conversations = [a.conversation, b.conversation].filter(Boolean) as NonNullable<LiveChatInboxView["activeVisitors"][number]["conversation"]>[];
+  const conversation = conversations.sort((left, right) => new Date(right.lastMessageAt || "").getTime() - new Date(left.lastMessageAt || "").getTime())[0] ?? latest.conversation ?? other.conversation ?? null;
+  const presenceStatus: LiveChatInboxView["activeVisitors"][number]["presenceStatus"] =
+    a.presenceStatus === "LIVE" || b.presenceStatus === "LIVE" ? "LIVE" : a.presenceStatus === "RECENT" || b.presenceStatus === "RECENT" ? "RECENT" : "OFFLINE";
+  const ageMs = Date.now() - new Date(latest.lastSeenAt).getTime();
+  return {
+    ...latest,
+    name: latest.name || other.name,
+    email: latest.email || other.email,
+    phone: latest.phone || other.phone,
+    source: latest.source || other.source,
+    utmSource: latest.utmSource || other.utmSource,
+    utmMedium: latest.utmMedium || other.utmMedium,
+    utmCampaign: latest.utmCampaign || other.utmCampaign,
+    deviceType: devices.length > 1 ? devices.join(" + ") : latest.deviceType || other.deviceType,
+    firstSeenAt: new Date(a.firstSeenAt).getTime() <= new Date(b.firstSeenAt).getTime() ? a.firstSeenAt : b.firstSeenAt,
+    presenceStatus,
+    presenceLabel: presenceStatus === "LIVE" ? "Live now" : presenceStatus === "RECENT" ? `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago` : "Offline",
+    conversationId: conversation?.id ?? latest.conversationId ?? other.conversationId ?? null,
+    conversation,
+    sessionSeconds: Math.max(a.sessionSeconds, b.sessionSeconds),
+    pageSeconds: latest.pageSeconds,
+  };
+}
+
+function uniqueLabels(values: Array<string | null | undefined>) {
+  return [...new Set(values.map((value) => cleanText(value, 40)).filter(Boolean))];
+}
+
 function shapeSettings(settings: { enabled: boolean; widgetGreeting: string; welcomeMessage: string; offlineMessage: string; privacyNotice: string; soundEnabled: boolean; requireContact: boolean; proactiveEnabled: boolean; retentionDays?: number; businessTimezone?: string; defaultDepartmentId?: string | null; mobilePosition?: string }): LiveChatSettingsView {
   return {
     enabled: settings.enabled,
@@ -1851,15 +1913,16 @@ function memoryInbox(): LiveChatInboxView {
   const visitors = [...memory.visitors.values()];
   const conversations = [...memory.conversations.values()];
   const selected = conversations[0];
+  const activeVisitors = dedupeActiveVisitors(visitors
+    .filter((visitor) => Date.now() - visitor.lastSeenAt.getTime() <= RECENT_VISITOR_MS)
+    .map((visitor) => {
+      const ageMs = Date.now() - visitor.lastSeenAt.getTime();
+      const presenceStatus = ageMs <= ACTIVE_VISITOR_MS ? "LIVE" as const : "RECENT" as const;
+      return { ...shapeMemoryVisitor(visitor), conversationId: conversations.find((conversation) => conversation.visitorId === visitor.id)?.publicId ?? null, presenceStatus, presenceLabel: presenceStatus === "LIVE" ? "Live now" : `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago`, sessionSeconds: 0, pageSeconds: 0 };
+    }));
   return {
     conversations: conversations.map((conversation) => shapeMemoryConversation(conversation, visitors.find((visitor) => visitor.id === conversation.visitorId)!)),
-    activeVisitors: visitors
-      .filter((visitor) => Date.now() - visitor.lastSeenAt.getTime() <= RECENT_VISITOR_MS)
-      .map((visitor) => {
-        const ageMs = Date.now() - visitor.lastSeenAt.getTime();
-        const presenceStatus = ageMs <= ACTIVE_VISITOR_MS ? "LIVE" as const : "RECENT" as const;
-        return { ...shapeMemoryVisitor(visitor), conversationId: conversations.find((conversation) => conversation.visitorId === visitor.id)?.publicId ?? null, presenceStatus, presenceLabel: presenceStatus === "LIVE" ? "Live now" : `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago`, sessionSeconds: 0, pageSeconds: 0 };
-      }),
+    activeVisitors,
     messages: memory.messages.filter((message) => message.conversationId === selected?.id).map(shapeMemoryMessage),
     events: memory.events.map((event) => ({ id: event.id, eventType: event.eventType, path: event.path, title: event.title, metadata: event.metadata, createdAt: event.createdAt.toISOString() })),
     departments: DEFAULT_DEPARTMENTS.map(([name, slug, color, welcomeMessage]) => ({ id: slug, name, slug, color, active: true, welcomeMessage })),
@@ -1868,7 +1931,7 @@ function memoryInbox(): LiveChatInboxView {
     quickReplies: DEFAULT_QUICK_REPLIES.map(([title, shortcut, category, body]) => ({ id: shortcut, title, shortcut, category, body, active: true })),
     tags: DEFAULT_TAGS.map(([name, slug, color]) => ({ id: slug, name, slug, color, active: true })),
     settings: getLiveChatSettingsFallback(),
-    analytics: { totalConversations: conversations.length, openConversations: conversations.length, waitingConversations: 0, resolvedConversations: 0, activeVisitors: visitors.length, leadsCreated: 0, proactiveMessages: 0, missedChats: 0, recoveredChats: 0, whatsappFollowUps: 0, hotLeads: 0, unreadNeedingReply: 0, averageFirstResponseSeconds: null },
+    analytics: { totalConversations: conversations.length, openConversations: conversations.length, waitingConversations: 0, resolvedConversations: 0, activeVisitors: activeVisitors.filter((visitor) => visitor.presenceStatus === "LIVE").length, leadsCreated: 0, proactiveMessages: 0, missedChats: 0, recoveredChats: 0, whatsappFollowUps: 0, hotLeads: 0, unreadNeedingReply: 0, averageFirstResponseSeconds: null },
   };
 }
 
