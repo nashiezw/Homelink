@@ -831,7 +831,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
         prisma.libraryProduct
           .findMany({
             where: { deletedAt: null },
-            select: { id: true, slug: true, title: true, stock: true, lowStockThreshold: true, status: true },
+            select: { id: true, slug: true, title: true, stock: true, lowStockThreshold: true, status: true, viewCount: true },
             take: 500,
           })
           .catch(() => []),
@@ -878,6 +878,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
     >();
 
     const catalogTitles = new Map(catalog.map((row) => [row.id, row.title]));
+    const catalogViewCounts = new Map(catalog.map((row) => [row.id, Number(row.viewCount ?? 0)]));
     const productAliases = new Map<string, string>();
     for (const row of catalog) {
       productAliases.set(row.id, row.id);
@@ -1085,6 +1086,8 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
         productId: row.productId,
         title: resolveDisplayTitle(row.title, row.productId, catalogTitles),
         views: row.views,
+        publicViewCount: catalogViewCounts.get(row.productId) ?? 0,
+        viewMetricLabel: `${row.views} tracked visits in ${normalizedDays} days`,
         uniqueViewers: row.viewers.size,
         adds: row.adds,
         removes: row.removes,
@@ -1263,7 +1266,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
             sampleRate < 10
               ? "sample/value proof may be too easy to miss"
               : "the above-the-fold offer may not be giving enough buying confidence";
-          return `Content gap: “${row.title}” has ${row.views} views but only ${row.addRate}% add-to-bag. Likely reason: ${reason}. Action: strengthen who-it-is-for, what-they-get, sample proof, and product-specific live chat follow-up.`;
+          return `Content gap: “${row.title}” has ${row.views} tracked product visits in ${normalizedDays} days but only ${row.addRate}% add-to-bag. Public badge lifetime counter: ${row.publicViewCount}. Likely reason: ${reason}. Action: strengthen who-it-is-for, what-they-get, sample proof, and product-specific live chat follow-up.`;
         }),
       ...products
         .filter((row) => row.removes >= 5 && row.removes > row.adds)
@@ -1354,7 +1357,7 @@ export function advancedAnalyticsToCsv(report: Awaited<ReturnType<typeof getAdva
   lines.push("section,label,value,extra");
   for (const row of report.products) {
     lines.push(
-      `products,${csv(row.title)},${row.views},id=${row.productId};uniques=${row.uniqueViewers};adds=${row.adds};removes=${row.removes};purchases=${row.purchases};addRate=${row.addRate};purchaseRate=${row.purchaseRate}`,
+      `products,${csv(row.title)},${row.views},id=${row.productId};publicViewCount=${row.publicViewCount ?? 0};uniques=${row.uniqueViewers};adds=${row.adds};removes=${row.removes};purchases=${row.purchases};addRate=${row.addRate};purchaseRate=${row.purchaseRate}`,
     );
   }
   for (const row of report.cartActivity) {

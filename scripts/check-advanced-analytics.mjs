@@ -33,6 +33,8 @@ const libraryRepository = readFileSync(join(root, "lib/library/repository.ts"), 
 const liveChatRepository = readFileSync(join(root, "lib/live-chat/repository.ts"), "utf8");
 const liveChatPublicStream = readFileSync(join(root, "app/api/v1/live-chat/stream/route.ts"), "utf8");
 const liveChatAdminStream = readFileSync(join(root, "app/api/v1/admin/live-chat/stream/route.ts"), "utf8");
+const syncLibraryViewCounts = readFileSync(join(root, "scripts/sync-library-product-view-counts.mjs"), "utf8");
+const pkg = readFileSync(join(root, "package.json"), "utf8");
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
 const prodSchema = readFileSync(join(root, "lib/db/production-schema.ts"), "utf8");
 
@@ -57,8 +59,10 @@ assert(/products/.test(report) && /journeys/.test(report) && /cartActivity/.test
 assert(/librarySlugFromPath/.test(report) && /productAliases/.test(report), "product analytics normalizes library slugs and titles");
 assert(/productPageViews/.test(report) && /sitePageView[\s\S]*startsWith: "\/library\/"/.test(report), "product analytics includes library page views");
 assert(/addProductView/.test(report) && /library_product_viewed[\s\S]*addProductView/.test(report), "product analytics dedupes event and page-view counts");
+assert(/publicViewCount/.test(report) && /tracked product visits in \$\{normalizedDays\} days/.test(report), "product analytics separates period visits from public lifetime counters");
 assert(/Live now|Products|Carts|Journeys/.test(panel), "admin panel has advanced tabs");
 assert(/Conversion journey/.test(panel) && /productConversionDiagnosis/.test(panel), "admin products tab explains product conversion gaps");
+assert(/Tracked visits/.test(panel) && /Public badge/.test(panel), "admin product analytics labels tracked visits separately from public badge views");
 assert(/kind: "presence"|kind === "presence"|presence/.test(tracker), "tracker sends presence heartbeat");
 assert(/library_cart_removed|CART_REMOVE/.test(cart), "cart client tracks removes");
 assert(/CART_QTY_CHANGE/.test(cart), "cart client tracks qty changes");
@@ -89,6 +93,7 @@ assert(/event\.type === "availability"[\s\S]*targets\.push\("public"\)/.test(liv
 assert(/touchLiveChatAgentPresence[\s\S]*admin_stream_heartbeat/.test(liveChatAdminStream), "admin live chat stream keeps agent presence fresh");
 assert(/send\("availability"[\s\S]*getPublicLiveChatAvailability/.test(liveChatPublicStream), "public live chat stream sends availability updates");
 assert(/source\.addEventListener\("availability"[\s\S]*supportAgent: payload\.availability!\.supportAgent[\s\S]*supportAvailabilityLabel/.test(liveChatWidget), "public live chat widget applies realtime availability updates");
+assert(/sync-library-product-view-counts\.mjs/.test(pkg) && /Math\.max\(product\.viewCount, counts\.get\(product\.id\) \?\? 0\)/.test(syncLibraryViewCounts), "library product view counters can be dry-run synced upward from analytics");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");

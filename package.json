@@ -35,6 +35,7 @@
     "db:seed:manual-course": "node scripts/seed-staged-course.mjs",
     "db:seed:staged-course": "node scripts/seed-staged-course.mjs",
     "db:seed:property-development-blogs": "node scripts/seed-property-development-blogs.mjs",
+    "library:sync-view-counts": "node scripts/sync-library-product-view-counts.mjs",
     "academy:export-lesson-handouts": "node scripts/export-lesson-handouts.mjs",
     "academy:generate-lesson-handouts": "node scripts/generate-academy-lesson-handouts.mjs",
     "smoke": "node scripts/smoke-test.mjs",

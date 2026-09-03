@@ -151,6 +151,8 @@ type AdvancedReport = {
     productId: string;
     title: string;
     views: number;
+    publicViewCount?: number;
+    viewMetricLabel?: string;
     uniqueViewers: number;
     adds: number;
     removes: number;
@@ -219,6 +221,7 @@ type ProductConversionPlan = {
   productId: string;
   title: string;
   views: number;
+  publicViewCount: number;
   addRate: number;
   sampleRate: number;
   purchaseRate: number;
@@ -387,6 +390,7 @@ function productConversionDiagnosis(row: AdvancedReport["products"][number]): Pr
     productId: row.productId,
     title: row.title,
     views: row.views,
+    publicViewCount: row.publicViewCount ?? 0,
     addRate: row.addRate,
     sampleRate,
     purchaseRate,
@@ -792,7 +796,7 @@ export function SiteAnalyticsPanel() {
                       <div className="min-w-0">
                         <p className="break-words font-semibold text-white">{row.title}</p>
                         <p className="mt-1 text-xs text-amber-100/80">
-                          {row.views} views · {row.addRate}% add-to-bag · {row.sampleRate}% sample · {row.purchaseRate}% purchase
+                          {row.views} tracked visits · Public badge: {row.publicViewCount ?? 0} lifetime · {row.addRate}% add-to-bag · {row.sampleRate}% sample · {row.purchaseRate}% purchase
                         </p>
                       </div>
                       <span className="w-fit shrink-0 rounded-full border border-amber-300/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-100">
@@ -823,7 +827,8 @@ export function SiteAnalyticsPanel() {
                 <MobileRecord key={row.productId} title={row.title}>
                   <MobileFacts
                     rows={[
-                      ["Views", row.views],
+                      ["Tracked visits", row.views],
+                      ["Public badge", row.publicViewCount ?? 0],
                       ["Uniques", row.uniqueViewers],
                       ["Adds", row.adds],
                       ["Removes", row.removes],
@@ -848,7 +853,8 @@ export function SiteAnalyticsPanel() {
             <thead className="border-b border-white/10 text-[11px] uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="py-2 pr-3">Product</th>
-                <th className="py-2 pr-3">Views</th>
+                <th className="py-2 pr-3">Tracked visits</th>
+                <th className="py-2 pr-3">Public badge</th>
                 <th className="py-2 pr-3">Uniques</th>
                 <th className="py-2 pr-3">Adds</th>
                 <th className="py-2 pr-3">Removes</th>
@@ -865,7 +871,8 @@ export function SiteAnalyticsPanel() {
                     <td className="max-w-[16rem] truncate py-2 pr-3 font-semibold text-white" title={row.title}>
                       {row.title}
                     </td>
-                    <td className="py-2 pr-3 tabular-nums">{row.views}</td>
+                    <td className="py-2 pr-3 tabular-nums" title={row.viewMetricLabel ?? "Tracked analytics visits in this selected period"}>{row.views}</td>
+                    <td className="py-2 pr-3 tabular-nums" title="Lifetime counter shown on the public product page">{row.publicViewCount ?? 0}</td>
                     <td className="py-2 pr-3 tabular-nums">{row.uniqueViewers}</td>
                     <td className="py-2 pr-3 tabular-nums text-emerald-300">{row.adds}</td>
                     <td className="py-2 pr-3 tabular-nums text-amber-300">{row.removes}</td>
@@ -877,7 +884,7 @@ export function SiteAnalyticsPanel() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="py-4 text-slate-400">
+                  <td colSpan={10} className="py-4 text-slate-400">
                     Product views and cart events will appear as shoppers browse Library titles.
                   </td>
                 </tr>
