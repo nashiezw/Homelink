@@ -60,6 +60,11 @@ assert(/CART_CLEAR/.test(cart), "cart client tracks clears");
 assert(/data: \{ viewCount: \{ increment: 1 \} \ }|viewCount: \{ increment: 1 \}/.test(libraryRepository), "library product view counter increments stored product count");
 assert(/export async function POST[\s\S]*action !== "view"[\s\S]*recordLibraryProductView/.test(libraryProductRoute), "library product API records view actions");
 assert(/displayViewCount[\s\S]*Viewed \$\{displayViewCount\} times[\s\S]*\/api\/v1\/library\/products/.test(libraryProductPage), "library product viewed badge updates from recorded view count");
+assert(/Buy Digital PDF - \$\{product\.currency\} \$\{selectedPrice\.toFixed\(2\)\}/.test(libraryProductPage), "library product page makes buy digital the primary CTA");
+assert(/Digital PDF unlocks automatically once payment is confirmed/.test(libraryProductPage), "library product page clarifies digital access timing");
+assert(/setReviewFormOpen[\s\S]*toggle_review_form[\s\S]*reviewFormOpen \? "Hide review form" : "Leave a review"[\s\S]*reviewFormOpen \?/.test(libraryProductPage), "library product page keeps review form behind a deliberate action");
+assert(/Access kept in your Library account[\s\S]*WhatsApp support available/.test(libraryProductPage), "library product page shows checkout trust signals");
+assert(/setPreviewOpen\(false\); buyNow\(\);/.test(libraryProductPage), "library sample preview includes a direct buy path");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");

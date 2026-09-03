@@ -128,6 +128,7 @@ export function LibraryProductPage({
   });
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewNotice, setReviewNotice] = useState("");
+  const [reviewFormOpen, setReviewFormOpen] = useState(false);
   const [softcopyBadgeVariant, setSoftcopyBadgeVariant] = useState("control");
   const [sampleTouched, setSampleTouched] = useState(false);
   const [displayViewCount, setDisplayViewCount] = useState(product.viewCount);
@@ -268,12 +269,22 @@ export function LibraryProductPage({
   const volumePricing = selectedFormat
     ? libraryVolumePricing(selectedFormat, selectedQty)
     : null;
+  const selectedPrice = volumePricing?.lineTotal ?? selectedFormat?.price ?? product.price;
+  const selectedFormatName = selectedFormat?.label || (isPrinted ? "Printed Book" : "Digital PDF");
+  const primaryCtaLabel = product.preorder
+    ? `Pre-order ${selectedFormatName} - ${product.currency} ${selectedPrice.toFixed(2)}`
+    : isPrinted
+      ? `Buy Printed Book - ${product.currency} ${selectedPrice.toFixed(2)}`
+      : `Buy Digital PDF - ${product.currency} ${selectedPrice.toFixed(2)}`;
   const printStockLabel =
     product.stock == null
       ? "Printed stock available"
       : product.stock > 0
         ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} in stock`
         : "Printed format out of stock";
+  const accessCopy = isPrinted
+    ? printStockLabel
+    : "Digital PDF unlocks automatically once payment is confirmed. Your invoice and access stay in your HouseLink account.";
   const sampleFile = useMemo(
     () => product.downloads.find(isLibrarySampleFile) ?? preparedSampleToDownload(findPreparedLibrarySample({ slug: product.slug, title: product.title })),
     [product.downloads, product.slug, product.title],
@@ -1148,8 +1159,15 @@ export function LibraryProductPage({
                     </p>
                     <p className="flex gap-2">
                       <ShieldCheck className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                      <span><strong>Access:</strong> {isPrinted ? printStockLabel : "available after payment confirmation, with your invoice and Library access tracked."}</span>
+                      <span><strong>Access:</strong> {accessCopy}</span>
                     </p>
+                  </div>
+                  <div className="mt-3 grid gap-2 rounded-xl border border-white/70 bg-white/70 p-3 text-xs font-semibold text-emerald-900 shadow-sm dark:border-emerald-900/40 dark:bg-slate-950/60 dark:text-emerald-100 sm:grid-cols-2">
+                    {["Secure checkout", "Invoice provided", "Access kept in your account", "WhatsApp support available"].map((item) => (
+                      <span key={item} className="inline-flex items-center gap-2">
+                        <CheckCircle2 className="size-3.5 shrink-0" /> {item}
+                      </span>
+                    ))}
                   </div>
                   {urgencySignals.length ? (
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -1171,8 +1189,8 @@ export function LibraryProductPage({
                   ) : null}
                 </div>
                 <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-                  <Button disabled={outOfStock} onClick={buyNow} className="h-11">
-                    <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : isPrinted ? "Buy now" : "Get instant access"}
+                  <Button disabled={outOfStock} onClick={buyNow} className="h-11 sm:col-span-2">
+                    <ShoppingCart className="size-4" /> {primaryCtaLabel}
                   </Button>
                   <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="h-11">
                     <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
@@ -1389,16 +1407,28 @@ export function LibraryProductPage({
                         Your feedback helps other readers decide if this book is right for them. We review submissions first, and your phone or email is only used privately for verification.
                       </p>
                     </div>
-                    {!user ? (
-                      <Link href={`/auth?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">
-                        Already have an account? Sign in
-                      </Link>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
-                        <ShieldCheck className="size-3.5" /> Signed in
-                      </span>
-                    )}
+                    <div className="flex flex-wrap items-center gap-3">
+                      {!user ? (
+                        <Link href={`/auth?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">
+                          Already have an account? Sign in
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                          <ShieldCheck className="size-3.5" /> Signed in
+                        </span>
+                      )}
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setReviewFormOpen((current) => !current);
+                          trackEvent("library_cta_clicked", product.id, { title: product.title, slug: product.slug, cta: "toggle_review_form" });
+                        }}
+                      >
+                        {reviewFormOpen ? "Hide review form" : "Leave a review"}
+                      </Button>
+                    </div>
                   </div>
+                  {reviewFormOpen ? (
                   <div className="mt-4 rounded-xl border border-white bg-white/85 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
                       <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
                         <label className="text-sm font-medium">
@@ -1505,6 +1535,7 @@ export function LibraryProductPage({
                         )}
                       </div>
                   </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -1705,7 +1736,7 @@ export function LibraryProductPage({
             )}
             <div className="mt-5 grid gap-2">
               <Button disabled={outOfStock} onClick={buyNow}>
-                <ShoppingCart className="size-4" /> {product.preorder ? "Pre-order now" : isPrinted ? "Buy now" : "Get instant access"}
+                <ShoppingCart className="size-4" /> {primaryCtaLabel}
               </Button>
               <Button variant="secondary" disabled={outOfStock} onClick={addToCart}>
                 <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
@@ -1725,7 +1756,7 @@ export function LibraryProductPage({
               </button>
             </div>
             <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
-              {["Native HouseLink checkout", "Protected customer access", "Download limits and license keys"].map((item) => (
+              {["Secure HouseLink checkout", "Invoice provided", "Access kept in your Library account", "WhatsApp support available"].map((item) => (
                 <p key={item} className="flex gap-2">
                   <Lock className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
                 </p>
@@ -1908,6 +1939,9 @@ export function LibraryProductPage({
                   />
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+                  <Button onClick={() => { setPreviewOpen(false); buyNow(); }}>
+                    <ShoppingCart className="size-4" /> {primaryCtaLabel}
+                  </Button>
                   <Button variant="secondary" onClick={() => openSampleInNewTab("modal")}>
                     <ExternalLink className="size-4" /> Open in new tab
                   </Button>
@@ -1934,7 +1968,10 @@ export function LibraryProductPage({
                       ))}
                     </div>
                     <div className="mt-6">
-                      <Button variant="secondary" onClick={() => { setPreviewOpen(false); openLightbox({ zoomed: true }); }}>
+                      <Button onClick={() => { setPreviewOpen(false); buyNow(); }}>
+                        <ShoppingCart className="size-4" /> {primaryCtaLabel}
+                      </Button>
+                      <Button variant="secondary" onClick={() => { setPreviewOpen(false); openLightbox({ zoomed: true }); }} className="mt-2">
                         <ZoomIn className="size-4" /> View cover gallery
                       </Button>
                     </div>
