@@ -270,6 +270,7 @@ export function LibraryProductPage({
     ? libraryVolumePricing(selectedFormat, selectedQty)
     : null;
   const selectedPrice = volumePricing?.lineTotal ?? selectedFormat?.price ?? product.price;
+  const selectedFormatKey = selectedFormat?.id;
   const selectedFormatName = selectedFormat?.label || (isPrinted ? "Printed Book" : "Digital PDF");
   const primaryCtaLabel = product.preorder
     ? `Pre-order ${selectedFormatName} - ${product.currency} ${selectedPrice.toFixed(2)}`
@@ -369,11 +370,11 @@ export function LibraryProductPage({
     });
   }, [product.id, product.slug, product.title]);
 
-  // Tell floating FABs to clear the mobile "Add bundle" dock.
+  // Tell floating FABs to clear the mobile product buy dock.
   useEffect(() => {
     const sync = () => {
-      const showDock = bundleLines.length > 1 && typeof window !== "undefined" && window.innerWidth < 1024;
-      setHouseLinkBottomDock(showDock ? "library-bundle" : null);
+      const showDock = Boolean(selectedFormatKey && !outOfStock) && typeof window !== "undefined" && window.innerWidth < 1024;
+      setHouseLinkBottomDock(showDock ? "library-product-buy" : null);
     };
     sync();
     window.addEventListener("resize", sync);
@@ -381,7 +382,7 @@ export function LibraryProductPage({
       window.removeEventListener("resize", sync);
       setHouseLinkBottomDock(null);
     };
-  }, [bundleLines.length]);
+  }, [outOfStock, selectedFormatKey]);
 
   useEffect(() => {
     if (bundleLines.length > 1) {
@@ -807,7 +808,7 @@ export function LibraryProductPage({
   }
 
   return (
-    <main className={cn("bg-mist text-ink dark:bg-slate-950 dark:text-white", bundleLines.length > 1 && "pb-24 lg:pb-0")}>
+    <main className={cn("bg-mist text-ink dark:bg-slate-950 dark:text-white", selectedFormat && !outOfStock && "pb-32 lg:pb-0")}>
       <LibraryExitIntentCapture
         productId={product.id}
         productTitle={product.title}
@@ -1542,74 +1543,75 @@ export function LibraryProductPage({
           </Panel>
 
           {bundleLines.length > 1 && (
-            <Panel
-              title="Frequently Bought Together"
-              icon={ShoppingCart}
-              action={
-                <Button disabled={!bundleAvailable} onClick={addBundle}>
-                  Add bundle to bag
-                </Button>
-              }
-            >
-              <p className="mb-3 text-xs font-semibold text-slate-500">
-                {bundlePreferenceLabel}. Soft-copy promo applies only when every title is digital — printed picks use full list price.
-              </p>
-              <div className={cn("grid items-stretch gap-3", bundleLines.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
-                {bundleLines.map((line) => {
-                  const itemFormats = availableLibraryFormats(line.product);
-                  const isMain = line.product.id === product.id;
-                  return (
-                    <div
-                      key={line.product.id}
-                      className={cn(
-                        "flex h-full flex-col rounded-xl border bg-[#fbfcfb] p-3 dark:bg-slate-950",
-                        isMain ? "border-emerald-400 dark:border-emerald-700" : "border-slate-200 dark:border-slate-800",
-                        !line.inStock && "opacity-60",
-                      )}
-                    >
-                      <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">{line.format.label}</p>
-                      {isMain ? (
-                        <p className="mt-1 line-clamp-2 font-semibold">{line.product.title}</p>
-                      ) : (
-                        <Link href={`/library/${line.product.slug}`} className="mt-1 line-clamp-2 font-semibold hover:text-emerald-700">
-                          {line.product.title}
-                        </Link>
-                      )}
-                      {!isMain && itemFormats.length > 1 ? (
-                        <label className="mt-3 block text-xs font-semibold text-slate-500">
-                          Format
-                          <select
-                            value={line.format.id}
-                            onChange={(event) =>
-                              setBundleFormatIds((current) => ({ ...current, [line.product.id]: event.target.value }))
-                            }
-                            className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-ink dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                          >
-                            {itemFormats.map((format) => (
-                              <option key={format.id} value={format.id}>
-                                {format.label} · {line.product.currency} {format.price.toFixed(2)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : null}
-                      {!line.inStock ? (
-                        <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Printed format out of stock</p>
-                      ) : null}
-                      <div className="mt-auto flex flex-wrap items-baseline gap-2 pt-3">
-                        <p className="text-sm font-semibold tabular-nums">
-                          {line.product.currency} {line.listPrice.toFixed(2)}
-                        </p>
-                        {line.chargedPrice < line.listPrice - 0.001 ? (
-                          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                            Bundle {line.product.currency} {line.chargedPrice.toFixed(2)}
-                          </p>
+            <div id="library-bundle-offer" className="scroll-mt-24">
+              <Panel
+                title="Frequently Bought Together"
+                icon={ShoppingCart}
+                action={
+                  <Button disabled={!bundleAvailable} onClick={addBundle}>
+                    Add bundle to bag
+                  </Button>
+                }
+              >
+                <p className="mb-3 text-xs font-semibold text-slate-500">
+                  {bundlePreferenceLabel}. Soft-copy promo applies only when every title is digital — printed picks use full list price.
+                </p>
+                <div className={cn("grid items-stretch gap-3", bundleLines.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
+                  {bundleLines.map((line) => {
+                    const itemFormats = availableLibraryFormats(line.product);
+                    const isMain = line.product.id === product.id;
+                    return (
+                      <div
+                        key={line.product.id}
+                        className={cn(
+                          "flex h-full flex-col rounded-xl border bg-[#fbfcfb] p-3 dark:bg-slate-950",
+                          isMain ? "border-emerald-400 dark:border-emerald-700" : "border-slate-200 dark:border-slate-800",
+                          !line.inStock && "opacity-60",
+                        )}
+                      >
+                        <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">{line.format.label}</p>
+                        {isMain ? (
+                          <p className="mt-1 line-clamp-2 font-semibold">{line.product.title}</p>
+                        ) : (
+                          <Link href={`/library/${line.product.slug}`} className="mt-1 line-clamp-2 font-semibold hover:text-emerald-700">
+                            {line.product.title}
+                          </Link>
+                        )}
+                        {!isMain && itemFormats.length > 1 ? (
+                          <label className="mt-3 block text-xs font-semibold text-slate-500">
+                            Format
+                            <select
+                              value={line.format.id}
+                              onChange={(event) =>
+                                setBundleFormatIds((current) => ({ ...current, [line.product.id]: event.target.value }))
+                              }
+                              className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-ink dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                            >
+                              {itemFormats.map((format) => (
+                                <option key={format.id} value={format.id}>
+                                  {format.label} · {line.product.currency} {format.price.toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                         ) : null}
+                        {!line.inStock ? (
+                          <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">Printed format out of stock</p>
+                        ) : null}
+                        <div className="mt-auto flex flex-wrap items-baseline gap-2 pt-3">
+                          <p className="text-sm font-semibold tabular-nums">
+                            {line.product.currency} {line.listPrice.toFixed(2)}
+                          </p>
+                          {line.chargedPrice < line.listPrice - 0.001 ? (
+                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                              Bundle {line.product.currency} {line.chargedPrice.toFixed(2)}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
                 <div className="text-sm text-slate-500">
                   {!bundleAvailable ? (
@@ -1650,7 +1652,8 @@ export function LibraryProductPage({
                   Bundle total: {product.currency} {bundleTotal.toFixed(2)}
                 </p>
               </div>
-            </Panel>
+              </Panel>
+            </div>
           )}
         </div>
 
@@ -1890,32 +1893,45 @@ export function LibraryProductPage({
         </div>
       )}
 
-      {bundleLines.length > 1 ? (
+      {selectedFormat && !outOfStock ? (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-950/95">
-          <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
+          <div className="mx-auto grid max-w-lg grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-ink dark:text-white">
-                Add bundle · {product.currency} {bundleTotal.toFixed(2)}
+                {primaryCtaLabel}
               </p>
-              {bundleSavings > 0 ? (
-                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  Save {product.currency} {bundleSavings.toFixed(2)}
-                </p>
-              ) : bundlePromoDigitalOnly ? (
-                <button
-                  type="button"
-                  onClick={unlockDigitalBundlePromo}
-                  className="truncate text-left text-xs font-semibold text-emerald-700 dark:text-emerald-300"
-                >
-                  Switch to digital for promo
-                </button>
-              ) : (
-                <p className="truncate text-xs text-slate-500">{bundlePreferenceLabel}</p>
-              )}
+              <p className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {isPrinted ? printStockLabel : "Digital access after payment confirmation"}
+              </p>
             </div>
-            <Button disabled={!bundleAvailable} onClick={addBundle} className="shrink-0">
-              Add bundle
+            <Button onClick={buyNow} className="min-h-10 shrink-0 px-3 py-2 text-xs">
+              <ShoppingCart className="size-4" /> Buy now
             </Button>
+            {sampleUrl || bundleLines.length > 1 ? (
+              <div className="col-span-2 grid grid-cols-2 gap-2">
+                {sampleUrl ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => openSamplePreview("mobile_buy_bar")}
+                    className="min-h-9 px-3 py-2 text-xs"
+                  >
+                    <BookOpen className="size-4" /> Preview
+                  </Button>
+                ) : null}
+                {bundleLines.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById("library-bundle-offer")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    className={cn(
+                      "min-h-9 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+                      !sampleUrl && "col-span-2",
+                    )}
+                  >
+                    {bundleSavings > 0 ? `Bundle saves ${product.currency} ${bundleSavings.toFixed(2)}` : "View bundle offer"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

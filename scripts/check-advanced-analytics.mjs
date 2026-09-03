@@ -65,6 +65,10 @@ assert(/Digital PDF unlocks automatically once payment is confirmed/.test(librar
 assert(/setReviewFormOpen[\s\S]*toggle_review_form[\s\S]*reviewFormOpen \? "Hide review form" : "Leave a review"[\s\S]*reviewFormOpen \?/.test(libraryProductPage), "library product page keeps review form behind a deliberate action");
 assert(/Access kept in your Library account[\s\S]*WhatsApp support available/.test(libraryProductPage), "library product page shows checkout trust signals");
 assert(/setPreviewOpen\(false\); buyNow\(\);/.test(libraryProductPage), "library sample preview includes a direct buy path");
+assert(/setHouseLinkBottomDock\(showDock \? "library-product-buy" : null\)/.test(libraryProductPage), "mobile product page reserves space for the buy dock");
+assert(/openSamplePreview\("mobile_buy_bar"\)/.test(libraryProductPage), "mobile buy dock keeps preview as a secondary action");
+assert(/id="library-bundle-offer"[\s\S]*Bundle saves/.test(libraryProductPage), "mobile bundle offer is optional below the primary buy action");
+assert(!/Add bundle ·/.test(libraryProductPage), "mobile product page no longer leads with bundle pricing");
 
 if (process.exitCode) {
   console.error("Advanced analytics checks failed.");
