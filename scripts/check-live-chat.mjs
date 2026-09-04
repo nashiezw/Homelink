@@ -174,7 +174,7 @@ const checks = [
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin proactive messages are context-aware",
-    pattern: /function proactiveMessageForVisitor[\s\S]*What are you planning to use it for[\s\S]*browsing the HouseLink Library[\s\S]*confirm availability/,
+    pattern: /function proactiveMessageForVisitor[\s\S]*viewing \$\{title\}[\s\S]*browsing \$\{title\}[\s\S]*availability, viewing details, or price help/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
@@ -189,7 +189,7 @@ const checks = [
   {
     file: "lib/live-chat/repository.ts",
     label: "server fallback proactive messages are context-aware",
-    pattern: /function proactiveMessageForVisitor[\s\S]*What are you planning to use it for[\s\S]*browsing the HouseLink Library[\s\S]*confirm availability/,
+    pattern: /function proactiveMessageForVisitor[\s\S]*viewing \$\{title \|\| "this book"\}[\s\S]*browsing \$\{title \|\| "the HouseLink Library"\}[\s\S]*availability, viewing details, or price help/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",

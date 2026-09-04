@@ -1593,24 +1593,24 @@ function proactiveMessageForVisitor(visitor?: Pick<LiveChatConversationView["vis
   const path = cleanJourneyPath(visitor?.currentPath).toLowerCase();
   const intro = agentName ? `Hi, this is ${agentName} from HouseLink.` : "Hi, welcome to HouseLink.";
   if (path.includes("failed") || path.includes("cancelled") || path.includes("proof")) {
-    return `${intro}\n\nI can see you may be stuck around payment or proof upload. Do you want me to help you complete the order and confirm what happens after payment is approved?`;
+    return `${intro}\n\nI noticed you may be stuck on ${title}. Do you need help with payment or proof upload?`;
   }
   if (path.includes("/library/checkout") || path.includes("payment")) {
-    return `${intro}\n\nI noticed you are at checkout. I can help with payment method, proof upload, invoice details, or confirming when your Library access will open. Which part should I help with?`;
+    return `${intro}\n\nI noticed you are at checkout for ${title}. Do you need help with payment, proof upload, or access?`;
   }
   if (path.includes("/library/")) {
-    return `${intro}\n\nI noticed you are viewing ${title}. If you are deciding whether to buy it, I can quickly help with what is inside, whether digital or printed is better for you, and how access works after payment. What are you planning to use it for?`;
+    return `${intro}\n\nI noticed you are viewing ${title}. Are you buying it for your own project, work, or study?`;
   }
   if (path === "/library" || title.toLowerCase().includes("property books")) {
-    return `${intro}\n\nI noticed you are browsing the HouseLink Library. Are you looking for help with property development, real estate sales, investment, rentals, or contracts? Tell me your goal and I will point you to the most useful guide.`;
+    return `${intro}\n\nI noticed you are browsing ${title}. Are you looking for development, sales, rentals, or contract guides?`;
   }
   if (path.includes("/academy")) {
-    return `${intro}\n\nI noticed you are looking at ${title}. Are you trying to enrol yourself, train a team, or check if the course fits your level? I can help you choose the right next step.`;
+    return `${intro}\n\nI noticed you are looking at ${title}. Are you enrolling yourself or training a team?`;
   }
   if (path.includes("/listings/") || path.includes("/rent/") || path.includes("/property-for-sale/")) {
-    return `${intro}\n\nI noticed you are viewing ${title}. I can help confirm availability, viewing steps, location details, or whether this property matches your budget. What would you like to know first?`;
+    return `${intro}\n\nI noticed you are viewing ${title}. Do you want availability, viewing details, or price help?`;
   }
-  return `${intro}\n\nI am here with the HouseLink team. Tell me what you are trying to do on this page and I will help with the exact next step.`;
+  return `${intro}\n\nI noticed you are on ${title}. What would you like help with here?`;
 }
 
 function statusTone(status: string) {
