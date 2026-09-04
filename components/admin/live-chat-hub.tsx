@@ -36,8 +36,6 @@ const FILTERS = [
 type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
 
 const LIVE_VISITORS_REFRESH_MS = 2_000;
-const PROACTIVE_SEND_TIMEOUT_MS = 12_000;
-
 export function LiveChatHub() {
   const [data, setData] = useState<LiveChatInboxView | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -317,12 +315,9 @@ export function LiveChatHub() {
     setStartingVisitorId(visitorId);
     setError(null);
     const visitor = data?.activeVisitors.find((item) => item.id === visitorId) ?? data?.conversations.find((conversation) => conversation.visitor.id === visitorId)?.visitor;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), PROACTIVE_SEND_TIMEOUT_MS);
     try {
       const result = await apiFetch<{ conversationId: string }>("/api/v1/admin/live-chat", {
         method: "POST",
-        signal: controller.signal,
         body: JSON.stringify({
           action: "start_conversation",
           visitorId,
@@ -330,7 +325,7 @@ export function LiveChatHub() {
         }),
       });
       if (result.error) {
-        setError(result.error.code === "NETWORK_ERROR" ? "The message is taking too long to confirm. The inbox will refresh shortly so you can see whether it was sent." : result.error.message);
+        setError(result.error.message);
       } else {
         const conversationId = result.data?.conversationId;
         setNotice("Proactive message sent.");
@@ -345,7 +340,6 @@ export function LiveChatHub() {
         }
       }
     } finally {
-      window.clearTimeout(timeout);
       setStartingVisitorId(null);
     }
   }

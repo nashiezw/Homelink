@@ -378,8 +378,8 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
-    label: "admin proactive sends stop spinner before background inbox refresh",
-    pattern: /PROACTIVE_SEND_TIMEOUT_MS[\s\S]*controller\.abort\(\)[\s\S]*setStartingVisitorId\(null\)/,
+    label: "admin proactive sends keep the clicked button loading without aborting slow sends",
+    pattern: /async function startConversation[\s\S]*setStartingVisitorId\(visitorId\)[\s\S]*apiFetch<\{ conversationId: string \}>\("\/api\/v1\/admin\/live-chat"[\s\S]*setStartingVisitorId\(null\)(?![\s\S]*PROACTIVE_SEND_TIMEOUT_MS)/,
   },
   {
     file: "lib/live-chat/repository.ts",
