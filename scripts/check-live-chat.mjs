@@ -354,17 +354,17 @@ const checks = [
   {
     file: "lib/live-chat/repository.ts",
     label: "live visitors keep a true live window and a recent visitor window",
-    pattern: /const LIVE_VISITOR_MS = 120_000[\s\S]*const RECENT_VISITOR_MS = 5 \* 60_000[\s\S]*gte: new Date\(Date\.now\(\) - RECENT_VISITOR_MS\)/,
+    pattern: /const LIVE_VISITOR_MS = 45_000[\s\S]*const RECENT_VISITOR_MS = 5 \* 60_000[\s\S]*gte: new Date\(Date\.now\(\) - RECENT_VISITOR_MS\)/,
   },
   {
     file: "lib/live-chat/repository.ts",
-    label: "visitor activity publishes realtime presence events",
-    pattern: /type:\s*"presence"[\s\S]*presenceStatus:\s*"LIVE"/,
+    label: "visitor bootstrap and activity publish realtime presence events",
+    pattern: /bootstrapLiveChat[\s\S]*type:\s*"presence"[\s\S]*updateLiveChatActivity[\s\S]*type:\s*"presence"[\s\S]*presenceStatus:\s*"LIVE"/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
-    label: "public widget sends recurring visitor activity heartbeats",
-    pattern: /setInterval\(postActivity, 20_000\)[\s\S]*visibilitychange/,
+    label: "public widget posts immediate visitor activity and recurring visible heartbeats",
+    pattern: /VISITOR_ACTIVITY_INTERVAL_MS = 12_000[\s\S]*\/api\/v1\/live-chat\/activity[\s\S]*setInterval\(postActivity, VISITOR_ACTIVITY_INTERVAL_MS\)[\s\S]*visibilitychange/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",

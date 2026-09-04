@@ -27,6 +27,7 @@ type LiveChatRealtimeEvent = {
 };
 
 const UNREAD_STORAGE_KEY = "hl_live_unread_count";
+const VISITOR_ACTIVITY_INTERVAL_MS = 12_000;
 
 export function LiveChatWidget() {
   const pathname = usePathname();
@@ -152,13 +153,10 @@ export function LiveChatWidget() {
   useEffect(() => {
     if (hiddenOnThisRoute) return;
     startedAtRef.current = new Date().toISOString();
-    const id = window.setTimeout(() => {
-      void apiFetch("/api/v1/live-chat/activity", {
-        method: "POST",
-        body: JSON.stringify({ context, contact: normalizeContact(contactRef.current) }),
-      });
-    }, 1400);
-    return () => window.clearTimeout(id);
+    void apiFetch("/api/v1/live-chat/activity", {
+      method: "POST",
+      body: JSON.stringify({ context, contact: normalizeContact(contactRef.current) }),
+    });
   }, [context, hiddenOnThisRoute]);
 
   useEffect(() => {
@@ -170,7 +168,7 @@ export function LiveChatWidget() {
         body: JSON.stringify({ context, contact: normalizeContact(contactRef.current) }),
       });
     };
-    const interval = window.setInterval(postActivity, 20_000);
+    const interval = window.setInterval(postActivity, VISITOR_ACTIVITY_INTERVAL_MS);
     const handleVisibility = () => postActivity();
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {

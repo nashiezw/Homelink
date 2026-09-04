@@ -21,7 +21,7 @@ import type {
 } from "@/lib/live-chat/types";
 
 const OPEN_STATUSES = ["NEW", "OPEN", "WAITING_FOR_CUSTOMER", "FOLLOW_UP"];
-const LIVE_VISITOR_MS = 120_000;
+const LIVE_VISITOR_MS = 45_000;
 const RECENT_VISITOR_MS = 5 * 60_000;
 const ACTIVE_VISITOR_MS = LIVE_VISITOR_MS;
 const MAX_MESSAGE_LENGTH = 2_000;
@@ -213,6 +213,13 @@ export async function bootstrapLiveChat(input: {
     getPublicSupportAgent(),
     maybeTriggerAutomation(visitor.id, conversation?.id ?? null, input.context),
   ]);
+  publishLiveChatRealtime({
+    type: "presence",
+    conversationId: conversation?.publicId ?? null,
+    visitorId: visitor.publicId,
+    presenceStatus: "LIVE",
+    createdAt: new Date().toISOString(),
+  });
   return {
     visitorId: visitor.publicId,
     conversation: conversation ? shapeConversation(conversation) : null,

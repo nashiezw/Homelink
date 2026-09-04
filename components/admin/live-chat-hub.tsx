@@ -35,7 +35,7 @@ const FILTERS = [
 
 type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
 
-const LIVE_VISITORS_REFRESH_MS = 5_000;
+const LIVE_VISITORS_REFRESH_MS = 2_000;
 const PROACTIVE_SEND_TIMEOUT_MS = 12_000;
 
 export function LiveChatHub() {
