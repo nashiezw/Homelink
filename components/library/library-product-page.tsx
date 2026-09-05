@@ -107,6 +107,7 @@ export function LibraryProductPage({
   const [wished, setWished] = useState(false);
   const [wishBusy, setWishBusy] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
+  const [reviewShareNotice, setReviewShareNotice] = useState("");
   const [reviews, setReviews] = useState(initialReviews);
   const [ratingSummary, setRatingSummary] = useState({
     average: product.rating,
@@ -547,14 +548,25 @@ export function LibraryProductPage({
     return new URL(path, window.location.origin).toString();
   }
 
-  async function copyReviewRequestLink() {
+  async function shareReviewRequestLink() {
+    const url = reviewRequestUrl();
+    let notice = "Review link copied.";
     try {
-      await navigator.clipboard.writeText(reviewRequestUrl());
-      setShareNotice("Review link copied.");
+      if (navigator.share) {
+        await navigator.share({
+          title: `Review ${product.title}`,
+          text: "Bought this HouseLink Library product? Share your honest experience.",
+          url,
+        });
+        notice = "Review link shared.";
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
     } catch {
-      setShareNotice("Could not copy review link.");
+      notice = "Could not share review link.";
     }
-    window.setTimeout(() => setShareNotice(""), 2200);
+    setReviewShareNotice(notice);
+    window.setTimeout(() => setReviewShareNotice(""), 2200);
   }
 
   async function submitReview() {
@@ -1447,25 +1459,26 @@ export function LibraryProductPage({
               )}
               {reviewSettings?.enabled === false ? null : (
                 <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-4 shadow-sm dark:border-emerald-900/50 dark:from-emerald-950/20 dark:via-slate-950 dark:to-slate-950">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                    <div className="min-w-0">
                       <p className="text-lg font-semibold text-ink dark:text-white">Bought this book? Share your experience</p>
                       <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                         Your feedback helps other readers decide if this book is right for them. We review submissions first, and your phone or email is only used privately for verification.
                       </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-auto lg:min-w-[13rem] lg:grid-cols-1">
                       {!user ? (
-                        <Link href={`/auth?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">
+                        <Link href={`/auth?next=${encodeURIComponent(`/library/${product.slug}`)}`} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-emerald-200 bg-white px-4 py-2 text-center text-sm font-bold text-emerald-800 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-900/60 dark:bg-slate-950 dark:text-emerald-200 dark:hover:bg-emerald-950/30">
                           Already have an account? Sign in
                         </Link>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                        <span className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl bg-emerald-100 px-3 py-2 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                           <ShieldCheck className="size-3.5" /> Signed in
                         </span>
                       )}
                       <Button
                         variant="secondary"
+                        className="min-h-11 w-full justify-center rounded-xl"
                         onClick={() => {
                           setReviewFormOpen((current) => !current);
                           trackEvent("library_cta_clicked", product.id, { title: product.title, slug: product.slug, cta: "toggle_review_form" });
@@ -1473,9 +1486,14 @@ export function LibraryProductPage({
                       >
                         {reviewFormOpen ? "Hide review form" : "Leave a review"}
                       </Button>
-                      <Button variant="secondary" onClick={() => void copyReviewRequestLink()}>
-                        <Share2 className="size-4" /> Copy review link
+                      <Button variant="secondary" className="min-h-11 w-full justify-center rounded-xl border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50" onClick={() => void shareReviewRequestLink()}>
+                        <Share2 className="size-4" /> Share review link
                       </Button>
+                      {reviewShareNotice ? (
+                        <p className="rounded-lg bg-white px-3 py-2 text-center text-xs font-bold text-emerald-800 shadow-sm ring-1 ring-emerald-100 dark:bg-slate-950 dark:text-emerald-200 dark:ring-emerald-900/70 sm:col-span-2 lg:col-span-1" aria-live="polite">
+                          {reviewShareNotice}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   {reviewDeepLinkActive ? (
@@ -1484,14 +1502,14 @@ export function LibraryProductPage({
                     </div>
                   ) : null}
                   {reviewFormOpen ? (
-                  <div className="mt-4 rounded-xl border border-white bg-white/85 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+                  <div className="mt-4 rounded-xl border border-white bg-white/85 p-4 pb-24 shadow-sm dark:border-slate-800 dark:bg-slate-950/70 sm:pb-4">
                       <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
                         <label className="text-sm font-medium">
                           Rating
                           <select
                             value={reviewForm.rating}
                             onChange={(e) => setReviewForm({ ...reviewForm, rating: Number(e.target.value) })}
-                            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-2 dark:border-slate-700 dark:bg-slate-900"
+                            className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 text-base dark:border-slate-700 dark:bg-slate-900 sm:h-10 sm:text-sm"
                           >
                             {[5, 4, 3, 2, 1]
                               .filter((value) => value >= (reviewSettings?.minRating ?? 1))
@@ -1503,7 +1521,7 @@ export function LibraryProductPage({
                           <input
                             value={reviewForm.title}
                             onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
-                            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                            className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 text-base dark:border-slate-700 dark:bg-slate-900 sm:h-10 sm:text-sm"
                             placeholder="What stood out?"
                             required
                             minLength={3}
@@ -1518,7 +1536,7 @@ export function LibraryProductPage({
                             <input
                               value={reviewForm.guestName}
                               onChange={(e) => setReviewForm({ ...reviewForm, guestName: e.target.value })}
-                              className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                              className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 text-base dark:border-slate-700 dark:bg-slate-900 sm:h-10 sm:text-sm"
                               placeholder="Your name"
                               required
                               maxLength={80}
@@ -1529,7 +1547,7 @@ export function LibraryProductPage({
                             <input
                               value={reviewForm.guestContact}
                               onChange={(e) => setReviewForm({ ...reviewForm, guestContact: e.target.value })}
-                              className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                              className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 text-base dark:border-slate-700 dark:bg-slate-900 sm:h-10 sm:text-sm"
                               placeholder="+263... or you@example.com"
                               required
                               maxLength={160}
@@ -1543,7 +1561,7 @@ export function LibraryProductPage({
                           <select
                             value={reviewForm.purchaseSource}
                             onChange={(e) => setReviewForm({ ...reviewForm, purchaseSource: e.target.value })}
-                            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                            className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 text-base dark:border-slate-700 dark:bg-slate-900 sm:h-10 sm:text-sm"
                           >
                             <option value="WEBSITE">Website</option>
                             <option value="WHATSAPP">WhatsApp</option>
@@ -1557,7 +1575,7 @@ export function LibraryProductPage({
                           <input
                             value={reviewForm.displayName}
                             onChange={(e) => setReviewForm({ ...reviewForm, displayName: e.target.value })}
-                            className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                            className="mt-1 h-12 w-full rounded-lg border border-slate-200 px-3 text-base dark:border-slate-700 dark:bg-slate-900 sm:h-10 sm:text-sm"
                             placeholder={user?.name || "How your name should appear"}
                             maxLength={60}
                           />
@@ -1569,15 +1587,15 @@ export function LibraryProductPage({
                           value={reviewForm.body}
                           onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
                           rows={3}
-                          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-3 text-base dark:border-slate-700 dark:bg-slate-900 sm:py-2 sm:text-sm"
                           placeholder="Share how this product helped you."
                           required
                           minLength={20}
                           maxLength={4000}
                         />
                       </label>
-                      <div className="mt-3 flex flex-wrap items-center gap-3">
-                        <Button disabled={reviewBusy} onClick={() => void submitReview()}>
+                      <div className="mt-3 grid gap-3 sm:flex sm:flex-wrap sm:items-center">
+                        <Button className="min-h-11 w-full justify-center sm:w-auto" disabled={reviewBusy} onClick={() => void submitReview()}>
                           {reviewBusy ? "Submitting…" : "Submit review"}
                         </Button>
                         {reviewNotice && (

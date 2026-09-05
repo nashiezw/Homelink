@@ -13,7 +13,10 @@ assertIncludes(publicPage, 'id="reviews"', "Public product page must expose a re
 assertIncludes(publicPage, "?review=1#reviews", "Public product page must build direct review links.");
 assertIncludes(publicPage, "setReviewFormOpen(true)", "Review deep links must open the review form.");
 assertIncludes(publicPage, "scrollIntoView", "Review deep links must scroll to the feedback section.");
-assertIncludes(publicPage, "Copy review link", "Public page must let staff/customers copy the review URL.");
+assertIncludes(publicPage, "Share review link", "Public page must expose a clear review sharing action.");
+assertIncludes(publicPage, "navigator.share", "Public review sharing should use the native share sheet when available.");
+assertIncludes(publicPage, "reviewShareNotice", "Public review sharing must keep feedback separate from product sharing.");
+assertIncludes(publicPage, "sm:col-span-2 lg:col-span-1", "Review sharing feedback must fit under full-width mobile actions.");
 assertIncludes(adminHub, "copyReviewRequestLink", "Admin product table must support copying review links.");
 assertIncludes(adminHub, "shareReviewRequestOnWhatsApp", "Admin product table must support WhatsApp review requests.");
 assertIncludes(adminHub, "?review=1#reviews", "Admin review links must land on the public review form.");
