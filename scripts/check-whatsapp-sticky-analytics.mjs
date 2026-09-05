@@ -91,8 +91,12 @@ const footer = readFileSync(join(root, "components/layout/site-footer.tsx"), "ut
 const panel = readFileSync(join(root, "components/admin/site-analytics-panel.tsx"), "utf8");
 
 assert(/data-houselink-sticky="whatsapp"/.test(whatsappFab), "WhatsApp sticky marker present");
-assert(/isLibraryProductPath/.test(whatsappFab), "WhatsApp sticky hides on Library product pages");
+assert(/onLibraryProductPage[\s\S]*bottom-\[calc\(8\.75rem\+env\(safe-area-inset-bottom\)\)\]/.test(whatsappFab), "WhatsApp sticky mirrors Live Chat height on Library product pages");
+assert(!/pathname\?\.startsWith\("\/library\/checkout"\)\s*\|\|\s*isLibraryProductPath\(pathname\)/.test(whatsappFab), "WhatsApp sticky stays visible on Library product pages");
 assert(/library\/checkout/.test(whatsappFab), "WhatsApp sticky hides on Library checkout");
+assert(/useLibraryBagFloatingOpen/.test(whatsappFab), "WhatsApp sticky hides while the Library bag drawer is open");
+assert(/library_product_sticky_fab/.test(whatsappFab), "WhatsApp product-page clicks use a dedicated tracking source");
+assert(/productTitle:[\s\S]*cleanProductTitle\(document\.title\)/.test(whatsappFab), "WhatsApp product-page message includes product context");
 assert(/<span[^>]*lg:hidden/.test(whatsappFab), "WhatsApp label hides on desktop (icon-only)");
 assert(/lg:size-12|lg:rounded-full/.test(whatsappFab), "WhatsApp compact icon circle on desktop");
 assert(/stickyWhatsAppQuietHours|quiet/.test(whatsappFab), "WhatsApp quiet hours note supported");

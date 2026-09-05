@@ -4,44 +4,57 @@ import { MessageCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { trackWhatsAppClick } from "@/lib/analytics/whatsapp-client";
 import { usePlatformConfig } from "@/components/providers/platform-config-provider";
-import { useLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
+import { useLibraryBagFloatingOpen, useLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
 import {
   getContextualWhatsAppHref,
   resolveWhatsAppLane,
   stickyWhatsAppVisible,
 } from "@/lib/settings/contact";
-import { isLibraryProductPath } from "@/lib/ui/bottom-dock";
+import { isLibraryProductPath, useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
 /**
  * Sticky WhatsApp help — all breakpoints (left).
- * Hidden on Library product pages (in-page help + mobile bundle dock) and checkout.
+ * On Library product pages, it mirrors HouseLink Live above the mobile buy dock.
  */
 export function WhatsAppStickyFab({ className }: { className?: string }) {
   const pathname = usePathname();
   const { config } = usePlatformConfig();
   const liveChatOpen = useLiveChatFloatingOpen();
+  const libraryBagOpen = useLibraryBagFloatingOpen();
+  const bottomDock = useHouseLinkBottomDock();
   const contact = config?.contact;
   if (!contact || !stickyWhatsAppVisible(contact)) return null;
-  if (liveChatOpen) return null;
+  if (liveChatOpen || libraryBagOpen) return null;
+  const onLibraryProductPage = isLibraryProductPath(pathname);
   if (
     pathname?.startsWith("/dashboard/admin") ||
-    pathname?.startsWith("/library/checkout") ||
-    isLibraryProductPath(pathname)
+    pathname?.startsWith("/library/checkout")
   ) {
     return null;
   }
 
   const lane = resolveWhatsAppLane(pathname || undefined);
-  const href = getContextualWhatsAppHref(contact, { source: "sticky_fab", pathname: pathname || undefined, lane });
+  const href = getContextualWhatsAppHref(contact, {
+    source: onLibraryProductPage ? "library_product_sticky_fab" : "sticky_fab",
+    pathname: pathname || undefined,
+    lane,
+    productTitle: onLibraryProductPage && typeof document !== "undefined" ? cleanProductTitle(document.title) : undefined,
+  });
   if (!href) return null;
   const label = contact.stickyWhatsAppLabel?.trim() || contact.whatsappLabel?.trim() || "WhatsApp";
   const quiet = contact.stickyWhatsAppQuietHours?.trim();
+  const bottomClass = onLibraryProductPage && bottomDock === "library-product-buy"
+    ? "bottom-[calc(8.75rem+env(safe-area-inset-bottom))]"
+    : bottomDock
+      ? "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
+      : "bottom-[max(1.25rem,env(safe-area-inset-bottom))] sm:bottom-5";
 
   return (
     <div
       className={cn(
-        "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-4 z-[60] flex flex-col items-start gap-1 sm:left-5",
+        "fixed left-4 z-[60] flex flex-col items-start gap-1 transition-[bottom] duration-200 sm:left-5",
+        bottomClass,
         className,
       )}
     >
@@ -54,7 +67,7 @@ export function WhatsAppStickyFab({ className }: { className?: string }) {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => trackWhatsAppClick("sticky_fab", { lane, path: pathname || undefined })}
+        onClick={() => trackWhatsAppClick(onLibraryProductPage ? "library_product_sticky_fab" : "sticky_fab", { lane, path: pathname || undefined })}
         data-houselink-sticky="whatsapp"
         title={label}
         className={cn(
@@ -68,4 +81,11 @@ export function WhatsAppStickyFab({ className }: { className?: string }) {
       </a>
     </div>
   );
+}
+
+function cleanProductTitle(value: string) {
+  return value
+    .replace(/\s*[|–-]\s*HouseLink.*$/i, "")
+    .replace(/\s*[|–-]\s*Library.*$/i, "")
+    .trim();
 }
