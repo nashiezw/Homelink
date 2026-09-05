@@ -339,7 +339,8 @@ export function LiveChatHub() {
         setError(result.error.message);
       } else {
         const conversationId = result.data?.conversationId;
-        setNotice("Proactive message sent.");
+        const duplicateSuppressed = (result.data as { duplicateSuppressed?: boolean } | undefined)?.duplicateSuppressed;
+        setNotice(duplicateSuppressed ? "Existing conversation opened. Duplicate proactive message skipped." : "Proactive message sent.");
         window.setTimeout(() => setNotice(null), 2500);
         if (conversationId) {
           setActiveId(conversationId);

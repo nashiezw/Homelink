@@ -38,7 +38,7 @@ export function LiveChatWidget() {
   const [messages, setMessages] = useState<LiveChatMessageView[]>([]);
   const [draft, setDraft] = useState("");
   const [contact, setContact] = useState<ContactState>({});
-  const [sending, setSending] = useState(false);
+  const [pendingSendCount, setPendingSendCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [contactNotice, setContactNotice] = useState<string | null>(null);
   const [pendingContactField, setPendingContactField] = useState<"phone" | "email" | null>(null);
@@ -316,7 +316,7 @@ export function LiveChatWidget() {
 
   async function sendMessage(body = draft) {
     const text = body.trim();
-    if (!text || sending) return;
+    if (!text) return;
     const nextContact = mergeContactFromMessage({ ...contactRef.current }, text, pendingContactField);
     const capturedPhone = !contactRef.current.phone && nextContact.phone;
     const capturedEmail = !contactRef.current.email && nextContact.email;
@@ -343,27 +343,30 @@ export function LiveChatWidget() {
     setDraft("");
     typingActiveRef.current = false;
     if (boot?.conversation?.id) void apiFetch("/api/v1/live-chat/typing", { method: "POST", body: JSON.stringify({ conversationId: boot.conversation.id, typing: false }) });
-    setSending(true);
+    setPendingSendCount((count) => count + 1);
     setError(null);
-    const result = await apiFetch<LiveChatMessageView>("/api/v1/live-chat/messages", {
-      method: "POST",
-      body: JSON.stringify({
-        body: text,
-        idempotencyKey,
-        contact: normalizeContact(nextContact),
-        context,
-      }),
-    });
-    if (result.data) {
-      setMessages((current) => [...current.filter((message) => message.id !== optimistic.id && message.id !== result.data!.id), result.data!]);
-      setSuggested(null);
-      setPendingContactField(null);
-      if (!boot?.conversation) void bootstrap();
-    } else {
-      setMessages((current) => current.map((message) => message.id === optimistic.id ? { ...message, metadata: { deliveryStatus: "failed", error: result.error?.message ?? "Message failed. Please try again." } } : message));
-      setError(result.error?.message ?? "Message failed. Please try again.");
+    try {
+      const result = await apiFetch<LiveChatMessageView>("/api/v1/live-chat/messages", {
+        method: "POST",
+        body: JSON.stringify({
+          body: text,
+          idempotencyKey,
+          contact: normalizeContact(nextContact),
+          context,
+        }),
+      });
+      if (result.data) {
+        setMessages((current) => [...current.filter((message) => message.id !== optimistic.id && message.id !== result.data!.id), result.data!]);
+        setSuggested(null);
+        setPendingContactField(null);
+        if (!boot?.conversation) void bootstrap();
+      } else {
+        setMessages((current) => current.map((message) => message.id === optimistic.id ? { ...message, metadata: { deliveryStatus: "failed", error: result.error?.message ?? "Message failed. Please try again." } } : message));
+        setError(result.error?.message ?? "Message failed. Please try again.");
+      }
+    } finally {
+      setPendingSendCount((count) => Math.max(0, count - 1));
     }
-    setSending(false);
   }
 
   async function retryMessage(message: LiveChatMessageView) {
@@ -499,7 +502,7 @@ export function LiveChatWidget() {
               </button>
             ) : null}
             {messages.map((message, index) => <ChatBubble key={message.id} message={message} showReceipt={message.senderKind === "VISITOR" && index === latestVisitorMessageIndex(messages)} onRetry={isFailedLocalMessage(message) ? () => void retryMessage(message) : undefined} />)}
-            {sending ? (
+            {pendingSendCount > 0 ? (
               <div className="flex justify-end">
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">Sending...</span>
               </div>
@@ -539,8 +542,8 @@ export function LiveChatWidget() {
                   }
                 }}
               />
-              <Button className="size-12 shrink-0 rounded-2xl p-0 shadow-lg shadow-emerald-900/10" onClick={() => void sendMessage()} disabled={!draft.trim() || sending} aria-label="Send live chat message">
-                {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              <Button className="size-12 shrink-0 rounded-2xl p-0 shadow-lg shadow-emerald-900/10" onClick={() => void sendMessage()} disabled={!draft.trim()} aria-label="Send live chat message">
+                {pendingSendCount > 0 ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
               </Button>
             </div>
             <p className="mt-2 flex items-start gap-1 text-[11px] leading-4 text-slate-500">
@@ -628,6 +631,7 @@ function ChatBubble({ message, showReceipt = false, onRetry }: { message: LiveCh
 }
 
 function MessageReceipt({ message }: { message: LiveChatMessageView }) {
+  if (message.metadata && typeof message.metadata === "object" && (message.metadata as { deliveryStatus?: string }).deliveryStatus === "sending") return <span className="inline-flex items-center gap-1 font-bold"><Loader2 className="size-3.5 animate-spin" /> Sending</span>;
   if (message.readAt) return <span className="inline-flex items-center gap-1 font-bold text-[#34b7f1]"><CheckCheck className="size-3.5" /> Read</span>;
   if (message.deliveredAt) return <span className="inline-flex items-center gap-1 font-bold"><CheckCheck className="size-3.5" /> Delivered</span>;
   return <span className="inline-flex items-center gap-1 font-bold"><Check className="size-3.5" /> Sent</span>;

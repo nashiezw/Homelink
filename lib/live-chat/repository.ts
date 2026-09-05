@@ -373,7 +373,6 @@ export async function sendVisitorMessage(input: {
       title: visitor.currentTitle,
     },
   }).catch(() => null);
-  await captureLeadIntentFromVisitorMessage(conversation.id, visitor.id, body, input.context);
   const shaped = shapeMessage(message);
   publishLiveChatRealtime({
     type: "message",
@@ -389,6 +388,8 @@ export async function sendVisitorMessage(input: {
     reason: "visitor_message",
     createdAt: new Date().toISOString(),
   });
+  void captureLeadIntentFromVisitorMessage(conversation.id, visitor.id, body, input.context).catch(() => null);
+  void auditEvent(visitor.id, conversation.id, "VISITOR_MESSAGE_RECEIVED", undefined, { idempotencyKey: input.idempotencyKey }).catch(() => null);
   return shaped;
 }
 
@@ -698,7 +699,7 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
   if (action === "start_conversation") {
     const visitor = await prisma.liveChatVisitor.findUnique({ where: { publicId: String(body.visitorId ?? "") } });
     if (!visitor) throw new LiveChatError("VISITOR_NOT_FOUND", "Visitor not found.", 404);
-    let conversation = await prisma.liveChatConversation.findFirst({ where: { visitorId: visitor.id, status: { in: OPEN_STATUSES } }, orderBy: { updatedAt: "desc" } });
+    let conversation = await prisma.liveChatConversation.findFirst({ where: openConversationWhereForVisitor(visitor), orderBy: { updatedAt: "desc" } });
     if (!conversation) {
       const routedDepartment = await findDepartmentByRoute(String(body.body || ""), { path: visitor.currentPath ?? undefined, title: visitor.currentTitle ?? undefined });
       conversation = await prisma.liveChatConversation.create({
@@ -718,6 +719,19 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
       });
     }
     const text = sanitizeMessage(String(body.body || proactiveMessageForVisitor(visitor, agent.displayName)));
+    const recentStaffMessage = await prisma.liveChatMessage.findFirst({
+      where: {
+        conversationId: conversation.id,
+        senderKind: "STAFF",
+        internal: false,
+        body: text,
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60_000) },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (recentStaffMessage) {
+      return { conversationId: conversation.publicId, message: shapeMessage(recentStaffMessage), duplicateSuppressed: true };
+    }
     const message = await prisma.liveChatMessage.create({
       data: {
         publicId: makePublicId("msg"),
@@ -1051,7 +1065,13 @@ export class LiveChatError extends Error {
 async function upsertVisitor(input: { request: Request; visitorKey: string; context: LiveChatVisitorContext; contact?: LiveChatContactInput; userId?: string | null }) {
   const prisma = getMainPrisma();
   const keyHash = hashVisitorKey(input.visitorKey);
-  const [existing, user] = await Promise.all([
+  const context = input.context;
+  const contact = input.contact ?? {};
+  const source = cleanText(context.utmSource || context.referrer || "Direct / Unknown", 180);
+  const contactName = cleanText(contact.name, 120);
+  const contactEmail = cleanText(contact.email, 160);
+  const contactPhone = cleanText(contact.phone, 80);
+  const [cookieVisitor, user] = await Promise.all([
     prisma.liveChatVisitor.findUnique({ where: { visitorKeyHash: keyHash } }),
     input.userId
       ? prisma.user.findUnique({
@@ -1060,12 +1080,13 @@ async function upsertVisitor(input: { request: Request; visitorKey: string; cont
         }).catch(() => null)
       : null,
   ]);
-  const context = input.context;
-  const contact = input.contact ?? {};
-  const source = cleanText(context.utmSource || context.referrer || "Direct / Unknown", 180);
-  const contactName = cleanText(contact.name, 120);
-  const contactEmail = cleanText(contact.email, 160);
-  const contactPhone = cleanText(contact.phone, 80);
+  const existing = cookieVisitor ?? await findReturningVisitor({
+    visitorKeyHash: keyHash,
+    userId: input.userId,
+    email: contactEmail || user?.email || undefined,
+    phone: contactPhone || user?.phone || undefined,
+    analyticsVisitorId: context.analyticsVisitorId,
+  });
   const data = {
     userId: input.userId ?? undefined,
     name: contactName || existing?.name || user?.name,
@@ -1084,12 +1105,14 @@ async function upsertVisitor(input: { request: Request; visitorKey: string; cont
     lastSeenAt: new Date(),
     metadata: {
       ip: hashVisitorKey(getClientIp(input.request)),
+      analyticsVisitorIdHash: context.analyticsVisitorId ? hashVisitorKey(context.analyticsVisitorId) : undefined,
+      analyticsSessionIdHash: context.analyticsSessionId ? hashVisitorKey(context.analyticsSessionId) : undefined,
       cart: context.cart,
       viewed: context.viewed,
     } as Prisma.InputJsonObject,
   };
   const visitor = existing
-    ? await prisma.liveChatVisitor.update({ where: { id: existing.id }, data })
+    ? await prisma.liveChatVisitor.update({ where: { id: existing.id }, data: { ...data, visitorKeyHash: keyHash } })
     : await prisma.liveChatVisitor.create({
     data: {
       publicId: makePublicId("vis"),
@@ -1099,6 +1122,41 @@ async function upsertVisitor(input: { request: Request; visitorKey: string; cont
   });
   void syncSharedPresenceFromLiveChat(input, visitor.publicId).catch(() => null);
   return visitor;
+}
+
+async function findReturningVisitor(input: { visitorKeyHash: string; userId?: string | null; email?: string; phone?: string; analyticsVisitorId?: string }) {
+  const prisma = getMainPrisma();
+  const OR: Prisma.LiveChatVisitorWhereInput[] = [];
+  if (input.userId) OR.push({ userId: input.userId });
+  const phone = cleanPhoneForIdentity(input.phone);
+  const email = cleanText(input.email, 160).toLowerCase();
+  if (phone) OR.push({ phone: { contains: phone } });
+  if (email) OR.push({ email: { equals: email, mode: "insensitive" } });
+  if (input.analyticsVisitorId) {
+    OR.push({ metadata: { path: ["analyticsVisitorIdHash"], equals: hashVisitorKey(input.analyticsVisitorId) } });
+  }
+  if (!OR.length) return null;
+  return prisma.liveChatVisitor.findFirst({
+    where: {
+      visitorKeyHash: { not: input.visitorKeyHash },
+      blockedAt: null,
+      OR,
+    },
+    orderBy: { lastSeenAt: "desc" },
+  }).catch(() => null);
+}
+
+function openConversationWhereForVisitor(visitor: { id: string; userId?: string | null; email?: string | null; phone?: string | null }): Prisma.LiveChatConversationWhereInput {
+  const OR: Prisma.LiveChatConversationWhereInput[] = [{ visitorId: visitor.id }];
+  if (visitor.userId) OR.push({ userId: visitor.userId });
+  const email = cleanText(visitor.email, 160);
+  const phone = cleanPhoneForIdentity(visitor.phone);
+  if (email) OR.push({ visitor: { email: { equals: email, mode: "insensitive" } } });
+  if (phone) OR.push({ visitor: { phone: { contains: phone } } });
+  return {
+    status: { in: OPEN_STATUSES },
+    OR,
+  };
 }
 
 async function syncSharedPresenceFromLiveChat(input: { request: Request; context: LiveChatVisitorContext; contact?: LiveChatContactInput; userId?: string | null }, fallbackVisitorId: string) {
@@ -2263,6 +2321,10 @@ function sanitizeMessage(value: string) {
 
 function cleanText(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function cleanPhoneForIdentity(value: unknown) {
+  return typeof value === "string" ? value.replace(/\D/g, "").slice(-12) : "";
 }
 
 function decodeHeaderValue(value: string | null) {

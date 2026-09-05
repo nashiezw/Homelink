@@ -442,6 +442,31 @@ const checks = [
     pattern: /captureLeadIntentFromVisitorMessage[\s\S]*LEAD_INTENT_DETECTED/,
   },
   {
+    file: "lib/live-chat/repository.ts",
+    label: "visitor sends return before non-critical lead capture and audit work",
+    pattern: /publishLiveChatRealtime\(\{[\s\S]*reason:\s*"visitor_message"[\s\S]*void captureLeadIntentFromVisitorMessage[\s\S]*void auditEvent[\s\S]*return shaped/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "returning live chat visitors are stitched by user, contact, or analytics identity",
+    pattern: /findReturningVisitor[\s\S]*userId[\s\S]*phone[\s\S]*email[\s\S]*analyticsVisitorIdHash/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "admin proactive starts reuse known visitor conversations",
+    pattern: /openConversationWhereForVisitor[\s\S]*visitorId[\s\S]*userId[\s\S]*email[\s\S]*phone/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "admin proactive starts suppress duplicate first messages",
+    pattern: /recentStaffMessage[\s\S]*createdAt:\s*\{\s*gte:\s*new Date\(Date\.now\(\) - 24 \* 60 \* 60_000\)[\s\S]*duplicateSuppressed/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
+    label: "public chat input is not locked while another message is pending",
+    pattern: /pendingSendCount[\s\S]*if \(!text\) return[\s\S]*disabled=\{!draft\.trim\(\)\}/,
+  },
+  {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin can continue captured phone leads on WhatsApp",
     pattern: /Continue on WhatsApp[\s\S]*whatsappFollowUpUrl/,
