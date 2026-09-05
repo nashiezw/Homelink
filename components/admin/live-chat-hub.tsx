@@ -36,6 +36,7 @@ const FILTERS = [
 type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
 
 const LIVE_VISITORS_REFRESH_MS = 2_000;
+const LIVE_VISITOR_SECONDS = 45;
 export function LiveChatHub() {
   const [data, setData] = useState<LiveChatInboxView | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1424,7 +1425,7 @@ function visitorPresence(value: string) {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return { label: "Offline", dotClass: "bg-slate-500" };
   const seconds = Math.max(0, Math.round((Date.now() - time) / 1000));
-  if (seconds <= 120) return { label: "Live now", dotClass: "bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]" };
+  if (seconds <= LIVE_VISITOR_SECONDS) return { label: "Live now", dotClass: "bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]" };
   if (seconds <= 5 * 60) return { label: `Seen ${Math.round(seconds / 60)}m ago`, dotClass: "bg-amber-300" };
   return { label: "Offline", dotClass: "bg-slate-500" };
 }

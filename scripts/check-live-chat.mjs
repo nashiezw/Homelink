@@ -339,7 +339,7 @@ const checks = [
   {
     file: "components/admin/live-chat-hub.tsx",
     label: "admin visitor presence dot is based on real last-seen time",
-    pattern: /visitorPresence\(conversation\.visitor\.lastSeenAt\)[\s\S]*Live now[\s\S]*Offline/,
+    pattern: /LIVE_VISITOR_SECONDS = 45[\s\S]*visitorPresence\(conversation\.visitor\.lastSeenAt\)[\s\S]*seconds <= LIVE_VISITOR_SECONDS[\s\S]*Seen \$\{Math\.round\(seconds \/ 60\)\}m ago/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
