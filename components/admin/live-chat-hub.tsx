@@ -21,6 +21,8 @@ type AdminRealtimeEvent = {
   deliveredAt?: string | null;
 };
 
+type ActiveVisitorView = LiveChatInboxView["activeVisitors"][number];
+
 const FILTERS = [
   ["all", "All"],
   ["needs-reply", "Needs reply"],
@@ -887,105 +889,216 @@ function VisitorsPanel({
   startingVisitorId: string | null;
   currentAgentName?: string | null;
 }) {
-  const liveVisitors = visitors.filter((visitor) => visitor.presenceStatus === "LIVE");
-  const recentVisitors = visitors.filter((visitor) => visitor.presenceStatus === "RECENT");
-  const orderedVisitors = [...liveVisitors, ...recentVisitors, ...visitors.filter((visitor) => visitor.presenceStatus !== "LIVE" && visitor.presenceStatus !== "RECENT")];
+  const sections = buildVisitorQueueSections(visitors);
+  const liveVisitors = visitors.filter((visitor) => visitor.presenceStatus === "LIVE" && !visitor.contacted);
+  const hotVisitors = visitors.filter((visitor) => visitor.presenceStatus === "LIVE" && !visitor.contacted && visitor.salesPriorityScore >= 64);
+  const replyVisitors = visitors.filter(visitorNeedsStaffReply);
+  const contactedVisitors = visitors.filter((visitor) => visitor.contacted);
+
+  function renderVisitorCard(visitor: ActiveVisitorView) {
+    const hasConversation = Boolean(visitor.conversationId);
+    const loading = startingVisitorId === visitor.id;
+    const page = pageLabel(visitor.currentTitle, visitor.currentPath);
+    const pagePath = cleanJourneyPath(visitor.currentPath);
+    const pageUrl = fullHouseLinkUrl(visitor.currentPath);
+    const source = visitorSourceLabel(visitor);
+    const sourceUrl = fullHouseLinkUrl(visitor.source);
+    const contact = visitorContactLabel(visitor);
+    const intent = visitorIntentLabel(visitor);
+    const stage = visitorStageLabel(visitor);
+    const pageTime = formatVisitorDuration(visitor.pageSeconds);
+    const presence = visitorPresenceStatus(visitor.presenceStatus, visitor.presenceLabel, visitor.lastSeenAt);
+    const lastSeen = presence.status === "LIVE" ? "Active now" : presence.label;
+    const suggestedMessage = proactiveMessageForVisitor(visitor, currentAgentName);
+    const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Send helpful message";
+    const priorityTone = visitorNeedsStaffReply(visitor) || visitor.salesPriorityScore >= 88 ? "amber" : visitor.salesPriorityScore >= 64 ? "emerald" : "slate";
+    return (
+      <article key={visitor.id} className={cn("min-w-0 overflow-hidden rounded-2xl border bg-slate-900 shadow-[0_18px_50px_rgba(0,0,0,0.18)]", visitorNeedsStaffReply(visitor) ? "border-amber-300/40" : hasConversation ? "border-emerald-400/30" : "border-white/10")}>
+        <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 p-3 sm:p-4">
+          <div className="grid min-w-0 gap-3 min-[420px]:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="flex min-w-0 gap-3">
+              <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-300 text-sm font-black text-slate-950">
+                {visitorInitials(visitor)}
+                <span className={cn("absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-900", presence.dotClass)} title={presence.label} />
+              </span>
+              <div className="min-w-0">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <p className="break-words font-black text-white [overflow-wrap:anywhere]">{visitorDisplayName(visitor)}</p>
+                  <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[10px] font-black uppercase text-cyan-200">{stage}</span>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black uppercase", priorityTone === "amber" ? "bg-amber-400/15 text-amber-100" : priorityTone === "emerald" ? "bg-emerald-400/15 text-emerald-100" : "bg-white/10 text-slate-200")}>
+                    {visitor.salesPriorityLabel}
+                  </span>
+                </div>
+                <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-300">{intent}</p>
+              </div>
+            </div>
+            <PresenceStatusBadge label={presence.label} status={presence.status} />
+          </div>
+          <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+            <MiniBadge icon={Activity} label={visitor.deviceType ? humanize(visitor.deviceType) : "Visitor"} />
+            <MiniBadge icon={Globe2} label={source} />
+            <MiniBadge icon={contact === "Not captured yet" ? UserPlus : Phone} label={contact === "Not captured yet" ? "No contact yet" : "Contact captured"} tone={contact === "Not captured yet" ? "amber" : "emerald"} />
+          </div>
+        </div>
+        <div className="space-y-3 p-3 sm:p-4">
+          <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-slate-500"><MapPin className="size-3.5" /> Current page</p>
+            <p className="mt-1 line-clamp-2 text-sm font-black leading-5 text-white">{page}</p>
+            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+              <span className="max-w-full truncate rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-bold text-slate-300" title={pagePath}>
+                {pagePath}
+              </span>
+              <UrlActions url={pageUrl} label="current page" />
+            </div>
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-400">
+              <span className="inline-flex items-center gap-1"><Clock className="size-3.5" /> {pageTime ? `On this page ${pageTime}` : "Just arrived"}</span>
+              <span>{lastSeen}</span>
+            </p>
+          </div>
+          {visitor.salesPriorityReasons.length ? (
+            <div className="flex min-w-0 flex-wrap gap-2">
+              {visitor.salesPriorityReasons.slice(0, 3).map((reason) => (
+                <MiniBadge key={reason} icon={Sparkles} label={reason} tone={priorityTone === "amber" ? "amber" : priorityTone === "emerald" ? "emerald" : "slate"} />
+              ))}
+            </div>
+          ) : null}
+          <div className="grid gap-2 text-xs text-slate-400">
+            <Info label="Contact" value={contact} />
+            <Info label="Source" value={source} action={<UrlActions url={sourceUrl} label="source" />} />
+          </div>
+          {visitor.conversation?.lastMessagePreview ? (
+            <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
+              <p className="text-[10px] font-black uppercase text-emerald-200">Latest conversation</p>
+              <p className="mt-1 line-clamp-2 text-xs font-semibold text-emerald-50">{visitor.conversation.lastMessagePreview}</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-3">
+              <p className="flex items-center gap-1.5 text-[10px] font-black uppercase text-cyan-200"><Sparkles className="size-3.5" /> Suggested first message</p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-cyan-50">{suggestedMessage}</p>
+            </div>
+          )}
+          <div className="flex min-w-0 gap-3">
+            <Button className="w-full" onClick={() => hasConversation && visitor.conversationId ? openConversation(visitor.conversationId) : void startConversation(visitor.id, suggestedMessage)} disabled={loading}>
+              {loading ? <Loader2 className="size-4 animate-spin" /> : hasConversation ? <MessageSquare className="size-4" /> : <Send className="size-4" />} {loading ? "Sending..." : actionLabel}
+            </Button>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <div className="min-w-0 p-3 sm:p-4">
-      <div className="mb-3 grid gap-2 sm:grid-cols-2">
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3">
+          <p className="text-[11px] font-black uppercase text-amber-200">Needs reply</p>
+          <p className="mt-1 text-2xl font-black text-white">{replyVisitors.length}</p>
+        </div>
         <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-3">
-          <p className="text-[11px] font-black uppercase text-emerald-200">Live now</p>
+          <p className="text-[11px] font-black uppercase text-emerald-200">Hot live</p>
+          <p className="mt-1 text-2xl font-black text-white">{hotVisitors.length}</p>
+        </div>
+        <div className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 p-3">
+          <p className="text-[11px] font-black uppercase text-cyan-200">Uncontacted live</p>
           <p className="mt-1 text-2xl font-black text-white">{liveVisitors.length}</p>
         </div>
-        <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3">
-          <p className="text-[11px] font-black uppercase text-amber-200">Recently active</p>
-          <p className="mt-1 text-2xl font-black text-white">{recentVisitors.length}</p>
+        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+          <p className="text-[11px] font-black uppercase text-slate-300">Contacted/open</p>
+          <p className="mt-1 text-2xl font-black text-white">{contactedVisitors.length}</p>
         </div>
       </div>
-      <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {orderedVisitors.length ? orderedVisitors.map((visitor) => {
-        const hasConversation = Boolean(visitor.conversationId);
-        const loading = startingVisitorId === visitor.id;
-        const page = pageLabel(visitor.currentTitle, visitor.currentPath);
-        const pagePath = cleanJourneyPath(visitor.currentPath);
-        const pageUrl = fullHouseLinkUrl(visitor.currentPath);
-        const source = visitorSourceLabel(visitor);
-        const sourceUrl = fullHouseLinkUrl(visitor.source);
-        const contact = visitorContactLabel(visitor);
-        const intent = visitorIntentLabel(visitor);
-        const stage = visitorStageLabel(visitor);
-        const pageTime = formatVisitorDuration(visitor.pageSeconds);
-        const presence = visitorPresenceStatus(visitor.presenceStatus, visitor.presenceLabel, visitor.lastSeenAt);
-        const lastSeen = presence.status === "LIVE" ? "Active now" : presence.label;
-        const suggestedMessage = proactiveMessageForVisitor(visitor, currentAgentName);
-        const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Send helpful message";
-        return (
-          <article key={visitor.id} className={cn("min-w-0 overflow-hidden rounded-2xl border bg-slate-900 shadow-[0_18px_50px_rgba(0,0,0,0.18)]", hasConversation ? "border-emerald-400/30" : "border-white/10")}>
-            <div className="border-b border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 p-3 sm:p-4">
-              <div className="grid min-w-0 gap-3 min-[420px]:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="flex min-w-0 gap-3">
-                  <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-emerald-300 to-cyan-300 text-sm font-black text-slate-950">
-                    {visitorInitials(visitor)}
-                    <span className={cn("absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-slate-900", presence.dotClass)} title={presence.label} />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <p className="break-words font-black text-white [overflow-wrap:anywhere]">{visitorDisplayName(visitor)}</p>
-                      <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[10px] font-black uppercase text-cyan-200">{stage}</span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-300">{intent}</p>
-                  </div>
-                </div>
-                <PresenceStatusBadge label={presence.label} status={presence.status} />
+      <div className="space-y-5">
+        {sections.length ? sections.map((section) => (
+          <section key={section.id} className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/35 p-3 sm:p-4">
+            <div className="mb-3 flex min-w-0 flex-wrap items-end justify-between gap-2">
+              <div className="min-w-0">
+                <p className={cn("text-xs font-black uppercase tracking-wider", section.tone === "amber" ? "text-amber-200" : section.tone === "emerald" ? "text-emerald-200" : section.tone === "cyan" ? "text-cyan-200" : "text-slate-300")}>{section.title}</p>
+                <p className="mt-1 text-sm text-slate-400">{section.description}</p>
               </div>
-              <div className="mt-3 flex min-w-0 flex-wrap gap-2">
-                <MiniBadge icon={Activity} label={visitor.deviceType ? humanize(visitor.deviceType) : "Visitor"} />
-                <MiniBadge icon={Globe2} label={source} />
-                <MiniBadge icon={contact === "Not captured yet" ? UserPlus : Phone} label={contact === "Not captured yet" ? "No contact yet" : "Contact captured"} tone={contact === "Not captured yet" ? "amber" : "emerald"} />
-              </div>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-white">{section.visitors.length}</span>
             </div>
-            <div className="space-y-3 p-3 sm:p-4">
-              <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-slate-500"><MapPin className="size-3.5" /> Current page</p>
-                <p className="mt-1 line-clamp-2 text-sm font-black leading-5 text-white">{page}</p>
-                <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="max-w-full truncate rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-bold text-slate-300" title={pagePath}>
-                    {pagePath}
-                  </span>
-                  <UrlActions url={pageUrl} label="current page" />
-                </div>
-                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-400">
-                  <span className="inline-flex items-center gap-1"><Clock className="size-3.5" /> {pageTime ? `On this page ${pageTime}` : "Just arrived"}</span>
-                  <span>{lastSeen}</span>
-                </p>
-              </div>
-              <div className="grid gap-2 text-xs text-slate-400">
-                <Info label="Contact" value={contact} />
-                <Info label="Source" value={source} action={<UrlActions url={sourceUrl} label="source" />} />
-              </div>
-              {visitor.conversation?.lastMessagePreview ? (
-                <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
-                  <p className="text-[10px] font-black uppercase text-emerald-200">Latest conversation</p>
-                  <p className="mt-1 line-clamp-2 text-xs font-semibold text-emerald-50">{visitor.conversation.lastMessagePreview}</p>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-3">
-                  <p className="flex items-center gap-1.5 text-[10px] font-black uppercase text-cyan-200"><Sparkles className="size-3.5" /> Suggested first message</p>
-                  <p className="mt-1 line-clamp-3 text-xs leading-5 text-cyan-50">{suggestedMessage}</p>
-                </div>
-              )}
-              <div className="flex min-w-0 gap-3">
-                <Button className="w-full" onClick={() => hasConversation && visitor.conversationId ? openConversation(visitor.conversationId) : void startConversation(visitor.id, suggestedMessage)} disabled={loading}>
-                  {loading ? <Loader2 className="size-4 animate-spin" /> : hasConversation ? <MessageSquare className="size-4" /> : <Send className="size-4" />} {loading ? "Sending..." : actionLabel}
-                </Button>
-              </div>
+            <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {section.visitors.map(renderVisitorCard)}
             </div>
-          </article>
-        );
-      }) : <Empty label="No live or recently active visitors in the last five minutes." />}
+          </section>
+        )) : <Empty label="No live or recently active visitors in the last five minutes." />}
       </div>
     </div>
   );
+}
+
+function buildVisitorQueueSections(visitors: ActiveVisitorView[]) {
+  const ordered = [...visitors].sort(compareVisitorsForQueue);
+  const needsReply = ordered.filter(visitorNeedsStaffReply);
+  const hotLive = ordered.filter((visitor) => !visitorNeedsStaffReply(visitor) && !visitor.contacted && visitor.presenceStatus === "LIVE" && visitor.salesPriorityScore >= 64);
+  const live = ordered.filter((visitor) => !visitorNeedsStaffReply(visitor) && !visitor.contacted && visitor.presenceStatus === "LIVE" && visitor.salesPriorityScore < 64);
+  const recent = ordered.filter((visitor) => !visitorNeedsStaffReply(visitor) && !visitor.contacted && visitor.presenceStatus === "RECENT");
+  const contacted = ordered.filter((visitor) => !visitorNeedsStaffReply(visitor) && visitor.contacted);
+  const offline = ordered.filter((visitor) => !visitorNeedsStaffReply(visitor) && !visitor.contacted && visitor.presenceStatus === "OFFLINE");
+
+  return [
+    {
+      id: "needs-reply",
+      title: "Needs reply now",
+      description: "Visitors who replied or are waiting on the team. These should stay at the top.",
+      tone: "amber" as const,
+      visitors: needsReply,
+    },
+    {
+      id: "hot-live",
+      title: "Hot live opportunities",
+      description: "Live visitors closest to buying based on checkout, cart, sample, and reading signals.",
+      tone: "emerald" as const,
+      visitors: hotLive,
+    },
+    {
+      id: "live",
+      title: "Live browsing",
+      description: "People currently on the website who have not been contacted yet.",
+      tone: "cyan" as const,
+      visitors: live,
+    },
+    {
+      id: "recent",
+      title: "Recently active",
+      description: "Visitors seen in the last few minutes. Useful if they return or need a quick follow-up.",
+      tone: "amber" as const,
+      visitors: recent,
+    },
+    {
+      id: "contacted",
+      title: "Contacted / open conversations",
+      description: "Visitors already messaged by the team. They move here after a proactive send.",
+      tone: "slate" as const,
+      visitors: contacted,
+    },
+    {
+      id: "offline",
+      title: "Older active sessions",
+      description: "Lower-priority visitors kept for context.",
+      tone: "slate" as const,
+      visitors: offline,
+    },
+  ].filter((section) => section.visitors.length > 0);
+}
+
+function compareVisitorsForQueue(a: ActiveVisitorView, b: ActiveVisitorView) {
+  return visitorQueueRank(a) - visitorQueueRank(b)
+    || b.salesPriorityScore - a.salesPriorityScore
+    || new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime();
+}
+
+function visitorQueueRank(visitor: ActiveVisitorView) {
+  if (visitorNeedsStaffReply(visitor)) return 0;
+  if (!visitor.contacted && visitor.presenceStatus === "LIVE") return 1;
+  if (!visitor.contacted && visitor.presenceStatus === "RECENT") return 2;
+  if (visitor.contacted && visitor.presenceStatus === "LIVE") return 3;
+  if (visitor.contacted && visitor.presenceStatus === "RECENT") return 4;
+  return 5;
+}
+
+function visitorNeedsStaffReply(visitor: ActiveVisitorView) {
+  return Boolean((visitor.conversation?.unreadForStaff ?? 0) > 0 || visitor.conversation?.lastMessageSenderKind === "VISITOR");
 }
 
 function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action: LiveChatAdminAction; busy: string | null }) {

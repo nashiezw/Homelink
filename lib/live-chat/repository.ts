@@ -1742,6 +1742,24 @@ function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; 
   const ageMs = now - visitor.lastSeenAt.getTime();
   const presenceStatus: "LIVE" | "RECENT" | "OFFLINE" = ageMs <= LIVE_VISITOR_MS ? "LIVE" : ageMs <= RECENT_VISITOR_MS ? "RECENT" : "OFFLINE";
   const presenceLabel = presenceStatus === "LIVE" ? "Live now" : presenceStatus === "RECENT" ? `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago` : "Offline";
+  const sessionSeconds = Math.max(0, Math.round((now - visitor.firstSeenAt.getTime()) / 1000));
+  const pageSeconds = visitor.pageStartedAt ? Math.max(0, Math.round((now - visitor.pageStartedAt.getTime()) / 1000)) : 0;
+  const salesPriority = scoreActiveVisitor(
+    {
+      currentPath: visitor.currentPath,
+      currentTitle: visitor.currentTitle,
+      landingPage: visitor.landingPage,
+      source: visitor.source,
+      utmSource: visitor.utmSource,
+      utmMedium: visitor.utmMedium,
+      phone: visitor.phone,
+      email: visitor.email,
+      pageSeconds,
+      sessionSeconds,
+    },
+    conversation,
+    presenceStatus,
+  );
   return {
     id: visitor.publicId,
     userId: visitor.userId,
@@ -1761,6 +1779,7 @@ function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; 
     blocked: Boolean(visitor.blockedAt),
     presenceStatus,
     presenceLabel,
+    ...salesPriority,
     conversationId: conversation?.id ?? null,
     conversation: conversation
       ? {
@@ -1773,10 +1792,78 @@ function shapeActiveVisitor(visitor: { publicId: string; userId: string | null; 
           lastMessageSenderName: conversation.lastMessageSenderName,
           unreadForStaff: conversation.unreadForStaff,
           unreadForVisitor: conversation.unreadForVisitor,
-        }
+      }
       : null,
-    sessionSeconds: Math.max(0, Math.round((now - visitor.firstSeenAt.getTime()) / 1000)),
-    pageSeconds: visitor.pageStartedAt ? Math.max(0, Math.round((now - visitor.pageStartedAt.getTime()) / 1000)) : 0,
+    sessionSeconds,
+    pageSeconds,
+  };
+}
+
+function scoreActiveVisitor(
+  visitor: {
+    currentPath?: string | null;
+    currentTitle?: string | null;
+    landingPage?: string | null;
+    source?: string | null;
+    utmSource?: string | null;
+    utmMedium?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    pageSeconds?: number;
+    sessionSeconds?: number;
+  },
+  conversation: Pick<LiveChatConversationView, "id" | "lastMessagePreview" | "lastMessageSenderKind" | "unreadForStaff"> | null,
+  presenceStatus: "LIVE" | "RECENT" | "OFFLINE",
+) {
+  const text = [
+    visitor.currentPath,
+    visitor.currentTitle,
+    visitor.landingPage,
+    visitor.source,
+    visitor.utmSource,
+    visitor.utmMedium,
+  ].filter(Boolean).join(" ").toLowerCase();
+  const path = String(visitor.currentPath || "");
+  const reasons: string[] = [];
+  let score = presenceStatus === "LIVE" ? 35 : presenceStatus === "RECENT" ? 12 : 0;
+  const add = (points: number, label: string) => {
+    score += points;
+    if (!reasons.includes(label)) reasons.push(label);
+  };
+
+  if ((conversation?.unreadForStaff ?? 0) > 0 || conversation?.lastMessageSenderKind === "VISITOR") add(80, "Visitor replied");
+  if (/checkout|payment|proof|order|invoice|buy-now|buy now/.test(text)) add(48, "Checkout or payment intent");
+  if (/cart|bag|bundle|add-to-cart|add to cart/.test(text)) add(36, "Cart or bundle interest");
+  if (/sample|preview|download/.test(text)) add(26, "Sample or download activity");
+  if (/\/library\/[^/?#]+/.test(path) && !path.includes("/library/checkout")) add(24, "Specific book page");
+  if (/academy|course|training|lesson/.test(text)) add(18, "Academy interest");
+  if (/property-for-sale|\/listings\/|\/rent|view-property|view property|search/.test(text)) add(18, "Property search intent");
+  if ((visitor.pageSeconds ?? 0) >= 180) add(16, "Reading for 3+ minutes");
+  else if ((visitor.pageSeconds ?? 0) >= 60) add(8, "Reading for 1+ minute");
+  if ((visitor.sessionSeconds ?? 0) >= 600) add(10, "Long session");
+  if (visitor.phone || visitor.email) add(8, "Contact captured");
+
+  const contacted = Boolean(conversation?.id || conversation?.lastMessagePreview);
+  if (contacted && !((conversation?.unreadForStaff ?? 0) > 0 || conversation?.lastMessageSenderKind === "VISITOR")) {
+    score = Math.max(0, score - 42);
+    if (!reasons.includes("Already contacted")) reasons.push("Already contacted");
+  }
+
+  const salesPriorityLabel = ((conversation?.unreadForStaff ?? 0) > 0 || conversation?.lastMessageSenderKind === "VISITOR")
+    ? "Needs reply"
+    : score >= 88
+      ? "Hot lead"
+      : score >= 64
+        ? "High intent"
+        : score >= 36
+          ? "Browsing"
+          : "Low intent";
+
+  return {
+    salesPriorityScore: Math.max(0, Math.round(score)),
+    salesPriorityLabel,
+    salesPriorityReasons: reasons.slice(0, 4),
+    contacted,
   };
 }
 
@@ -1788,10 +1875,20 @@ function dedupeActiveVisitors(visitors: LiveChatInboxView["activeVisitors"]) {
     grouped.set(key, existing ? mergeActiveVisitorSessions(existing, visitor) : visitor);
   }
   return [...grouped.values()].sort((a, b) => {
-    const rank = (visitor: LiveChatInboxView["activeVisitors"][number]) =>
-      visitor.presenceStatus === "LIVE" ? 0 : visitor.presenceStatus === "RECENT" ? 1 : 2;
-    return rank(a) - rank(b) || new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime();
+    return activeVisitorQueueRank(a) - activeVisitorQueueRank(b)
+      || b.salesPriorityScore - a.salesPriorityScore
+      || new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime();
   });
+}
+
+function activeVisitorQueueRank(visitor: LiveChatInboxView["activeVisitors"][number]) {
+  const needsReply = Boolean((visitor.conversation?.unreadForStaff ?? 0) > 0 || visitor.conversation?.lastMessageSenderKind === "VISITOR");
+  if (needsReply) return 0;
+  if (!visitor.contacted && visitor.presenceStatus === "LIVE") return 1;
+  if (!visitor.contacted && visitor.presenceStatus === "RECENT") return 2;
+  if (visitor.contacted && visitor.presenceStatus === "LIVE") return 3;
+  if (visitor.contacted && visitor.presenceStatus === "RECENT") return 4;
+  return 5;
 }
 
 function activeVisitorIdentityKey(visitor: LiveChatInboxView["activeVisitors"][number]) {
@@ -1812,6 +1909,9 @@ function mergeActiveVisitorSessions(a: LiveChatInboxView["activeVisitors"][numbe
   const ageMs = Date.now() - new Date(latest.lastSeenAt).getTime();
   const presenceStatus: LiveChatInboxView["activeVisitors"][number]["presenceStatus"] =
     ageMs <= LIVE_VISITOR_MS ? "LIVE" : ageMs <= RECENT_VISITOR_MS ? "RECENT" : "OFFLINE";
+  const contacted = Boolean(conversation) || a.contacted || b.contacted;
+  const salesPriorityReasons = uniqueLabels([...(a.salesPriorityReasons ?? []), ...(b.salesPriorityReasons ?? [])]).slice(0, 4);
+  const salesPriorityScore = Math.max(a.salesPriorityScore ?? 0, b.salesPriorityScore ?? 0);
   return {
     ...latest,
     name: latest.name || other.name,
@@ -1825,6 +1925,20 @@ function mergeActiveVisitorSessions(a: LiveChatInboxView["activeVisitors"][numbe
     firstSeenAt: new Date(a.firstSeenAt).getTime() <= new Date(b.firstSeenAt).getTime() ? a.firstSeenAt : b.firstSeenAt,
     presenceStatus,
     presenceLabel: presenceStatus === "LIVE" ? "Live now" : presenceStatus === "RECENT" ? `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago` : "Offline",
+    salesPriorityScore: contacted && conversation?.lastMessageSenderKind !== "VISITOR" && !(conversation?.unreadForStaff ?? 0)
+      ? Math.max(0, salesPriorityScore - 20)
+      : salesPriorityScore,
+    salesPriorityLabel: conversation?.lastMessageSenderKind === "VISITOR" || (conversation?.unreadForStaff ?? 0) > 0
+      ? "Needs reply"
+      : salesPriorityScore >= 88
+        ? "Hot lead"
+        : salesPriorityScore >= 64
+          ? "High intent"
+          : salesPriorityScore >= 36
+            ? "Browsing"
+            : "Low intent",
+    salesPriorityReasons,
+    contacted,
     conversationId: conversation?.id ?? latest.conversationId ?? other.conversationId ?? null,
     conversation,
     sessionSeconds: Math.max(a.sessionSeconds, b.sessionSeconds),
@@ -1993,7 +2107,45 @@ function memoryInbox(): LiveChatInboxView {
     .map((visitor) => {
       const ageMs = Date.now() - visitor.lastSeenAt.getTime();
       const presenceStatus = ageMs <= ACTIVE_VISITOR_MS ? "LIVE" as const : "RECENT" as const;
-      return { ...shapeMemoryVisitor(visitor), conversationId: conversations.find((conversation) => conversation.visitorId === visitor.id)?.publicId ?? null, presenceStatus, presenceLabel: presenceStatus === "LIVE" ? "Live now" : `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago`, sessionSeconds: 0, pageSeconds: 0 };
+      const conversation = conversations.find((row) => row.visitorId === visitor.id) ?? null;
+      const shapedConversation = conversation ? shapeMemoryConversation(conversation, visitor) : null;
+      return {
+        ...shapeMemoryVisitor(visitor),
+        conversationId: shapedConversation?.id ?? null,
+        conversation: shapedConversation
+          ? {
+              id: shapedConversation.id,
+              status: shapedConversation.status,
+              priority: shapedConversation.priority,
+              lastMessagePreview: shapedConversation.lastMessagePreview,
+              lastMessageAt: shapedConversation.lastMessageAt,
+              lastMessageSenderKind: shapedConversation.lastMessageSenderKind,
+              lastMessageSenderName: shapedConversation.lastMessageSenderName,
+              unreadForStaff: shapedConversation.unreadForStaff,
+              unreadForVisitor: shapedConversation.unreadForVisitor,
+            }
+          : null,
+        presenceStatus,
+        presenceLabel: presenceStatus === "LIVE" ? "Live now" : `Seen ${Math.max(1, Math.round(ageMs / 60_000))}m ago`,
+        sessionSeconds: 0,
+        pageSeconds: 0,
+        ...scoreActiveVisitor(
+          {
+            currentPath: visitor.currentPath,
+            currentTitle: visitor.currentTitle,
+            landingPage: visitor.landingPage,
+            source: visitor.source,
+            utmSource: visitor.utmSource,
+            utmMedium: visitor.utmMedium,
+            phone: visitor.phone,
+            email: visitor.email,
+            pageSeconds: 0,
+            sessionSeconds: 0,
+          },
+          shapedConversation,
+          presenceStatus,
+        ),
+      };
     }));
   return {
     conversations: conversations.map((conversation) => shapeMemoryConversation(conversation, visitors.find((visitor) => visitor.id === conversation.visitorId)!)),

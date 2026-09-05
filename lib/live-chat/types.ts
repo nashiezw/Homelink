@@ -178,6 +178,10 @@ export type LiveChatInboxView = {
     presenceLabel: string;
     sessionSeconds: number;
     pageSeconds: number;
+    salesPriorityScore: number;
+    salesPriorityLabel: string;
+    salesPriorityReasons: string[];
+    contacted: boolean;
   }>;
   messages: LiveChatMessageView[];
   events: LiveChatEventView[];
