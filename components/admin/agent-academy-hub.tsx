@@ -2802,8 +2802,11 @@ function LearnerActivationPanel({
   const expiredApplications = data.publicLearnerApplications.filter((row) => row.status === "EXPIRED");
   const activationApplications = data.publicLearnerApplications.filter((row) => row.status === "APPROVED" || row.status === "EXPIRED");
   const certificateEnabledByCourseId = new Map(courses.map((course) => [course.id, course.certificateEnabled]));
-  const approvedDropoffCount = dropoffs.filter((row) => row.applicationStatus !== "EXPIRED").length;
-  const startedCount = Math.max(0, approvedApplications.length - approvedDropoffCount);
+  const approvedDropoffTotal = dropoffs.filter((row) => row.applicationStatus !== "EXPIRED").length;
+  const overdueDropoffCount = dropoffs.filter((row) => row.applicationStatus !== "EXPIRED" && row.firstLessonStartHoursRemaining === 0).length;
+  const approvedDropoffCount = dropoffs.filter((row) => row.applicationStatus !== "EXPIRED" && row.firstLessonStartHoursRemaining !== 0).length;
+  const releaseableExpiredCount = expiredApplications.length + overdueDropoffCount;
+  const startedCount = Math.max(0, approvedApplications.length - approvedDropoffTotal);
   const pendingCount = data.publicLearnerApplications.filter((row) => row.status === "PENDING_PAYMENT" || row.status === "PAYMENT_UPLOADED").length;
   const courseOptions = [
     { value: "ALL", label: "All courses" },
@@ -2812,7 +2815,7 @@ function LearnerActivationPanel({
   const activationRows = activationApplications.map((application) => {
     const dropoff = dropoffs.find((row) => row.learnerId === application.learner.id && row.courseId === application.course.id);
     const learnerProfile = data.learnerProfiles?.find((profile) => profile.agentId === application.learner.id);
-    const activationStatus = application.status === "EXPIRED" ? "EXPIRED" : dropoff ? "NOT_STARTED" : "STARTED";
+    const activationStatus = application.status === "EXPIRED" || dropoff?.firstLessonStartHoursRemaining === 0 ? "EXPIRED" : dropoff ? "NOT_STARTED" : "STARTED";
     return {
       id: `${application.id}-${activationStatus.toLowerCase()}`,
       applicationId: application.id,
@@ -2876,8 +2879,16 @@ function LearnerActivationPanel({
 
   function activationNextStep(row: (typeof activationRows)[number]) {
     if (row.status === "STARTED") return "Keep momentum with the next lesson";
-    if (row.status === "EXPIRED") return "Follow up before extending another 72h";
+    if (row.status === "EXPIRED") return "Reactivate once, or release to free capacity";
     return "Send a warm nudge to open Lesson 1";
+  }
+
+  async function releaseLearnerPlace(row: (typeof activationRows)[number]) {
+    const confirmed = window.confirm(
+      `Release ${row.learnerName}'s unused place in ${row.courseTitle}? This revokes the reserved access, removes the learner from this activation queue, and frees any coupon usage linked to their payment.`,
+    );
+    if (!confirmed) return;
+    await action({ action: "release_first_lesson_place", applicationId: row.applicationId }, "Learner place released and coupon usage freed.");
   }
 
   return (
@@ -2901,6 +2912,7 @@ function LearnerActivationPanel({
             </Button>
             <Button
               variant="secondary"
+              disabled={!releaseableExpiredCount}
               onClick={() => void action({ action: "release_expired_first_lesson_places" }, "Expired unused places released.")}
               className="w-full lg:w-auto"
             >
@@ -2912,7 +2924,7 @@ function LearnerActivationPanel({
           <ActivationMetric label="Approved learners" value={approvedApplications.length} />
           <ActivationMetric label="Opened Lesson 1" value={startedCount} tone="success" />
           <ActivationMetric label="Not started" value={approvedDropoffCount} tone={approvedDropoffCount ? "warning" : "success"} />
-          <ActivationMetric label="Expired places" value={expiredApplications.length} tone={expiredApplications.length ? "warning" : "success"} />
+          <ActivationMetric label="Expired places" value={releaseableExpiredCount} tone={releaseableExpiredCount ? "warning" : "success"} />
           <ActivationMetric label="Pending payment/review" value={pendingCount} />
           <ActivationMetric label="Start rate" value={`${approvedApplications.length ? Math.round((startedCount / approvedApplications.length) * 100) : 0}%`} tone="info" />
         </div>
@@ -2998,12 +3010,21 @@ function LearnerActivationPanel({
                       <Eye className="size-4" /> Preview
                     </a>
                     {row.status === "EXPIRED" && (
-                      <Button
-                        onClick={() => void action({ action: "reactivate_first_lesson_place", applicationId: row.applicationId }, "Learner place reactivated for another 72 hours.")}
-                        className="w-full sm:col-span-3"
-                      >
-                        <RotateCcw className="size-4" /> Reactivate 72h
-                      </Button>
+                      <div className="grid gap-2 sm:col-span-3 sm:grid-cols-2">
+                        <Button
+                          onClick={() => void action({ action: "reactivate_first_lesson_place", applicationId: row.applicationId }, "Learner place reactivated for another 72 hours.")}
+                          className="w-full"
+                        >
+                          <RotateCcw className="size-4" /> Reactivate 72h
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => void releaseLearnerPlace(row)}
+                          className="w-full border-red-400/30 bg-red-500/10 text-red-100 hover:border-red-300/50 hover:bg-red-500/20"
+                        >
+                          <Trash2 className="size-4" /> Release place
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </article>

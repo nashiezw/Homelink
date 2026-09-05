@@ -1,0 +1,1 @@
+ALTER TYPE "AcademyRegistrationStatus" ADD VALUE IF NOT EXISTS 'RELEASED';

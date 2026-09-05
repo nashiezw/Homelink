@@ -25,6 +25,7 @@ import {
   getFirstLessonDeadline,
   getReservationTimeLeft,
   reactivateFirstLessonReservation,
+  releaseFirstLessonReservation,
   releaseExpiredFirstLessonReservations,
 } from "@/lib/academy/activation-deadline";
 
@@ -1529,6 +1530,12 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
   if (action === "reactivate_first_lesson_place") {
     const applicationId = required(body.applicationId, "Learner application");
     return reactivateFirstLessonReservation(applicationId, actor);
+  }
+  if (action === "release_first_lesson_place") {
+    const applicationId = required(body.applicationId, "Learner application");
+    const result = await releaseFirstLessonReservation(applicationId, actor);
+    await audit(actor, "academy.activation.release_first_lesson_place", applicationId, result as Prisma.InputJsonObject);
+    return result;
   }
   if (action === "grant_extra_quiz_attempt") {
     const learnerId = required(body.learnerId, "Learner");

@@ -26,6 +26,7 @@ import {
   getReservationTimeLeft,
   releaseExpiredFirstLessonReservations,
 } from "@/lib/academy/activation-deadline";
+import { releaseAcademyCouponUsageByPayment } from "@/lib/academy/coupon-usage";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
 
@@ -812,7 +813,7 @@ export async function attachAcademyPaymentProof(paymentId: string, learnerId: st
 export async function reviewPublicLearnerApplication(input: {
   applicationId: string;
   actorId: string;
-  status: "APPROVED" | "REJECTED" | "REFUNDED" | "EXPIRED";
+  status: "APPROVED" | "REJECTED" | "REFUNDED" | "EXPIRED" | "RELEASED";
   adminNote?: string;
 }) {
   const prisma = getMainPrisma();
@@ -821,53 +822,54 @@ export async function reviewPublicLearnerApplication(input: {
   const now = new Date();
   const accessEndsAt = new Date(now.getTime() + application.course.accessDurationDays * 86400000);
   const approved = input.status === "APPROVED";
-  
-  // If rejecting, refunding, or expiring, remove coupon usage
-  if (input.status === "REJECTED" || input.status === "REFUNDED" || input.status === "EXPIRED") {
-    if (application.paymentId) {
-      await prisma.academyCouponUsage.deleteMany({
-        where: { paymentId: application.paymentId },
-      });
+  const shouldFreeCoupon = input.status === "REJECTED" || input.status === "REFUNDED" || input.status === "EXPIRED" || input.status === "RELEASED";
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (shouldFreeCoupon) {
+      await releaseAcademyCouponUsageByPayment(tx, application.paymentId);
     }
-  }
-  
-  const updated = await prisma.academyLearnerApplication.update({
-    where: { id: application.id },
-    data: {
-      status: input.status,
-      adminNote: input.adminNote || null,
-      approvedById: approved ? input.actorId : application.approvedById,
-      approvedAt: approved ? now : application.approvedAt,
-      rejectedAt: input.status === "REJECTED" ? now : application.rejectedAt,
-      accessStartsAt: approved ? now : application.accessStartsAt,
-      accessEndsAt: approved ? accessEndsAt : application.accessEndsAt,
-    },
-  });
-  if (application.paymentId) {
-    await prisma.payment.update({
-      where: { id: application.paymentId },
+
+    const nextApplication = await tx.academyLearnerApplication.update({
+      where: { id: application.id },
       data: {
-        status: approved ? PaymentStatus.PAID : input.status === "REFUNDED" ? PaymentStatus.REFUNDED : PaymentStatus.PENDING,
-        proofStatus: approved ? "VERIFIED" : input.status === "REJECTED" ? "REJECTED" : undefined,
+        status: input.status,
+        adminNote: input.adminNote || null,
+        approvedById: approved ? input.actorId : application.approvedById,
+        approvedAt: approved ? now : application.approvedAt,
+        rejectedAt: input.status === "REJECTED" ? now : application.rejectedAt,
+        accessStartsAt: approved ? now : application.accessStartsAt,
+        accessEndsAt: approved ? accessEndsAt : shouldFreeCoupon ? now : application.accessEndsAt,
       },
     });
-  }
-  if (approved) {
-    await prisma.courseEnrolment.upsert({
-      where: { courseId_agentId: { courseId: application.courseId, agentId: application.learnerId } },
-      create: { courseId: application.courseId, agentId: application.learnerId, status: "ACTIVE", dueAt: accessEndsAt },
-      update: { status: "ACTIVE", dueAt: accessEndsAt },
-    });
-    await rewardSuccessfulAcademyReferral({ learnerId: application.learnerId, courseId: application.courseId });
-  }
 
-  // If rejecting, refunding, or expiring, remove coupon usage
-  if (input.status === "REJECTED" || input.status === "REFUNDED" || input.status === "EXPIRED") {
     if (application.paymentId) {
-      await prisma.academyCouponUsage.deleteMany({
-        where: { paymentId: application.paymentId },
+      await tx.payment.update({
+        where: { id: application.paymentId },
+        data: {
+          status: approved ? PaymentStatus.PAID : input.status === "REFUNDED" ? PaymentStatus.REFUNDED : PaymentStatus.PENDING,
+          proofStatus: approved ? "VERIFIED" : input.status === "REJECTED" ? "REJECTED" : undefined,
+        },
       });
     }
+
+    if (approved) {
+      await tx.courseEnrolment.upsert({
+        where: { courseId_agentId: { courseId: application.courseId, agentId: application.learnerId } },
+        create: { courseId: application.courseId, agentId: application.learnerId, status: "ACTIVE", dueAt: accessEndsAt },
+        update: { status: "ACTIVE", dueAt: accessEndsAt },
+      });
+    } else if (shouldFreeCoupon) {
+      await tx.courseEnrolment.updateMany({
+        where: { courseId: application.courseId, agentId: application.learnerId, status: { in: ["ACTIVE", "EXPIRED"] } },
+        data: { status: input.status, dueAt: now },
+      });
+    }
+
+    return nextApplication;
+  });
+
+  if (approved) {
+    await rewardSuccessfulAcademyReferral({ learnerId: application.learnerId, courseId: application.courseId });
   }
 
   await prisma.trainingNotification.create({
