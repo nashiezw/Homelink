@@ -643,11 +643,12 @@ export async function getLiveChatInbox(input: { activeConversationId?: string | 
 export async function liveChatAdminAction(user: AdminUser, body: Record<string, unknown>) {
   if (!isPostgresStoreEnabled()) return { ok: true };
   if (!(await isLiveChatSchemaReady())) throw new LiveChatError("LIVE_CHAT_SETUP_REQUIRED", liveChatSetupMessage(), 503);
-  await ensureLiveChatDefaults(user);
+  const action = String(body.action ?? "");
+  const lightweightAction = ["send_message", "internal_note", "typing", "mark_staff_read"].includes(action);
+  if (!lightweightAction) await ensureLiveChatDefaults(user);
   const prisma = getMainPrisma();
   const agent = await ensureAgentProfile(user);
   void touchLiveChatAgentPresence(user, "admin_action").catch(() => null);
-  const action = String(body.action ?? "");
   if (action === "send_message" || action === "internal_note") {
     const conversation = await getConversationByPublicId(String(body.conversationId ?? ""));
     if (!conversation) throw new LiveChatError("CONVERSATION_NOT_FOUND", "Conversation not found.", 404);
@@ -1808,9 +1809,9 @@ function mergeActiveVisitorSessions(a: LiveChatInboxView["activeVisitors"][numbe
   const devices = uniqueLabels([a.deviceType, b.deviceType]);
   const conversations = [a.conversation, b.conversation].filter(Boolean) as NonNullable<LiveChatInboxView["activeVisitors"][number]["conversation"]>[];
   const conversation = conversations.sort((left, right) => new Date(right.lastMessageAt || "").getTime() - new Date(left.lastMessageAt || "").getTime())[0] ?? latest.conversation ?? other.conversation ?? null;
-  const presenceStatus: LiveChatInboxView["activeVisitors"][number]["presenceStatus"] =
-    a.presenceStatus === "LIVE" || b.presenceStatus === "LIVE" ? "LIVE" : a.presenceStatus === "RECENT" || b.presenceStatus === "RECENT" ? "RECENT" : "OFFLINE";
   const ageMs = Date.now() - new Date(latest.lastSeenAt).getTime();
+  const presenceStatus: LiveChatInboxView["activeVisitors"][number]["presenceStatus"] =
+    ageMs <= LIVE_VISITOR_MS ? "LIVE" : ageMs <= RECENT_VISITOR_MS ? "RECENT" : "OFFLINE";
   return {
     ...latest,
     name: latest.name || other.name,

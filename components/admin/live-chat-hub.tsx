@@ -34,6 +34,7 @@ const FILTERS = [
 ] as const;
 
 type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
+type LiveChatAdminAction = (body: Record<string, unknown>, success?: string) => Promise<unknown>;
 
 const LIVE_VISITORS_REFRESH_MS = 6_000;
 const LIVE_VISITOR_SECONDS = 45;
@@ -293,17 +294,24 @@ export function LiveChatHub() {
       window.setTimeout(() => setNotice(null), 2500);
       setBusy(null);
       void load({ silent: true });
-      return;
+      return result.data;
     }
     setBusy(null);
+    return null;
   }
 
   async function sendMessage() {
     if (!activeConversation || !draft.trim()) return;
+    const text = draft.trim();
+    setDraft("");
     typingActiveRef.current = false;
     void apiFetch("/api/v1/admin/live-chat", { method: "POST", body: JSON.stringify({ action: "typing", conversationId: activeConversation.id, typing: false }) });
-    await action({ action: "send_message", conversationId: activeConversation.id, body: draft }, "Message sent.");
-    setDraft("");
+    const sent = await action({ action: "send_message", conversationId: activeConversation.id, body: text }, "Message sent.");
+    if (isLiveChatMessage(sent)) {
+      setData((current) => mergeSentStaffMessage(current, activeConversation.id, sent));
+      return;
+    }
+    setDraft(text);
   }
 
   async function addNote() {
@@ -616,7 +624,7 @@ function ConversationRow({ conversation, active, onOpen }: { conversation: LiveC
   );
 }
 
-function ConversationHeader({ conversation, data, action, busy, onDelete }: { conversation: LiveChatConversationView | null; data: LiveChatInboxView; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null; onDelete: (conversation: LiveChatConversationView) => Promise<void> }) {
+function ConversationHeader({ conversation, data, action, busy, onDelete }: { conversation: LiveChatConversationView | null; data: LiveChatInboxView; action: LiveChatAdminAction; busy: string | null; onDelete: (conversation: LiveChatConversationView) => Promise<void> }) {
   if (!conversation) return <div className="border-b border-white/10 p-4 text-sm text-slate-400">No conversation selected.</div>;
   const lastSeen = new Date(conversation.visitor.lastSeenAt);
   const presence = visitorPresence(conversation.visitor.lastSeenAt);
@@ -765,7 +773,7 @@ function AdminTypingIndicator() {
   );
 }
 
-function ContextActions({ conversation, action }: { conversation: LiveChatConversationView; action: (body: Record<string, unknown>, success?: string) => Promise<void> }) {
+function ContextActions({ conversation, action }: { conversation: LiveChatConversationView; action: LiveChatAdminAction }) {
   const path = conversation.visitor.currentPath || conversation.currentPath || "";
   const cleanPath = path.startsWith("/") ? path : "/";
   const isLibrary = cleanPath.includes("/library/");
@@ -907,8 +915,8 @@ function VisitorsPanel({
         const intent = visitorIntentLabel(visitor);
         const stage = visitorStageLabel(visitor);
         const pageTime = formatVisitorDuration(visitor.pageSeconds);
-        const lastSeen = formatRelativeVisitorTime(visitor.lastSeenAt);
-        const presence = visitorPresence(visitor.lastSeenAt);
+        const presence = visitorPresenceStatus(visitor.presenceStatus, visitor.presenceLabel, visitor.lastSeenAt);
+        const lastSeen = presence.status === "LIVE" ? "Active now" : presence.label;
         const suggestedMessage = proactiveMessageForVisitor(visitor, currentAgentName);
         const actionLabel = visitor.conversation ? visitorActionLabel(visitor.conversation.status) : "Send helpful message";
         return (
@@ -928,7 +936,7 @@ function VisitorsPanel({
                     <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-300">{intent}</p>
                   </div>
                 </div>
-                <PresenceStatusBadge label={visitor.presenceLabel || presence.label} status={visitor.presenceStatus || "LIVE"} />
+                <PresenceStatusBadge label={presence.label} status={presence.status} />
               </div>
               <div className="mt-3 flex min-w-0 flex-wrap gap-2">
                 <MiniBadge icon={Activity} label={visitor.deviceType ? humanize(visitor.deviceType) : "Visitor"} />
@@ -980,7 +988,7 @@ function VisitorsPanel({
   );
 }
 
-function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null }) {
+function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action: LiveChatAdminAction; busy: string | null }) {
   const agent = data.currentAgent;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [displayName, setDisplayName] = useState(agent?.displayName || "");
@@ -1085,7 +1093,7 @@ function ProfilePanel({ data, action, busy }: { data: LiveChatInboxView; action:
   );
 }
 
-function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null }) {
+function SettingsPanel({ data, action, busy }: { data: LiveChatInboxView; action: LiveChatAdminAction; busy: string | null }) {
   const [enabled, setEnabled] = useState(data.settings.enabled);
   const [proactiveEnabled, setProactiveEnabled] = useState(data.settings.proactiveEnabled);
   const [soundEnabled, setSoundEnabled] = useState(data.settings.soundEnabled);
@@ -1199,7 +1207,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   );
 }
 
-function ManagementPanel({ data, activeConversation, action, busy }: { data: LiveChatInboxView; activeConversation: LiveChatConversationView | null; action: (body: Record<string, unknown>, success?: string) => Promise<void>; busy: string | null }) {
+function ManagementPanel({ data, activeConversation, action, busy }: { data: LiveChatInboxView; activeConversation: LiveChatConversationView | null; action: LiveChatAdminAction; busy: string | null }) {
   const [leadType, setLeadType] = useState("GENERAL");
   const [leadNote, setLeadNote] = useState("");
   const [replyTitle, setReplyTitle] = useState("");
@@ -1430,6 +1438,29 @@ function visitorPresence(value: string) {
   return { label: "Offline", dotClass: "bg-slate-500" };
 }
 
+function visitorPresenceStatus(status: string | null | undefined, label: string | null | undefined, lastSeenAt: string) {
+  const normalized = String(status || "").toUpperCase();
+  if (normalized === "LIVE") {
+    return {
+      status: "LIVE" as const,
+      label: label || "Live now",
+      dotClass: "bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.14)]",
+    };
+  }
+  if (normalized === "RECENT") {
+    return {
+      status: "RECENT" as const,
+      label: label || formatRelativeVisitorTime(lastSeenAt).replace(/^Last seen /, "Seen "),
+      dotClass: "bg-amber-300",
+    };
+  }
+  return {
+    status: "OFFLINE" as const,
+    label: label || "Offline",
+    dotClass: "bg-slate-500",
+  };
+}
+
 function needsReply(conversation: LiveChatConversationView) {
   return conversation.unreadForStaff > 0 && conversation.lastMessageSenderKind === "VISITOR";
 }
@@ -1443,6 +1474,27 @@ function lastPreviewLabel(conversation: LiveChatConversationView) {
 
 function conversationNeedingReply(conversations: LiveChatConversationView[]) {
   return conversations.find(needsReply) ?? null;
+}
+
+function isLiveChatMessage(value: unknown): value is LiveChatMessageView {
+  return Boolean(value && typeof value === "object" && "id" in value && "body" in value && "conversationId" in value);
+}
+
+function mergeSentStaffMessage(data: LiveChatInboxView | null, conversationId: string, message: LiveChatMessageView) {
+  if (!data) return data;
+  const messages = data.messages.some((row) => row.id === message.id) ? data.messages : [...data.messages, message];
+  const conversations = data.conversations.map((conversation) => conversation.id === conversationId
+    ? {
+        ...conversation,
+        status: conversation.status === "NEW" ? "OPEN" : conversation.status,
+        lastMessagePreview: message.body,
+        lastMessageAt: message.createdAt,
+        lastMessageSenderKind: message.senderKind,
+        lastMessageSenderName: message.senderName,
+        unreadForStaff: 0,
+      }
+    : conversation);
+  return { ...data, messages, conversations };
 }
 
 function notifyInbox(conversation: LiveChatConversationView | null) {
