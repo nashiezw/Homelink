@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, ImagePlus, Link2, Loader2, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Boxes, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, ImagePlus, Link2, Loader2, MessageCircle, Plus, Search, Star, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -1103,6 +1103,39 @@ export function LibraryAdminHub() {
     await load();
   }
 
+  function libraryProductUrl(product: LibraryProduct, review = false) {
+    const path = `/library/${product.slug}${review ? "?review=1#reviews" : ""}`;
+    if (typeof window === "undefined") return path;
+    return new URL(path, window.location.origin).toString();
+  }
+
+  async function copyReviewRequestLink(product: LibraryProduct) {
+    try {
+      await navigator.clipboard.writeText(libraryProductUrl(product, true));
+      setFeedback({ tone: "success", message: `Review link copied for ${product.title}.` });
+    } catch {
+      setFeedback({ tone: "error", message: "Could not copy the review link." });
+    }
+  }
+
+  async function copyProductLink(product: LibraryProduct) {
+    try {
+      await navigator.clipboard.writeText(libraryProductUrl(product));
+      setFeedback({ tone: "success", message: `Product link copied for ${product.title}.` });
+    } catch {
+      setFeedback({ tone: "error", message: "Could not copy the product link." });
+    }
+  }
+
+  function shareReviewRequestOnWhatsApp(product: LibraryProduct) {
+    const message = [
+      `Hi, thank you for getting ${product.title} from HouseLink.`,
+      "Could you please leave a quick honest review? Your feedback helps other readers decide if this guide is right for them.",
+      libraryProductUrl(product, true),
+    ].join("\n\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  }
+
   async function bulk(action: "bulk_archive" | "bulk_delete") {
     if (action === "bulk_delete") {
       const proceed = await requestConfirm({
@@ -1776,7 +1809,7 @@ export function LibraryAdminHub() {
                   if (hasPrint) return row.stock == null ? "Print available" : `${row.stock} print units`;
                   return "Unlimited digital";
                 } },
-                { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={ExternalLink} label="Preview" onClick={() => setPreviewProduct(row)} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /><IconButton icon={Trash2} label="Delete" danger onClick={() => void deleteProduct(row.id)} /><button type="button" onClick={() => void setProductStatus(row, row.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.status === "PUBLISHED" ? "Draft" : "Publish"}</button></div> },
+                { key: "actions", header: "Actions", render: (row) => <div className="flex flex-wrap gap-2"><IconButton icon={Edit3} label="Edit" onClick={() => openEditor(row)} /><IconButton icon={ExternalLink} label="Preview" onClick={() => setPreviewProduct(row)} /><IconButton icon={Link2} label="Copy product link" onClick={() => void copyProductLink(row)} /><IconButton icon={Star} label="Copy review link" onClick={() => void copyReviewRequestLink(row)} /><IconButton icon={MessageCircle} label="WhatsApp review request" onClick={() => shareReviewRequestOnWhatsApp(row)} /><IconButton icon={Copy} label="Duplicate" onClick={() => void duplicate(row.id)} /><IconButton icon={Trash2} label="Delete" danger onClick={() => void deleteProduct(row.id)} /><button type="button" onClick={() => void setProductStatus(row, row.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED")} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 hover:bg-white/5">{row.status === "PUBLISHED" ? "Draft" : "Publish"}</button></div> },
               ]}
             />
           </div>

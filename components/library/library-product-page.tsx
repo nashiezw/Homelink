@@ -27,7 +27,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { LibraryBulkQuoteDialog } from "@/components/library/library-bulk-quote-dialog";
 import { LibraryCartFab } from "@/components/library/library-cart-fab";
@@ -129,13 +129,29 @@ export function LibraryProductPage({
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewNotice, setReviewNotice] = useState("");
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
+  const [reviewDeepLinkActive, setReviewDeepLinkActive] = useState(false);
   const [softcopyBadgeVariant, setSoftcopyBadgeVariant] = useState("control");
   const [sampleTouched, setSampleTouched] = useState(false);
   const [displayViewCount, setDisplayViewCount] = useState(product.viewCount);
+  const reviewSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSoftcopyBadgeVariant(getExperimentVariant("library_softcopy_badge", ["control", "save_callout"]));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const shouldOpenReviews = url.searchParams.get("review") === "1" || url.hash === "#reviews" || url.hash === "#review";
+    if (!shouldOpenReviews) return;
+    setReviewFormOpen(true);
+    setReviewDeepLinkActive(true);
+    window.setTimeout(() => {
+      reviewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    const timeout = window.setTimeout(() => setReviewDeepLinkActive(false), 6500);
+    return () => window.clearTimeout(timeout);
+  }, [product.slug]);
 
   useEffect(() => {
     void apiFetch<{
@@ -518,6 +534,22 @@ export function LibraryProductPage({
       setShareNotice("Link copied.");
     } catch {
       setShareNotice("Could not share right now.");
+    }
+    window.setTimeout(() => setShareNotice(""), 2200);
+  }
+
+  function reviewRequestUrl() {
+    const path = `/library/${product.slug}?review=1#reviews`;
+    if (typeof window === "undefined") return path;
+    return new URL(path, window.location.origin).toString();
+  }
+
+  async function copyReviewRequestLink() {
+    try {
+      await navigator.clipboard.writeText(reviewRequestUrl());
+      setShareNotice("Review link copied.");
+    } catch {
+      setShareNotice("Could not copy review link.");
     }
     window.setTimeout(() => setShareNotice(""), 2200);
   }
@@ -1378,6 +1410,14 @@ export function LibraryProductPage({
             </Panel>
           ) : null}
 
+          <div
+            id="reviews"
+            ref={reviewSectionRef}
+            className={cn(
+              "scroll-mt-28 rounded-[1.35rem] transition-[box-shadow,outline-color] duration-500",
+              reviewDeepLinkActive && "outline outline-2 outline-emerald-400/70 shadow-[0_0_0_8px_rgba(16,185,129,0.12)]",
+            )}
+          >
           <Panel title="Customer reviews" icon={Star}>
             <div className="space-y-4">
               {reviews.length ? reviews.map((review) => (
@@ -1427,8 +1467,16 @@ export function LibraryProductPage({
                       >
                         {reviewFormOpen ? "Hide review form" : "Leave a review"}
                       </Button>
+                      <Button variant="secondary" onClick={() => void copyReviewRequestLink()}>
+                        <Share2 className="size-4" /> Copy review link
+                      </Button>
                     </div>
                   </div>
+                  {reviewDeepLinkActive ? (
+                    <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                      Thanks for helping other HouseLink readers. Leave your honest review below; your phone or email stays private for verification.
+                    </div>
+                  ) : null}
                   {reviewFormOpen ? (
                   <div className="mt-4 rounded-xl border border-white bg-white/85 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
                       <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
@@ -1541,6 +1589,7 @@ export function LibraryProductPage({
               )}
             </div>
           </Panel>
+          </div>
 
           {bundleLines.length > 1 && (
             <div id="library-bundle-offer" className="scroll-mt-24">
