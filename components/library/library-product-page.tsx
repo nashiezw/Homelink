@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   ExternalLink,
   Download,
   Expand,
@@ -22,6 +23,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Star,
+  Tag,
   Users,
   X,
   ZoomIn,
@@ -285,6 +287,7 @@ export function LibraryProductPage({
   const volumePricing = selectedFormat
     ? libraryVolumePricing(selectedFormat, selectedQty)
     : null;
+  const activePromotion = resolveLibraryPromotion(product, selectedFormat, volumePricing?.unitPrice ?? selectedFormat?.price ?? product.price);
   const selectedPrice = volumePricing?.lineTotal ?? selectedFormat?.price ?? product.price;
   const selectedFormatKey = selectedFormat?.id;
   const selectedFormatName = selectedFormat?.label || (isPrinted ? "Printed Book" : "Digital PDF");
@@ -1083,6 +1086,9 @@ export function LibraryProductPage({
                       </span>
                     ) : null}
                   </p>
+                ) : null}
+                {activePromotion ? (
+                  <LibraryPromotionOffer promotion={activePromotion} />
                 ) : null}
                 <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
                   {isPrinted ? printStockLabel : "Instant digital delivery after payment confirmation"}
@@ -2050,6 +2056,160 @@ export function LibraryProductPage({
 
     </main>
   );
+}
+
+type ActiveLibraryPromotion = {
+  title: string;
+  description: string;
+  badge: string;
+  currency: string;
+  sellPrice: number;
+  compareAtPrice?: number;
+  savingsAmount?: number;
+  savingsPercent?: number;
+  endsAt?: string;
+  countdown: boolean;
+  style: string;
+};
+
+function resolveLibraryPromotion(
+  product: LibraryProduct,
+  selectedFormat: LibraryProductFormat | null | undefined,
+  sellPrice: number,
+): ActiveLibraryPromotion | null {
+  if (!product.promotionEnabled) return null;
+  const now = Date.now();
+  const startsAt = product.promotionStartsAt ? new Date(product.promotionStartsAt).getTime() : null;
+  const endsAt = product.promotionEndsAt ? new Date(product.promotionEndsAt).getTime() : null;
+  if (startsAt && Number.isFinite(startsAt) && startsAt > now) return null;
+  if (endsAt && Number.isFinite(endsAt) && endsAt <= now) return null;
+
+  const compareAt = selectedFormat ? libraryFormatCompareAt(selectedFormat) : product.compareAtPrice;
+  const savingsAmount = compareAt != null && compareAt > sellPrice ? compareAt - sellPrice : undefined;
+  const savingsPercent = libraryDiscountPercent(sellPrice, compareAt);
+  return {
+    title: product.promotionTitle?.trim() || "Limited HouseLink offer",
+    description:
+      product.promotionDescription?.trim()
+      || "Get this resource at the current offer price before the promotion ends.",
+    badge:
+      product.promotionBadge?.trim()
+      || (savingsPercent ? `Save ${savingsPercent}%` : "Limited offer"),
+    currency: product.currency,
+    sellPrice,
+    compareAtPrice: compareAt,
+    savingsAmount,
+    savingsPercent: savingsPercent ?? undefined,
+    endsAt: product.promotionEndsAt,
+    countdown: product.promotionCountdown ?? true,
+    style: product.promotionStyle || "EMERALD_GOLD",
+  };
+}
+
+function LibraryPromotionOffer({ promotion }: { promotion: ActiveLibraryPromotion }) {
+  const style = promotionStyleClasses(promotion.style);
+  return (
+    <section className={cn("mt-4 overflow-hidden rounded-2xl border p-4 shadow-sm", style.wrapper)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]", style.badge)}>
+            <Tag className="size-3.5" /> {promotion.badge}
+          </span>
+          <h3 className={cn("mt-3 text-lg font-black leading-tight", style.title)}>{promotion.title}</h3>
+          <p className={cn("mt-1 text-sm leading-6", style.text)}>{promotion.description}</p>
+        </div>
+        <div className="shrink-0 rounded-xl border border-white/45 bg-white/70 px-3 py-2 text-left shadow-sm dark:border-white/10 dark:bg-slate-950/50 sm:text-right">
+          <p className="text-[0.65rem] font-black uppercase tracking-[0.14em] text-slate-500">Offer price</p>
+          <p className="mt-1 text-xl font-black text-ink dark:text-white">{promotion.currency} {promotion.sellPrice.toFixed(2)}</p>
+          {promotion.compareAtPrice != null && promotion.compareAtPrice > promotion.sellPrice ? (
+            <p className="text-xs font-semibold text-slate-500">
+              Was <span className="line-through">{promotion.currency} {promotion.compareAtPrice.toFixed(2)}</span>
+            </p>
+          ) : null}
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {promotion.savingsAmount != null && promotion.savingsAmount > 0 ? (
+          <p className={cn("text-sm font-bold", style.accent)}>
+            You save {promotion.currency} {promotion.savingsAmount.toFixed(2)}
+            {promotion.savingsPercent ? ` (${promotion.savingsPercent}%)` : ""}.
+          </p>
+        ) : (
+          <p className={cn("text-sm font-bold", style.accent)}>Promotion active now.</p>
+        )}
+        {promotion.countdown && promotion.endsAt ? (
+          <PromotionCountdown endsAt={promotion.endsAt} />
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function PromotionCountdown({ endsAt }: { endsAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const remaining = Math.max(0, new Date(endsAt).getTime() - now);
+  if (!Number.isFinite(remaining) || remaining <= 0) return null;
+  const totalSeconds = Math.floor(remaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const units = [
+    { label: "Days", value: days },
+    { label: "Hours", value: hours },
+    { label: "Mins", value: minutes },
+    { label: "Secs", value: seconds },
+  ];
+
+  return (
+    <div className="min-w-0">
+      <p className="mb-1 flex items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.14em] text-slate-500">
+        <Clock className="size-3.5" /> Ends in
+      </p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {units.map((unit) => (
+          <span key={unit.label} className="min-w-0 rounded-lg border border-slate-200 bg-white/80 px-2 py-1 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+            <span className="block text-sm font-black tabular-nums text-ink dark:text-white">{String(unit.value).padStart(2, "0")}</span>
+            <span className="block text-[0.58rem] font-bold uppercase tracking-wide text-slate-500">{unit.label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function promotionStyleClasses(style: string) {
+  if (style === "INK_EMERALD") {
+    return {
+      wrapper: "border-emerald-400/30 bg-slate-950 text-white dark:border-emerald-400/30",
+      badge: "bg-emerald-400/15 text-emerald-100",
+      title: "text-white",
+      text: "text-slate-300",
+      accent: "text-emerald-200",
+    };
+  }
+  if (style === "GOLD") {
+    return {
+      wrapper: "border-amber-200 bg-amber-50/80 dark:border-amber-900/60 dark:bg-amber-950/20",
+      badge: "bg-amber-200 text-amber-950 dark:bg-amber-400/20 dark:text-amber-100",
+      title: "text-ink dark:text-white",
+      text: "text-slate-700 dark:text-slate-300",
+      accent: "text-amber-800 dark:text-amber-200",
+    };
+  }
+  return {
+    wrapper: "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 dark:border-emerald-900/70 dark:from-emerald-950/30 dark:via-slate-950 dark:to-amber-950/20",
+    badge: "bg-emerald-700 text-white dark:bg-emerald-400/20 dark:text-emerald-100",
+    title: "text-ink dark:text-white",
+    text: "text-slate-700 dark:text-slate-300",
+    accent: "text-emerald-800 dark:text-emerald-200",
+  };
 }
 
 function isLibrarySampleFile(file: LibraryProduct["downloads"][number]) {

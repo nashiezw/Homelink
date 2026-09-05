@@ -95,6 +95,14 @@ export type LibraryProductInput = {
   price: number;
   compareAtPrice?: number;
   currency?: string;
+  promotionEnabled?: boolean;
+  promotionTitle?: string;
+  promotionDescription?: string;
+  promotionBadge?: string;
+  promotionStartsAt?: string | null;
+  promotionEndsAt?: string | null;
+  promotionCountdown?: boolean;
+  promotionStyle?: string;
   category?: string;
   collection?: string;
   series?: string;
@@ -4123,6 +4131,14 @@ async function productInputToPrisma(input: LibraryProductInput, actorId?: string
     ...(primary || input.price !== undefined ? { price: primary?.price ?? input.price } : {}),
     ...(primary?.compareAtPrice !== undefined || input.compareAtPrice !== undefined ? { compareAtPrice: (primary?.compareAtPrice ?? input.compareAtPrice) || null } : {}),
     ...(input.currency !== undefined || !partial ? { currency: input.currency || "USD" } : {}),
+    ...(input.promotionEnabled !== undefined ? { promotionEnabled: Boolean(input.promotionEnabled) } : {}),
+    ...(input.promotionTitle !== undefined ? { promotionTitle: input.promotionTitle || null } : {}),
+    ...(input.promotionDescription !== undefined ? { promotionDescription: input.promotionDescription || null } : {}),
+    ...(input.promotionBadge !== undefined ? { promotionBadge: input.promotionBadge || null } : {}),
+    ...(input.promotionStartsAt !== undefined ? { promotionStartsAt: input.promotionStartsAt ? new Date(input.promotionStartsAt) : null } : {}),
+    ...(input.promotionEndsAt !== undefined ? { promotionEndsAt: input.promotionEndsAt ? new Date(input.promotionEndsAt) : null } : {}),
+    ...(input.promotionCountdown !== undefined ? { promotionCountdown: Boolean(input.promotionCountdown) } : {}),
+    ...(input.promotionStyle !== undefined ? { promotionStyle: input.promotionStyle || "EMERALD_GOLD" } : {}),
     ...(category ? { category: { connect: { id: category.id } } } : {}),
     ...(collection ? { collection: { connect: { id: collection.id } } } : {}),
     ...(input.series !== undefined ? { series: input.series || null } : {}),
@@ -4227,6 +4243,14 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
     price: Number(row.price),
     compareAtPrice: row.compareAtPrice ? Number(row.compareAtPrice) : undefined,
     currency: row.currency,
+    promotionEnabled: row.promotionEnabled,
+    promotionTitle: row.promotionTitle ?? undefined,
+    promotionDescription: row.promotionDescription ?? undefined,
+    promotionBadge: row.promotionBadge ?? undefined,
+    promotionStartsAt: row.promotionStartsAt?.toISOString(),
+    promotionEndsAt: row.promotionEndsAt?.toISOString(),
+    promotionCountdown: row.promotionCountdown,
+    promotionStyle: row.promotionStyle,
     rating: Number(row.ratingAverage),
     reviewCount: row.ratingCount,
     category: row.category?.name ?? "Library",
@@ -4592,6 +4616,14 @@ function localProductFromInput(input: Partial<LibraryProductInput>, existing?: L
     price: Number(input.price ?? primary.price ?? existing?.price ?? 0),
     compareAtPrice: input.compareAtPrice ?? primary.compareAtPrice ?? existing?.compareAtPrice,
     currency: input.currency ?? existing?.currency ?? "USD",
+    promotionEnabled: input.promotionEnabled ?? existing?.promotionEnabled ?? false,
+    promotionTitle: input.promotionTitle ?? existing?.promotionTitle,
+    promotionDescription: input.promotionDescription ?? existing?.promotionDescription,
+    promotionBadge: input.promotionBadge ?? existing?.promotionBadge,
+    promotionStartsAt: input.promotionStartsAt === null ? undefined : input.promotionStartsAt ?? existing?.promotionStartsAt,
+    promotionEndsAt: input.promotionEndsAt === null ? undefined : input.promotionEndsAt ?? existing?.promotionEndsAt,
+    promotionCountdown: input.promotionCountdown ?? existing?.promotionCountdown ?? true,
+    promotionStyle: input.promotionStyle ?? existing?.promotionStyle ?? "EMERALD_GOLD",
     rating: existing?.rating ?? 0,
     reviewCount: existing?.reviewCount ?? 0,
     category: input.category ?? existing?.category ?? "Library",

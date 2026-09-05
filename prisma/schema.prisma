@@ -1776,6 +1776,14 @@ model LibraryProduct {
   price                  Decimal                    @db.Decimal(12, 2)
   compareAtPrice         Decimal?                   @db.Decimal(12, 2)
   currency               String                     @default("USD")
+  promotionEnabled       Boolean                    @default(false)
+  promotionTitle         String?
+  promotionDescription   String?
+  promotionBadge         String?
+  promotionStartsAt      DateTime?
+  promotionEndsAt        DateTime?
+  promotionCountdown     Boolean                    @default(true)
+  promotionStyle         String                     @default("EMERALD_GOLD")
   categoryId             String?
   collectionId           String?
   series                 String?

@@ -287,6 +287,14 @@ type LibraryProductDraft = {
   price: string;
   compareAtPrice: string;
   currency: string;
+  promotionEnabled: boolean;
+  promotionTitle: string;
+  promotionDescription: string;
+  promotionBadge: string;
+  promotionStartsAt: string;
+  promotionEndsAt: string;
+  promotionCountdown: boolean;
+  promotionStyle: string;
   category: string;
   collection: string;
   series: string;
@@ -468,6 +476,14 @@ export function LibraryAdminHub() {
     price: "29",
     compareAtPrice: "",
     currency: "USD",
+    promotionEnabled: false,
+    promotionTitle: "Limited offer",
+    promotionDescription: "",
+    promotionBadge: "Save today",
+    promotionStartsAt: "",
+    promotionEndsAt: "",
+    promotionCountdown: true,
+    promotionStyle: "EMERALD_GOLD",
     category: "Toolkits",
     collection: "HouseLink Library",
     series: "",
@@ -803,6 +819,14 @@ export function LibraryAdminHub() {
       price: String(product.price),
       compareAtPrice: product.compareAtPrice?.toString() ?? "",
       currency: product.currency,
+      promotionEnabled: Boolean(product.promotionEnabled),
+      promotionTitle: product.promotionTitle ?? "Limited offer",
+      promotionDescription: product.promotionDescription ?? "",
+      promotionBadge: product.promotionBadge ?? "Save today",
+      promotionStartsAt: product.promotionStartsAt ? product.promotionStartsAt.slice(0, 16) : "",
+      promotionEndsAt: product.promotionEndsAt ? product.promotionEndsAt.slice(0, 16) : "",
+      promotionCountdown: product.promotionCountdown ?? true,
+      promotionStyle: product.promotionStyle ?? "EMERALD_GOLD",
       category: product.category,
       collection: product.collection,
       series: product.series ?? "",
@@ -2205,6 +2229,34 @@ export function LibraryAdminHub() {
                     </div>
                   </EditorSection>
 
+                  <EditorSection title="Product promotion">
+                    <div className="grid gap-3">
+                      <ToggleField label="Show promotion on product page" checked={draft.promotionEnabled} onChange={(value) => setDraft({ ...draft, promotionEnabled: value })} />
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs leading-5 text-slate-400">
+                        Use format selling price and compare-at price above for the actual discount. These controls only manage the campaign message, countdown, and visual offer block.
+                      </div>
+                      <Field label="Offer title" value={draft.promotionTitle} onChange={(value) => setDraft({ ...draft, promotionTitle: value })} placeholder="Limited launch offer" />
+                      <Field label="Offer badge" value={draft.promotionBadge} onChange={(value) => setDraft({ ...draft, promotionBadge: value })} placeholder="Save today" />
+                      <TextAreaField label="Offer description" value={draft.promotionDescription} onChange={(value) => setDraft({ ...draft, promotionDescription: value })} placeholder="Short reason this offer exists, shown below the title." />
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Starts at" value={draft.promotionStartsAt} onChange={(value) => setDraft({ ...draft, promotionStartsAt: value })} type="datetime-local" />
+                        <Field label="Ends at" value={draft.promotionEndsAt} onChange={(value) => setDraft({ ...draft, promotionEndsAt: value })} type="datetime-local" />
+                      </div>
+                      <ToggleField label="Show countdown timer" checked={draft.promotionCountdown} onChange={(value) => setDraft({ ...draft, promotionCountdown: value })} />
+                      <SelectField
+                        label="Visual style"
+                        value={draft.promotionStyle}
+                        onChange={(value) => setDraft({ ...draft, promotionStyle: value })}
+                        options={["EMERALD_GOLD", "INK_EMERALD", "GOLD"]}
+                        optionLabels={{
+                          EMERALD_GOLD: "Emerald + gold (recommended)",
+                          INK_EMERALD: "Dark ink + emerald",
+                          GOLD: "Soft gold",
+                        }}
+                      />
+                    </div>
+                  </EditorSection>
+
                   <EditorSection title="Frequently bought together">
                     {(() => {
                       const currency = draft.currency.trim() || "USD";
@@ -2883,6 +2935,14 @@ function productPayload(draft: LibraryProductDraft, statusOverride?: string) {
     price: primary.price,
     compareAtPrice: primary.compareAtPrice,
     currency: draft.currency.trim() || "USD",
+    promotionEnabled: draft.promotionEnabled,
+    promotionTitle: draft.promotionTitle.trim() || undefined,
+    promotionDescription: draft.promotionDescription.trim() || undefined,
+    promotionBadge: draft.promotionBadge.trim() || undefined,
+    promotionStartsAt: draft.promotionStartsAt || null,
+    promotionEndsAt: draft.promotionEndsAt || null,
+    promotionCountdown: draft.promotionCountdown,
+    promotionStyle: draft.promotionStyle || "EMERALD_GOLD",
     category: draft.category.trim(),
     collection: draft.collection.trim(),
     series: draft.series.trim() || undefined,

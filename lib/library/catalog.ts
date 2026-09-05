@@ -58,6 +58,14 @@ export type LibraryProduct = {
   price: number;
   compareAtPrice?: number;
   currency: string;
+  promotionEnabled?: boolean;
+  promotionTitle?: string;
+  promotionDescription?: string;
+  promotionBadge?: string;
+  promotionStartsAt?: string;
+  promotionEndsAt?: string;
+  promotionCountdown?: boolean;
+  promotionStyle?: "EMERALD_GOLD" | "INK_EMERALD" | "GOLD" | string;
   rating: number;
   reviewCount: number;
   category: string;
