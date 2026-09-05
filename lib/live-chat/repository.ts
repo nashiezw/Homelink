@@ -73,6 +73,7 @@ const TYPING_TTL_MS = 8_000;
 const schemaReadyCache = { checkedAt: 0, ready: false };
 const defaultsReadyCache = { checkedAt: 0, ready: false };
 let analyticsCache: { checkedAt: number; value: LiveChatInboxView["analytics"] } | null = null;
+const agentPresenceTouchCache = new Map<string, number>();
 
 type AdminUser = { id: string; name: string; email: string; roles: string[] };
 type LiveChatRealtimeEvent =
@@ -537,6 +538,11 @@ export async function publishLiveChatAvailability(reason = "availability_refresh
 
 export async function touchLiveChatAgentPresence(user: AdminUser, reason = "agent_presence") {
   if (!isPostgresStoreEnabled() || !(await isLiveChatSchemaReady())) return null;
+  const now = Date.now();
+  const cacheKey = `${user.id}:${reason}`;
+  const lastTouchedAt = agentPresenceTouchCache.get(cacheKey) ?? 0;
+  if (now - lastTouchedAt < 45_000) return null;
+  agentPresenceTouchCache.set(cacheKey, now);
   await ensureLiveChatDefaults(user);
   const prisma = getMainPrisma();
   const agent = await ensureAgentProfile(user);

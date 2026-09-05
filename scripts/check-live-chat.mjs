@@ -288,8 +288,13 @@ const checks = [
   },
   {
     file: "app/api/v1/admin/live-chat/stream/route.ts",
-    label: "admin inbox has a realtime stream without aggressive database polling",
-    pattern: /subscribeLiveChatAdminRealtime[\s\S]*admin_stream_heartbeat[\s\S]*20_000/,
+    label: "admin inbox stream stays realtime without database polling",
+    pattern: /subscribeLiveChatAdminRealtime[\s\S]*send\("heartbeat"[\s\S]*20_000(?![\s\S]*(getLiveChatInbox|touchLiveChatAgentPresence))/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "agent presence touches are throttled to protect the database connection pool",
+    pattern: /agentPresenceTouchCache[\s\S]*now - lastTouchedAt < 45_000[\s\S]*agentPresenceTouchCache\.set/,
   },
   {
     file: "components/admin/live-chat-hub.tsx",
