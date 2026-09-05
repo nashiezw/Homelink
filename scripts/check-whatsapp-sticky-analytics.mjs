@@ -100,6 +100,7 @@ assert(/productTitle:[\s\S]*cleanProductTitle\(document\.title\)/.test(whatsappF
 assert(/<span[^>]*lg:hidden/.test(whatsappFab), "WhatsApp label hides on desktop (icon-only)");
 assert(/lg:size-12|lg:rounded-full/.test(whatsappFab), "WhatsApp compact icon circle on desktop");
 assert(/stickyWhatsAppQuietHours|quiet/.test(whatsappFab), "WhatsApp quiet hours note supported");
+assert(/<p className="hidden[^"]*lg:block/.test(whatsappFab), "WhatsApp quiet hours note is desktop-only");
 assert(/lg:hidden/.test(bagFab) && /data-houselink-sticky="library-bag"/.test(bagFab), "Library bag FAB is mobile-only");
 assert(/hidden lg:block/.test(headerBag) && /data-houselink-header-bag="library"/.test(headerBag), "Library bag header control is desktop-only");
 assert(/funnelDropoff/.test(analytics) && /proofSla/.test(analytics) && /whatsappSources/.test(analytics), "analytics report includes dropoff, SLA, WA sources");

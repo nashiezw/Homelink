@@ -59,7 +59,7 @@ export function WhatsAppStickyFab({ className }: { className?: string }) {
       )}
     >
       {quiet ? (
-        <p className="max-w-[10rem] rounded-lg bg-white/90 px-2 py-1 text-[10px] font-medium leading-snug text-slate-600 shadow-sm dark:bg-slate-950/90 dark:text-slate-300 lg:max-w-[8rem]">
+        <p className="hidden max-w-[8rem] rounded-lg bg-white/90 px-2 py-1 text-[10px] font-medium leading-snug text-slate-600 shadow-sm dark:bg-slate-950/90 dark:text-slate-300 lg:block">
           {quiet}
         </p>
       ) : null}
