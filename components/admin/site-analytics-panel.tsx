@@ -178,6 +178,8 @@ type AdvancedReport = {
   journeys: Array<{
     sessionId: string;
     visitorId: string;
+    identityKey?: string;
+    sessionCount?: number;
     userId: string | null;
     startedAt: string;
     endedAt?: string;
@@ -326,6 +328,20 @@ function whatsappHref(phone: string) {
   return `https://wa.me/${digits}`;
 }
 
+function journeyIdentityKey(journey: Pick<Journey, "identityKey" | "userId" | "contactEmail" | "contactPhone" | "visitorId">) {
+  if (journey.identityKey) return journey.identityKey;
+  if (journey.userId) return `user:${journey.userId}`;
+  const phone = String(journey.contactPhone || "").replace(/\D/g, "");
+  if (phone) return `phone:${phone}`;
+  const email = String(journey.contactEmail || "").trim().toLowerCase();
+  if (email) return `email:${email}`;
+  return `visitor:${journey.visitorId}`;
+}
+
+function uniqueJourneyCount(journeys: Journey[]) {
+  return new Set(journeys.map(journeyIdentityKey)).size;
+}
+
 type Tab =
   | "board"
   | "live"
@@ -428,8 +444,8 @@ export function SiteAnalyticsPanel() {
     () => ({
       highIntent: allJourneys.filter((row) => row.filters?.includes("high-intent")).length,
       checkout: allJourneys.filter((row) => row.filters?.includes("abandoned-checkout")).length,
-      known: allJourneys.filter((row) => row.filters?.includes("known-contact")).length,
-      phone: allJourneys.filter((row) => row.contactPhone).length,
+      known: uniqueJourneyCount(allJourneys.filter((row) => row.filters?.includes("known-contact"))),
+      phone: uniqueJourneyCount(allJourneys.filter((row) => row.contactPhone)),
     }),
     [allJourneys],
   );
@@ -945,8 +961,8 @@ export function SiteAnalyticsPanel() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Metric label="High-intent journeys" value={journeyStats.highIntent} accent="text-red-300" />
             <Metric label="Checkout follow-ups" value={journeyStats.checkout} accent="text-amber-300" />
-            <Metric label="Known contacts" value={journeyStats.known} />
-            <Metric label="Phone captured" value={journeyStats.phone} />
+            <Metric label="Unique known contacts" value={journeyStats.known} />
+            <Metric label="Unique phone contacts" value={journeyStats.phone} />
           </div>
 
           <Panel
@@ -1015,6 +1031,7 @@ export function SiteAnalyticsPanel() {
                       </span>
                     </div>
                     <p className="mt-2 text-[11px] text-slate-500">{journey.contactStatus || "Anonymous"}</p>
+                    {(journey.sessionCount ?? 1) > 1 ? <p className="mt-1 text-[11px] font-semibold text-emerald-300">Returning visitor · {journey.sessionCount} sessions merged</p> : null}
                   </button>
                 ))}
                 {!filteredJourneys.length ? (
@@ -1043,6 +1060,7 @@ export function SiteAnalyticsPanel() {
                       <JourneyFact icon={MapPin} label="Location" value={selectedJourneyRow.location || "Unavailable"} />
                       <JourneyFact icon={ExternalLink} label="Source" value={selectedJourneyRow.source || "Direct / unknown"} />
                       <JourneyFact icon={Eye} label="Current page" value={selectedJourneyRow.currentPageLabel || selectedJourneyRow.landingPage || "Unknown"} />
+                      <JourneyFact icon={Route} label="Sessions" value={`${selectedJourneyRow.sessionCount ?? 1}`} />
                     </div>
                   </div>
 

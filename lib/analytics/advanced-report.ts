@@ -193,6 +193,8 @@ function createJourneyRow(input: {
   return {
     sessionId: input.sessionId,
     visitorId: input.visitorId,
+    identityKey: "",
+    sessionCount: 1,
     userId: input.userId,
     startedAt,
     endedAt: startedAt,
@@ -444,6 +446,8 @@ function finalizeJourneyRow(journey: JourneyRow, user?: { name: string | null; e
   });
   return {
     ...journey,
+    identityKey: journeyIdentityKey({ ...journey, contactEmail, contactPhone, userId: journey.userId }),
+    sessionCount: Math.max(1, journey.sessionCount || 1),
     steps,
     purchased: placedOrder,
     whatsappAssisted: clickedWhatsapp,
@@ -583,6 +587,67 @@ function recentStepKey(step: { at: string; name: string; detail: string }) {
   return `${step.at}:${step.name}:${step.detail}`;
 }
 
+function journeyIdentityKey(journey: Pick<JourneyRow, "userId" | "contactEmail" | "contactPhone" | "visitorId">) {
+  if (journey.userId) return `user:${journey.userId}`;
+  const phone = journey.contactPhone.replace(/\D/g, "");
+  if (phone) return `phone:${phone}`;
+  const email = journey.contactEmail.trim().toLowerCase();
+  if (email) return `email:${email}`;
+  return `visitor:${journey.visitorId}`;
+}
+
+function mergeJourneyRowsByIdentity(journeys: JourneyRow[]) {
+  const grouped = new Map<string, JourneyRow>();
+  for (const journey of journeys) {
+    const key = journey.identityKey || journeyIdentityKey(journey);
+    const existing = grouped.get(key);
+    grouped.set(key, existing ? mergeJourneyRows(existing, { ...journey, identityKey: key }) : { ...journey, identityKey: key });
+  }
+  return [...grouped.values()];
+}
+
+function mergeJourneyRows(a: JourneyRow, b: JourneyRow): JourneyRow {
+  const latest = a.endedAt >= b.endedAt ? a : b;
+  const other = latest === a ? b : a;
+  const sessionCount = Math.max(1, (a.sessionCount || 1) + (b.sessionCount || 1));
+  const steps = [...a.steps, ...b.steps]
+    .sort((left, right) => left.at.localeCompare(right.at))
+    .filter((step, index, rows) => index === 0 || recentStepKey(step) !== recentStepKey(rows[index - 1]))
+    .slice(-25);
+  const rawFilters = [...a.filters, ...b.filters];
+  const filters = [...new Set(rawFilters)].filter((filter) => filter !== "anonymous" || !rawFilters.includes("known-contact"));
+  const intentScore = Math.max(a.intentScore, b.intentScore);
+  const best = b.intentScore > a.intentScore ? b : a;
+  const identityLabel = latest.identityLabel !== "Guest visitor" ? latest.identityLabel : other.identityLabel;
+  const startedAt = a.startedAt <= b.startedAt ? a.startedAt : b.startedAt;
+  const endedAt = a.endedAt >= b.endedAt ? a.endedAt : b.endedAt;
+  const summaryPrefix = sessionCount > 1 ? `${identityLabel || "Returning visitor"} returned across ${sessionCount} sessions. ` : "";
+
+  return {
+    ...latest,
+    identityKey: latest.identityKey || other.identityKey,
+    sessionCount,
+    startedAt,
+    endedAt,
+    durationMinutes: Math.max(0, Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000)),
+    steps,
+    whatsappAssisted: a.whatsappAssisted || b.whatsappAssisted,
+    purchased: a.purchased || b.purchased,
+    userId: latest.userId || other.userId,
+    identityLabel,
+    contactEmail: latest.contactEmail || other.contactEmail,
+    contactPhone: latest.contactPhone || other.contactPhone,
+    contactStatus: latest.contactPhone || other.contactPhone ? "Phone captured" : latest.contactEmail || other.contactEmail ? "Email captured, phone missing" : latest.contactStatus || other.contactStatus,
+    intentScore,
+    leadStatus: best.leadStatus,
+    nextAction: best.nextAction,
+    followUp: best.followUp,
+    summary: `${summaryPrefix}${best.summary}`.trim(),
+    filters,
+    debug: { ...latest.debug, userId: latest.userId || other.userId },
+  };
+}
+
 const publicPageWhere = {
   NOT: [
     { path: { startsWith: "/dashboard/admin" } },
@@ -628,6 +693,8 @@ type JourneyFollowUp = { message: string; emailSubject: string; emailBody: strin
 type JourneyRow = {
   sessionId: string;
   visitorId: string;
+  identityKey: string;
+  sessionCount: number;
   userId: string | null;
   startedAt: string;
   endedAt: string;
@@ -1274,8 +1341,8 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
         .map((row) => `High removes: “${row.title}” removed ${row.removes}× vs ${row.adds} adds.`),
     ];
 
-    const journeys = [...sessionMap.values()]
-      .map((journey) => finalizeJourneyRow(journey, journey.userId ? analyticsUserById.get(journey.userId) : null))
+    const journeys = mergeJourneyRowsByIdentity([...sessionMap.values()]
+      .map((journey) => finalizeJourneyRow(journey, journey.userId ? analyticsUserById.get(journey.userId) : null)))
       .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
       .slice(0, 40);
 
