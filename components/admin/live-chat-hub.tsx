@@ -285,18 +285,25 @@ export function LiveChatHub() {
   async function action(body: Record<string, unknown>, success = "Action completed.") {
     setBusy(String(body.action ?? "action"));
     setError(null);
-    const result = await apiFetch("/api/v1/admin/live-chat", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-    if (result.error) {
-      setError(result.error.message);
-    } else {
-      setNotice(success);
-      window.setTimeout(() => setNotice(null), 2500);
-      setBusy(null);
-      void load({ silent: true });
-      return result.data;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), liveChatActionTimeoutMs(String(body.action ?? "")));
+    try {
+      const result = await apiFetch("/api/v1/admin/live-chat", {
+        method: "POST",
+        signal: controller.signal,
+        body: JSON.stringify(body),
+      });
+      if (result.error) {
+        setError(result.error.message);
+      } else {
+        setNotice(success);
+        window.setTimeout(() => setNotice(null), 2500);
+        setBusy(null);
+        void load({ silent: true });
+        return result.data;
+      }
+    } finally {
+      window.clearTimeout(timeout);
     }
     setBusy(null);
     return null;
@@ -326,13 +333,18 @@ export function LiveChatHub() {
     setStartingVisitorId(visitorId);
     setError(null);
     const visitor = data?.activeVisitors.find((item) => item.id === visitorId) ?? data?.conversations.find((conversation) => conversation.visitor.id === visitorId)?.visitor;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8_000);
     try {
+      const text = message || proactiveMessageForVisitor(visitor);
       const result = await apiFetch<{ conversationId: string }>("/api/v1/admin/live-chat", {
         method: "POST",
+        signal: controller.signal,
         body: JSON.stringify({
           action: "start_conversation",
           visitorId,
-          body: message || proactiveMessageForVisitor(visitor),
+          body: text,
+          idempotencyKey: proactiveSendKey(visitorId, text),
         }),
       });
       if (result.error) {
@@ -352,6 +364,7 @@ export function LiveChatHub() {
         }
       }
     } finally {
+      window.clearTimeout(timeout);
       setStartingVisitorId(null);
     }
   }
@@ -1772,6 +1785,18 @@ function proactiveMessageForVisitor(visitor?: Pick<LiveChatConversationView["vis
     return `${intro}\n\nI noticed you are viewing ${title}. Do you want availability, viewing details, or price help?`;
   }
   return `${intro}\n\nI noticed you are on ${title}. What would you like help with here?`;
+}
+
+function proactiveSendKey(visitorId: string, message: string) {
+  let hash = 0;
+  for (let index = 0; index < message.length; index += 1) {
+    hash = Math.imul(31, hash) + message.charCodeAt(index) | 0;
+  }
+  return `proactive:${visitorId}:${Math.abs(hash).toString(36)}`.slice(0, 120);
+}
+
+function liveChatActionTimeoutMs(action: string) {
+  return ["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"].includes(action) ? 8_000 : 20_000;
 }
 
 function statusTone(status: string) {

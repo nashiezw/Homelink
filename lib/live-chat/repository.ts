@@ -645,7 +645,7 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
   if (!isPostgresStoreEnabled()) return { ok: true };
   if (!(await isLiveChatSchemaReady())) throw new LiveChatError("LIVE_CHAT_SETUP_REQUIRED", liveChatSetupMessage(), 503);
   const action = String(body.action ?? "");
-  const lightweightAction = ["send_message", "internal_note", "typing", "mark_staff_read"].includes(action);
+  const lightweightAction = ["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"].includes(action);
   if (!lightweightAction) await ensureLiveChatDefaults(user);
   const prisma = getMainPrisma();
   const agent = await ensureAgentProfile(user);
@@ -700,8 +700,11 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
     const visitor = await prisma.liveChatVisitor.findUnique({ where: { publicId: String(body.visitorId ?? "") } });
     if (!visitor) throw new LiveChatError("VISITOR_NOT_FOUND", "Visitor not found.", 404);
     let conversation = await prisma.liveChatConversation.findFirst({ where: openConversationWhereForVisitor(visitor), orderBy: { updatedAt: "desc" } });
+    const text = sanitizeMessage(String(body.body || proactiveMessageForVisitor(visitor, agent.displayName)));
     if (!conversation) {
-      const routedDepartment = await findDepartmentByRoute(String(body.body || ""), { path: visitor.currentPath ?? undefined, title: visitor.currentTitle ?? undefined });
+      const routedDepartment = body.departmentId || agent.departmentId
+        ? null
+        : await findDepartmentByRoute(text, { path: visitor.currentPath ?? undefined, title: visitor.currentTitle ?? undefined });
       conversation = await prisma.liveChatConversation.create({
         data: {
           publicId: makePublicId("chat"),
@@ -718,17 +721,10 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         },
       });
     }
-    const text = sanitizeMessage(String(body.body || proactiveMessageForVisitor(visitor, agent.displayName)));
-    const recentStaffMessage = await prisma.liveChatMessage.findFirst({
-      where: {
-        conversationId: conversation.id,
-        senderKind: "STAFF",
-        internal: false,
-        body: text,
-        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60_000) },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const idempotencyKey = cleanText(body.idempotencyKey, 120) || proactiveMessageIdempotencyKey(visitor.publicId, text);
+    const recentStaffMessage = idempotencyKey
+      ? await prisma.liveChatMessage.findFirst({ where: { conversationId: conversation.id, idempotencyKey } })
+      : await findRecentMatchingStaffMessage(conversation.id, text);
     if (recentStaffMessage) {
       return { conversationId: conversation.publicId, message: shapeMessage(recentStaffMessage), duplicateSuppressed: true };
     }
@@ -741,8 +737,15 @@ export async function liveChatAdminAction(user: AdminUser, body: Record<string, 
         senderName: agent.displayName,
         body: text,
         messageType: "TEXT",
+        idempotencyKey,
         deliveredAt: new Date(),
       },
+    }).catch(async (error: unknown) => {
+      if (isUniqueError(error) && idempotencyKey) {
+        const existing = await prisma.liveChatMessage.findFirst({ where: { conversationId: conversation!.id, idempotencyKey } });
+        if (existing) return existing;
+      }
+      throw error;
     });
     await prisma.liveChatConversation.update({
       where: { id: conversation.id },
@@ -1500,6 +1503,24 @@ function inferDepartmentSlug(body: string, context?: LiveChatVisitorContext) {
   if (/\/listings|property-for-sale|buy|sale|viewing|price|investment/.test(text)) return "property-sales";
   if (/error|bug|not working|failed|technical|support/.test(text)) return "technical-support";
   return null;
+}
+
+function proactiveMessageIdempotencyKey(visitorId: string, body: string) {
+  return `proactive:${visitorId}:${createHash("sha256").update(body).digest("hex").slice(0, 24)}`;
+}
+
+async function findRecentMatchingStaffMessage(conversationId: string, body: string) {
+  const recent = await getMainPrisma().liveChatMessage.findMany({
+    where: {
+      conversationId,
+      senderKind: "STAFF",
+      internal: false,
+      createdAt: { gte: new Date(Date.now() - 24 * 60 * 60_000) },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+  });
+  return recent.find((message) => message.body === body) ?? null;
 }
 
 function scoreConversation(conversation: Prisma.LiveChatConversationGetPayload<{ include: ReturnType<typeof conversationInclude> }>) {

@@ -383,13 +383,18 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
-    label: "admin proactive sends keep the clicked button loading without aborting slow sends",
-    pattern: /async function startConversation[\s\S]*setStartingVisitorId\(visitorId\)[\s\S]*apiFetch<\{ conversationId: string \}>\("\/api\/v1\/admin\/live-chat"[\s\S]*setStartingVisitorId\(null\)(?![\s\S]*PROACTIVE_SEND_TIMEOUT_MS)/,
+    label: "admin proactive sends have an 8s timeout and clicked-button loading",
+    pattern: /async function startConversation[\s\S]*setStartingVisitorId\(visitorId\)[\s\S]*new AbortController\(\)[\s\S]*8_000[\s\S]*signal: controller\.signal[\s\S]*setStartingVisitorId\(null\)/,
   },
   {
     file: "lib/live-chat/repository.ts",
     label: "admin staff sends return before non-critical audit work",
     pattern: /publishLiveChatRealtime\([\s\S]*void recordParticipantActivity[\s\S]*void auditEvent/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin live chat actions time out message sends quickly",
+    pattern: /liveChatActionTimeoutMs[\s\S]*\["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"\][\s\S]*8_000/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
@@ -459,7 +464,12 @@ const checks = [
   {
     file: "lib/live-chat/repository.ts",
     label: "admin proactive starts suppress duplicate first messages",
-    pattern: /recentStaffMessage[\s\S]*createdAt:\s*\{\s*gte:\s*new Date\(Date\.now\(\) - 24 \* 60 \* 60_000\)[\s\S]*duplicateSuppressed/,
+    pattern: /idempotencyKey[\s\S]*findRecentMatchingStaffMessage[\s\S]*duplicateSuppressed/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "admin proactive starts avoid heavy setup before sending",
+    pattern: /lightweightAction = \["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"\]/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
