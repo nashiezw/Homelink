@@ -855,7 +855,7 @@ export function LibraryProductPage({
   }
 
   return (
-    <main className={cn("bg-mist text-ink dark:bg-slate-950 dark:text-white", selectedFormat && !outOfStock && "pb-32 lg:pb-0")}>
+    <main className={cn("bg-mist text-ink dark:bg-slate-950 dark:text-white", selectedFormat && !outOfStock && "pb-44 lg:pb-0")}>
       <LibraryExitIntentCapture
         productId={product.id}
         productTitle={product.title}
@@ -908,15 +908,15 @@ export function LibraryProductPage({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid gap-6 p-6 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
-            <div className="relative mx-auto w-full max-w-md xl:mx-0 xl:max-w-none">
-              <div className="relative rounded-[1.35rem] bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-3 sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:absolute xl:inset-0">
+      <section className="mx-auto max-w-[88rem] px-3 py-4 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
+        <article className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
+          <div className="grid gap-4 p-4 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
+            <div className="relative mx-auto w-full max-w-sm sm:max-w-md xl:mx-0 xl:max-w-none">
+              <div className="relative rounded-2xl bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-2 sm:rounded-[1.35rem] sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:absolute xl:inset-0">
                 <button
                   type="button"
                   onClick={() => openLightbox()}
-                  className="relative mx-auto block aspect-[3/4] w-full max-w-[18.5rem] text-left xl:h-full xl:w-full xl:max-w-none xl:aspect-auto"
+                  className="relative mx-auto block aspect-[4/3] w-full max-w-[24rem] text-left xl:h-full xl:w-full xl:max-w-none xl:aspect-auto"
                   aria-label="Open product cover"
                 >
                   {activeGalleryImage?.url ? (
@@ -962,21 +962,21 @@ export function LibraryProductPage({
                 </div>
               </div>
               {galleryImages.length > 0 ? (
-                <div className="-mx-1 mt-3 flex gap-2.5 overflow-x-auto px-1 pb-1" aria-label="Product image thumbnails">
+                <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1 sm:gap-2.5" aria-label="Product image thumbnails">
                   {galleryImages.slice(0, 8).map((item, index) => (
                     <button
                       key={`${item.url}-${index}`}
                       type="button"
                       onClick={() => setGalleryIndex(index)}
                       className={cn(
-                        "relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-white shadow-sm transition sm:h-[4.5rem] sm:w-[4.5rem] dark:bg-slate-950",
+                        "relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border bg-white shadow-sm transition min-[390px]:h-14 min-[390px]:w-14 sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-xl dark:bg-slate-950",
                         galleryIndex === index
                           ? "border-emerald-600 ring-2 ring-emerald-600/20"
                           : "border-slate-200 hover:border-emerald-500/60 dark:border-slate-800",
                       )}
                       aria-label={`Show ${item.label || "gallery image"}`}
                     >
-                      <Image src={displayImageUrl(item.url, { width: 160, height: 160, crop: "fill" }) || item.url} alt={item.label || product.title} fill sizes="72px" className="object-cover" />
+                      <Image src={displayImageUrl(item.url, { width: 160, height: 160, crop: "fill" }) || item.url} alt={item.label || product.title} fill sizes="(max-width: 390px) 48px, 72px" className="object-cover" />
                     </button>
                   ))}
                 </div>
@@ -994,11 +994,11 @@ export function LibraryProductPage({
               )}
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 pt-1 sm:pt-0">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
                 {product.collection}
               </p>
-              <h1 className="mt-4 max-w-[40rem] text-balance text-[1.85rem] font-black leading-[1.12] tracking-normal text-ink sm:text-[2.35rem] sm:leading-[1.08] dark:text-white">
+              <h1 className="mt-3 max-w-[40rem] text-balance text-[1.65rem] font-black leading-[1.1] tracking-normal text-ink min-[390px]:text-[1.8rem] sm:mt-4 sm:text-[2.35rem] sm:leading-[1.08] dark:text-white">
                 {heroHeadline}
               </h1>
               {heroHeadline !== product.title ? (
