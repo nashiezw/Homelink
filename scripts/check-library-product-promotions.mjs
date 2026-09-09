@@ -23,8 +23,8 @@ const files = [
   ["Promotion migration", migration, schemaMarkers],
   ["Library catalog type", catalog, schemaMarkers],
   ["Library repository", repository, [...schemaMarkers, "productInputToPrisma", "toLibraryProduct"]],
-  ["Admin product form", admin, ["Product promotion", "Show promotion on product page", "Offer title", "Offer badge", "Starts at", "Ends at", "Visual style"]],
-  ["Public product page", productPage, ["resolveLibraryPromotion", "LibraryPromotionOffer", "PromotionCountdown", "Ends in", "Offer price"]],
+  ["Admin product form", admin, ["Product promotion", "Show promotion on product page", "Offer title", "Offer badge", "Starts at", "Ends at", "Show countdown timer", "Visual style", "Add an end time when the countdown should be visible"]],
+  ["Public product page", productPage, ["resolveLibraryPromotion", "LibraryPromotionOffer", "PromotionCountdown", "Offer ends in", "Offer price", "Claim offer"]],
 ];
 
 for (const [label, source, markers] of files) {

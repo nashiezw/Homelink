@@ -477,9 +477,9 @@ export function LibraryAdminHub() {
     compareAtPrice: "",
     currency: "USD",
     promotionEnabled: false,
-    promotionTitle: "Limited offer",
+    promotionTitle: "Today's HouseLink Library offer",
     promotionDescription: "",
-    promotionBadge: "Save today",
+    promotionBadge: "Buy now and save",
     promotionStartsAt: "",
     promotionEndsAt: "",
     promotionCountdown: true,
@@ -820,9 +820,9 @@ export function LibraryAdminHub() {
       compareAtPrice: product.compareAtPrice?.toString() ?? "",
       currency: product.currency,
       promotionEnabled: Boolean(product.promotionEnabled),
-      promotionTitle: product.promotionTitle ?? "Limited offer",
+      promotionTitle: product.promotionTitle ?? "Today's HouseLink Library offer",
       promotionDescription: product.promotionDescription ?? "",
-      promotionBadge: product.promotionBadge ?? "Save today",
+      promotionBadge: product.promotionBadge ?? "Buy now and save",
       promotionStartsAt: product.promotionStartsAt ? product.promotionStartsAt.slice(0, 16) : "",
       promotionEndsAt: product.promotionEndsAt ? product.promotionEndsAt.slice(0, 16) : "",
       promotionCountdown: product.promotionCountdown ?? true,
@@ -2233,11 +2233,11 @@ export function LibraryAdminHub() {
                     <div className="grid gap-3">
                       <ToggleField label="Show promotion on product page" checked={draft.promotionEnabled} onChange={(value) => setDraft({ ...draft, promotionEnabled: value })} />
                       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs leading-5 text-slate-400">
-                        Use format selling price and compare-at price above for the actual discount. These controls only manage the campaign message, countdown, and visual offer block.
+                        Use format selling price and compare-at price above for the actual discount. Add an end time when the countdown should be visible; leave dates empty for an evergreen offer.
                       </div>
-                      <Field label="Offer title" value={draft.promotionTitle} onChange={(value) => setDraft({ ...draft, promotionTitle: value })} placeholder="Limited launch offer" />
-                      <Field label="Offer badge" value={draft.promotionBadge} onChange={(value) => setDraft({ ...draft, promotionBadge: value })} placeholder="Save today" />
-                      <TextAreaField label="Offer description" value={draft.promotionDescription} onChange={(value) => setDraft({ ...draft, promotionDescription: value })} placeholder="Short reason this offer exists, shown below the title." />
+                      <Field label="Offer title" value={draft.promotionTitle} onChange={(value) => setDraft({ ...draft, promotionTitle: value })} placeholder="Today's HouseLink Library offer" />
+                      <Field label="Offer badge" value={draft.promotionBadge} onChange={(value) => setDraft({ ...draft, promotionBadge: value })} placeholder="Buy now and save" />
+                      <TextAreaField label="Offer description" value={draft.promotionDescription} onChange={(value) => setDraft({ ...draft, promotionDescription: value })} placeholder="Save on the digital guide during this offer window and get instant access after payment confirmation." />
                       <div className="grid gap-3 sm:grid-cols-2">
                         <Field label="Starts at" value={draft.promotionStartsAt} onChange={(value) => setDraft({ ...draft, promotionStartsAt: value })} type="datetime-local" />
                         <Field label="Ends at" value={draft.promotionEndsAt} onChange={(value) => setDraft({ ...draft, promotionEndsAt: value })} type="datetime-local" />

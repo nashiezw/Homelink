@@ -297,6 +297,9 @@ export function LibraryProductPage({
     : isPrinted
       ? `Buy Printed Book - ${product.currency} ${selectedPrice.toFixed(2)}`
       : `Buy Digital PDF - ${product.currency} ${selectedPrice.toFixed(2)}`;
+  const activeBuyLabel = activePromotion
+    ? `Claim offer - ${product.currency} ${selectedPrice.toFixed(2)}`
+    : primaryCtaLabel;
   const printStockLabel =
     product.stock == null
       ? "Printed stock available"
@@ -1272,7 +1275,7 @@ export function LibraryProductPage({
                 </div>
                 <div className="mt-5 grid min-w-0 gap-2.5">
                   <Button disabled={outOfStock} onClick={buyNow} className="min-h-12 w-full">
-                    <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{primaryCtaLabel}</span>
+                    <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{activeBuyLabel}</span>
                   </Button>
                   <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="min-h-12 w-full">
                     <ShoppingBag className="size-4 shrink-0" /> <span className="min-w-0 break-words">{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
@@ -1805,7 +1808,7 @@ export function LibraryProductPage({
             )}
             <div className="mt-5 grid min-w-0 gap-2">
               <Button disabled={outOfStock} onClick={buyNow} className="w-full">
-                <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{primaryCtaLabel}</span>
+                <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{activeBuyLabel}</span>
               </Button>
               <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="w-full">
                 <ShoppingBag className="size-4 shrink-0" /> <span className="min-w-0 break-words">{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
@@ -1964,7 +1967,7 @@ export function LibraryProductPage({
           <div className="mx-auto grid max-w-lg grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-ink dark:text-white">
-                {primaryCtaLabel}
+                {activeBuyLabel}
               </p>
               <p className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
                 {isPrinted ? printStockLabel : "Digital access after payment confirmation"}
@@ -2022,7 +2025,7 @@ export function LibraryProductPage({
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
                   <Button onClick={() => { setPreviewOpen(false); buyNow(); }}>
-                    <ShoppingCart className="size-4" /> {primaryCtaLabel}
+                    <ShoppingCart className="size-4" /> {activeBuyLabel}
                   </Button>
                   <Button variant="secondary" onClick={() => openSampleInNewTab("modal")}>
                     <ExternalLink className="size-4" /> Open in new tab
@@ -2051,7 +2054,7 @@ export function LibraryProductPage({
                     </div>
                     <div className="mt-6">
                       <Button onClick={() => { setPreviewOpen(false); buyNow(); }}>
-                        <ShoppingCart className="size-4" /> {primaryCtaLabel}
+                        <ShoppingCart className="size-4" /> {activeBuyLabel}
                       </Button>
                       <Button variant="secondary" onClick={() => { setPreviewOpen(false); openLightbox({ zoomed: true }); }} className="mt-2">
                         <ZoomIn className="size-4" /> View cover gallery
@@ -2120,33 +2123,33 @@ function resolveLibraryPromotion(
 function LibraryPromotionOffer({ promotion }: { promotion: ActiveLibraryPromotion }) {
   const style = promotionStyleClasses(promotion.style);
   return (
-    <section className={cn("mt-4 overflow-hidden rounded-2xl border p-4 shadow-sm", style.wrapper)}>
+    <section className={cn("mt-4 max-w-full overflow-hidden rounded-2xl border p-4 shadow-sm", style.wrapper)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]", style.badge)}>
             <Tag className="size-3.5" /> {promotion.badge}
           </span>
-          <h3 className={cn("mt-3 text-lg font-black leading-tight", style.title)}>{promotion.title}</h3>
-          <p className={cn("mt-1 text-sm leading-6", style.text)}>{promotion.description}</p>
+          <h3 className={cn("mt-3 text-xl font-black leading-snug", style.title)}>{promotion.title}</h3>
+          <p className={cn("mt-1 max-w-prose text-sm leading-6", style.text)}>{promotion.description}</p>
         </div>
-        <div className="shrink-0 rounded-xl border border-white/45 bg-white/70 px-3 py-2 text-left shadow-sm dark:border-white/10 dark:bg-slate-950/50 sm:text-right">
+        <div className="shrink-0 rounded-xl border border-white/65 bg-white px-3 py-2 text-left shadow-sm dark:border-white/10 dark:bg-slate-950/70 sm:text-right">
           <p className="text-[0.65rem] font-black uppercase tracking-[0.14em] text-slate-500">Offer price</p>
-          <p className="mt-1 text-xl font-black text-ink dark:text-white">{promotion.currency} {promotion.sellPrice.toFixed(2)}</p>
+          <p className="mt-1 text-2xl font-black leading-none text-ink dark:text-white">{promotion.currency} {promotion.sellPrice.toFixed(2)}</p>
           {promotion.compareAtPrice != null && promotion.compareAtPrice > promotion.sellPrice ? (
-            <p className="text-xs font-semibold text-slate-500">
+            <p className="mt-1 text-xs font-semibold text-slate-500">
               Was <span className="line-through">{promotion.currency} {promotion.compareAtPrice.toFixed(2)}</span>
             </p>
           ) : null}
         </div>
       </div>
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         {promotion.savingsAmount != null && promotion.savingsAmount > 0 ? (
-          <p className={cn("text-sm font-bold", style.accent)}>
+          <div className={cn("rounded-xl border px-3 py-2 text-sm font-black", style.savings)}>
             You save {promotion.currency} {promotion.savingsAmount.toFixed(2)}
-            {promotion.savingsPercent ? ` (${promotion.savingsPercent}%)` : ""}.
-          </p>
+            {promotion.savingsPercent ? ` (${promotion.savingsPercent}% off)` : ""} when you buy during this offer.
+          </div>
         ) : (
-          <p className={cn("text-sm font-bold", style.accent)}>Promotion active now.</p>
+          <div className={cn("rounded-xl border px-3 py-2 text-sm font-black", style.savings)}>Promotion active now.</div>
         )}
         {promotion.countdown && promotion.endsAt ? (
           <PromotionCountdown endsAt={promotion.endsAt} />
@@ -2179,13 +2182,13 @@ function PromotionCountdown({ endsAt }: { endsAt: string }) {
   ];
 
   return (
-    <div className="min-w-0">
-      <p className="mb-1 flex items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.14em] text-slate-500">
-        <Clock className="size-3.5" /> Ends in
+    <div className="min-w-0 rounded-xl border border-amber-200 bg-white/90 p-2.5 shadow-sm dark:border-amber-900/60 dark:bg-slate-950/70">
+      <p className="mb-1.5 flex items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.14em] text-amber-800 dark:text-amber-200">
+        <Clock className="size-3.5" /> Offer ends in
       </p>
       <div className="grid grid-cols-4 gap-1.5">
         {units.map((unit) => (
-          <span key={unit.label} className="min-w-0 rounded-lg border border-slate-200 bg-white/80 px-2 py-1 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+          <span key={unit.label} className="min-w-0 rounded-lg border border-amber-100 bg-amber-50 px-2 py-1 text-center shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
             <span className="block text-sm font-black tabular-nums text-ink dark:text-white">{String(unit.value).padStart(2, "0")}</span>
             <span className="block text-[0.58rem] font-bold uppercase tracking-wide text-slate-500">{unit.label}</span>
           </span>
@@ -2203,6 +2206,7 @@ function promotionStyleClasses(style: string) {
       title: "text-white",
       text: "text-slate-300",
       accent: "text-emerald-200",
+      savings: "border-emerald-400/20 bg-emerald-400/10 text-emerald-100",
     };
   }
   if (style === "GOLD") {
@@ -2212,14 +2216,16 @@ function promotionStyleClasses(style: string) {
       title: "text-ink dark:text-white",
       text: "text-slate-700 dark:text-slate-300",
       accent: "text-amber-800 dark:text-amber-200",
+      savings: "border-amber-200 bg-white text-amber-900 dark:border-amber-900/60 dark:bg-slate-950/70 dark:text-amber-100",
     };
   }
   return {
-    wrapper: "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 dark:border-emerald-900/70 dark:from-emerald-950/30 dark:via-slate-950 dark:to-amber-950/20",
+    wrapper: "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/70 dark:bg-emerald-950/20",
     badge: "bg-emerald-700 text-white dark:bg-emerald-400/20 dark:text-emerald-100",
     title: "text-ink dark:text-white",
     text: "text-slate-700 dark:text-slate-300",
     accent: "text-emerald-800 dark:text-emerald-200",
+    savings: "border-emerald-200 bg-white text-emerald-900 dark:border-emerald-900/60 dark:bg-slate-950/70 dark:text-emerald-100",
   };
 }
 
