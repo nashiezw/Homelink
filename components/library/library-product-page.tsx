@@ -910,13 +910,13 @@ export function LibraryProductPage({
 
       <section className="mx-auto w-full max-w-[88rem] overflow-hidden px-2.5 py-4 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
         <article className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
-          <div className="grid min-w-0 gap-4 p-3.5 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
-            <div className="relative mx-auto w-full max-w-sm sm:max-w-md xl:mx-0 xl:max-w-none">
-              <div className="relative rounded-2xl bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-2 sm:rounded-[1.35rem] sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] lg:h-[34rem] xl:h-[38rem]">
+          <div className="grid min-w-0 items-stretch gap-4 p-3.5 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
+            <div className="relative mx-auto flex w-full max-w-sm flex-col sm:max-w-md xl:row-span-2 xl:mx-0 xl:h-full xl:max-w-none">
+              <div className="relative rounded-2xl bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-2 sm:rounded-[1.35rem] sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:min-h-[34rem] xl:flex-1">
                 <button
                   type="button"
                   onClick={() => openLightbox()}
-                  className="relative mx-auto block aspect-[4/3] w-full max-w-[24rem] text-left sm:max-w-[32rem] lg:h-full lg:max-w-none lg:aspect-auto"
+                  className="relative mx-auto block aspect-[4/3] w-full max-w-[24rem] text-left sm:max-w-[32rem] xl:h-full xl:max-w-none xl:aspect-auto"
                   aria-label="Open product cover"
                 >
                   {activeGalleryImage?.url ? (
@@ -926,7 +926,7 @@ export function LibraryProductPage({
                         alt={product.title}
                         fill
                         priority
-                        sizes="(max-width: 768px) 70vw, 420px"
+                        sizes="(max-width: 768px) 70vw, (max-width: 1280px) 32rem, 48vw"
                         className="object-contain"
                       />
                     </span>
@@ -935,7 +935,7 @@ export function LibraryProductPage({
                       product={product}
                       interactive={false}
                       className="h-full w-full rounded-xl shadow-[0_22px_48px_rgba(15,23,42,0.16)]"
-                      sizes="(max-width: 768px) 70vw, 420px"
+                      sizes="(max-width: 768px) 70vw, (max-width: 1280px) 32rem, 48vw"
                       priority
                     />
                   )}
