@@ -50,6 +50,16 @@ assert(
 );
 
 assert(
+  /inline-flex w-fit max-w-full justify-self-start whitespace-nowrap rounded-full bg-emerald-100[\s\S]*Save \{discount\}%/.test(page),
+  "purchase save badge stays as a compact mobile pill",
+);
+
+assert(
+  /<div className="mt-4 grid min-w-0 gap-2 rounded-2xl border border-emerald-100[\s\S]*Questions\? WhatsApp us[\s\S]*Team access\? Request a quote/.test(page),
+  "purchase help actions use a compact aligned mobile contact block",
+);
+
+assert(
   !/<section className="mx-auto[^"]*px-2\.5/.test(page),
   "product page no longer uses the narrow mobile gutter that exposed right-edge clipping",
 );

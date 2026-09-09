@@ -1112,7 +1112,7 @@ export function LibraryProductPage({
                         </p>
                       )}
                       {discount != null && discount > 0 && (
-                        <span className="max-w-full whitespace-normal break-words rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                        <span className="inline-flex w-fit max-w-full justify-self-start whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                           Save {discount}%
                         </span>
                       )}
@@ -1278,29 +1278,25 @@ export function LibraryProductPage({
                     <ShoppingBag className="size-4 shrink-0" /> <span className="min-w-0 break-words">{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
                   </Button>
                 </div>
-                <WhatsAppHelpLink
-                  context={{ source: "library_product", lane: "library", productTitle: product.title }}
-                  className="mt-3 block max-w-full break-words text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
-                >
-                  Questions? WhatsApp us about this book
-                </WhatsAppHelpLink>
-                {isPrinted ? (
+                <div className="mt-4 grid min-w-0 gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/55 p-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/20 sm:grid-cols-2">
+                  <WhatsAppHelpLink
+                    context={{ source: "library_product", lane: "library", productTitle: product.title }}
+                    className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-center text-sm font-bold leading-tight text-emerald-800 shadow-sm ring-1 ring-emerald-100 transition hover:bg-emerald-50 dark:bg-slate-950 dark:text-emerald-100 dark:ring-emerald-900/70"
+                  >
+                    <HelpCircle className="size-4 shrink-0" />
+                    <span className="min-w-0 break-words">Questions? WhatsApp us</span>
+                  </WhatsAppHelpLink>
                   <button
                     type="button"
                     onClick={() => setQuoteOpen(true)}
-                    className="mt-3 block max-w-full break-words text-left text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                    className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-center text-sm font-bold leading-tight text-emerald-800 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-900/70 dark:bg-slate-950 dark:text-emerald-100 dark:hover:bg-emerald-950/40"
                   >
-                    Need 20+ printed copies or a team pack? Request a quote
+                    <Users className="size-4 shrink-0" />
+                    <span className="min-w-0 break-words">
+                      {isPrinted ? "Bulk order? Request a quote" : "Team access? Request a quote"}
+                    </span>
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setQuoteOpen(true)}
-                    className="mt-3 block max-w-full break-words text-left text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
-                  >
-                    Need multi-seat / team digital access? Request a quote
-                  </button>
-                )}
+                </div>
               </div>
             </div>
 
