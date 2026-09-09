@@ -855,7 +855,7 @@ export function LibraryProductPage({
   }
 
   return (
-    <main className={cn("bg-mist text-ink dark:bg-slate-950 dark:text-white", selectedFormat && !outOfStock && "pb-44 lg:pb-0")}>
+    <main className={cn("w-full max-w-[100vw] overflow-x-clip bg-mist text-ink dark:bg-slate-950 dark:text-white", selectedFormat && !outOfStock && "pb-44 lg:pb-0")}>
       <LibraryExitIntentCapture
         productId={product.id}
         productTitle={product.title}
@@ -886,8 +886,8 @@ export function LibraryProductPage({
           }}
         />
       )}
-      <section className="border-b border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="mx-auto flex max-w-[88rem] flex-col gap-3 px-4 py-3.5 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+      <section className="w-full min-w-0 overflow-hidden border-b border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+        <div className="mx-auto flex w-full max-w-[88rem] min-w-0 flex-col gap-3 px-4 py-3.5 pr-6 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <div className="min-w-0">
             <nav aria-label="Product breadcrumb" className="flex flex-wrap items-center gap-2 text-sm leading-6">
               <Link href="/library" className="inline-flex items-center gap-2 font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">
@@ -908,11 +908,11 @@ export function LibraryProductPage({
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-[88rem] overflow-hidden px-2.5 py-4 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
-        <article className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
-          <div className="grid min-w-0 items-stretch gap-4 p-3.5 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
-            <div className="relative mx-auto flex w-full max-w-sm flex-col sm:max-w-md xl:row-span-2 xl:mx-0 xl:h-full xl:max-w-none">
-              <div className="relative rounded-2xl bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-2 sm:rounded-[1.35rem] sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:min-h-[34rem] xl:flex-1">
+      <section className="mx-auto w-full max-w-[88rem] min-w-0 overflow-hidden px-4 py-4 pr-6 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
+        <article className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
+          <div className="grid w-full min-w-0 max-w-full items-stretch gap-4 overflow-hidden p-4 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
+            <div className="relative mx-auto flex w-full max-w-sm min-w-0 flex-col overflow-hidden sm:max-w-md xl:row-span-2 xl:mx-0 xl:h-full xl:max-w-none">
+              <div className="relative max-w-full overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-2 sm:rounded-[1.35rem] sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:min-h-[34rem] xl:flex-1">
                 <button
                   type="button"
                   onClick={() => openLightbox()}
@@ -962,7 +962,7 @@ export function LibraryProductPage({
                 </div>
               </div>
               {galleryImages.length > 0 ? (
-                <div className="mt-3 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain pb-1 sm:justify-center sm:gap-2.5" aria-label="Product image thumbnails">
+                <div className="mt-3 flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 sm:justify-center sm:gap-2.5" aria-label="Product image thumbnails">
                   {galleryImages.slice(0, 8).map((item, index) => (
                     <button
                       key={`${item.url}-${index}`}
@@ -1033,7 +1033,7 @@ export function LibraryProductPage({
               {formats.length > 0 && (
                 <div className="mt-7 min-w-0">
                   <p className="max-w-full break-words text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose format</p>
-                  <div className={cn("mt-3 grid min-w-0 gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
+                  <div className={cn("mt-3 grid w-full min-w-0 max-w-full gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
                     {formats.map((format) => {
                       const selected = selectedFormat?.id === format.id;
                       const compareAt = libraryFormatCompareAt(format);
@@ -1313,10 +1313,10 @@ export function LibraryProductPage({
         </article>
       </section>
 
-      <section className="mx-auto grid max-w-[88rem] min-w-0 gap-7 px-2.5 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8">
-        <div className="min-w-0 space-y-7">
+      <section className="mx-auto grid w-full max-w-[88rem] min-w-0 gap-7 overflow-hidden px-4 pr-6 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8">
+        <div className="min-w-0 max-w-full space-y-7 overflow-hidden">
           {showFullDescription ? (
-            <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+            <section className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:p-7">
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
                 <FileText className="size-5 text-emerald-700 dark:text-emerald-300" /> Description
               </h2>
@@ -1325,7 +1325,7 @@ export function LibraryProductPage({
           ) : null}
 
           {learningOutcomes.length > 0 ? (
-            <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-slate-50/70 p-5 shadow-soft dark:border-slate-800 dark:bg-slate-950/35 sm:p-7">
+            <section className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-slate-200/90 bg-slate-50/70 p-4 shadow-soft dark:border-slate-800 dark:bg-slate-950/35 sm:p-7">
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
                 <Layers3 className="size-5 text-emerald-700 dark:text-emerald-300" /> What you get
               </h2>
@@ -1333,7 +1333,7 @@ export function LibraryProductPage({
                 {learningOutcomes.slice(0, 6).map((item, index) => (
                   <li key={item} className="grid min-h-12 grid-cols-[2.75rem_minmax(0,1fr)] items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">{String(index + 1).padStart(2, "0")}</span>
-                    <span>{item}</span>
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ol>
@@ -1361,7 +1361,7 @@ export function LibraryProductPage({
                   <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
                     {sampleMeta.label}. Open it inline, view it in a new tab, or download the preview for later.
                   </p>
-                  <div className="mt-5 flex flex-wrap gap-2">
+                  <div className="mt-5 flex min-w-0 flex-wrap gap-2">
                     <Button onClick={() => openSamplePreview("panel")}>
                       <FileText className="size-4" /> Preview sample
                     </Button>
@@ -1381,11 +1381,11 @@ export function LibraryProductPage({
 
           {tableOfContents.length > 0 ? (
             <Panel title="Table of Contents" icon={FileText}>
-              <ol className="grid gap-2 sm:grid-cols-2">
+              <ol className="grid min-w-0 gap-2 sm:grid-cols-2">
                 {tableOfContents.map((item, index) => (
-                  <li key={item} className="flex min-h-14 items-center rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
+                  <li key={item} className="flex min-h-14 min-w-0 items-center rounded-xl border border-slate-200 bg-[#fbfcfb] p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
                     <span className="mr-2 font-semibold tabular-nums text-emerald-700">{String(index + 1).padStart(2, "0")}</span>
-                    {item}
+                    <span className="min-w-0 break-words">{item}</span>
                   </li>
                 ))}
               </ol>
@@ -1626,7 +1626,7 @@ export function LibraryProductPage({
                 <p className="mb-3 text-xs font-semibold text-slate-500">
                   {bundlePreferenceLabel}. Soft-copy promo applies only when every title is digital — printed picks use full list price.
                 </p>
-                <div className={cn("grid items-stretch gap-3", bundleLines.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
+                <div className={cn("grid min-w-0 max-w-full items-stretch gap-3", bundleLines.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
                   {bundleLines.map((line) => {
                     const itemFormats = availableLibraryFormats(line.product);
                     const isMain = line.product.id === product.id;
@@ -1634,7 +1634,7 @@ export function LibraryProductPage({
                       <div
                         key={line.product.id}
                         className={cn(
-                          "flex h-full flex-col rounded-xl border bg-[#fbfcfb] p-3 dark:bg-slate-950",
+                          "flex h-full min-w-0 max-w-full flex-col overflow-hidden rounded-xl border bg-[#fbfcfb] p-3 dark:bg-slate-950",
                           isMain ? "border-emerald-400 dark:border-emerald-700" : "border-slate-200 dark:border-slate-800",
                           !line.inStock && "opacity-60",
                         )}
@@ -1682,8 +1682,8 @@ export function LibraryProductPage({
                     );
                   })}
                 </div>
-              <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-                <div className="text-sm text-slate-500">
+              <div className="mt-4 flex min-w-0 flex-wrap items-end justify-between gap-3">
+                <div className="min-w-0 text-sm text-slate-500">
                   {!bundleAvailable ? (
                     <p className="font-semibold text-amber-700 dark:text-amber-300">
                       One or more printed formats are out of stock. Switch formats or try again later.
@@ -1711,14 +1711,14 @@ export function LibraryProductPage({
                   ) : (
                     <p>Choose formats above, then add the bundle to your bag.</p>
                   )}
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 max-w-full break-words text-xs text-slate-500">
                     Buy separately: {product.currency} {bundleSubtotal.toFixed(2)}
                     {bundleSavings > 0
                       ? ` · Bundle: ${product.currency} ${bundleTotal.toFixed(2)}`
                       : ` · Total: ${product.currency} ${bundleTotal.toFixed(2)}${bundleIncludesPrint ? " (list prices)" : ""}`}
                   </p>
                 </div>
-                <p className="text-right text-lg font-semibold tracking-tight">
+                <p className="min-w-0 break-words text-right text-lg font-semibold tracking-tight">
                   Bundle total: {product.currency} {bundleTotal.toFixed(2)}
                 </p>
               </div>
@@ -1727,8 +1727,8 @@ export function LibraryProductPage({
           )}
         </div>
 
-        <aside className="min-w-0 space-y-4 lg:sticky lg:top-24">
-          <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <aside className="min-w-0 max-w-full space-y-4 overflow-hidden lg:sticky lg:top-24">
+          <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Your selection</p>
             <p className="mt-2 break-words text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
             {(() => {
@@ -1807,12 +1807,12 @@ export function LibraryProductPage({
                 })}
               </div>
             )}
-            <div className="mt-5 grid gap-2">
+            <div className="mt-5 grid min-w-0 gap-2">
               <Button disabled={outOfStock} onClick={buyNow} className="w-full">
                 <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{primaryCtaLabel}</span>
               </Button>
               <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="w-full">
-                <ShoppingBag className="size-4 shrink-0" /> <span>{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
+                <ShoppingBag className="size-4 shrink-0" /> <span className="min-w-0 break-words">{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
               </Button>
               {sampleUrl ? (
                 <Button variant="secondary" onClick={() => openSamplePreview("sticky_bar")} className="w-full">
@@ -1820,12 +1820,12 @@ export function LibraryProductPage({
                 </Button>
               ) : null}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
               <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-bold leading-tight text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
-                <Heart className={cn("size-4", wished && "fill-current text-rose-500")} /> {wished ? "Saved" : "Wishlist"}
+                <Heart className={cn("size-4 shrink-0", wished && "fill-current text-rose-500")} /> <span className="min-w-0 break-words">{wished ? "Saved" : "Wishlist"}</span>
               </button>
               <button type="button" onClick={() => void shareProduct()} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-bold leading-tight text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Share product">
-                <Share2 className="size-4" /> {shareNotice || "Share"}
+                <Share2 className="size-4 shrink-0" /> <span className="min-w-0 break-words">{shareNotice || "Share"}</span>
               </button>
             </div>
             <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
@@ -1862,7 +1862,7 @@ export function LibraryProductPage({
                 {whoThisIsFor.map((item, index) => (
                   <li key={item} className="grid min-h-12 grid-cols-[2.75rem_minmax(0,1fr)] items-start rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <span className="pt-0.5 text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="text-slate-800 dark:text-slate-100">{item}</span>
+                    <span className="min-w-0 break-words text-slate-800 dark:text-slate-100">{item}</span>
                   </li>
                 ))}
               </ol>
@@ -1872,9 +1872,9 @@ export function LibraryProductPage({
       </section>
 
       {related.length > 0 ? (
-        <section className="mx-auto max-w-[88rem] px-4 pb-14 sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
+        <section className="mx-auto w-full max-w-[88rem] min-w-0 overflow-hidden px-4 pr-6 pb-14 sm:px-6 lg:px-8">
+          <div className="mb-6 flex min-w-0 flex-wrap items-end justify-between gap-4">
+            <div className="min-w-0">
               <p className="section-eyebrow">Keep building</p>
               <h2 className="mt-3 text-[1.85rem] font-semibold tracking-[-0.02em] text-ink dark:text-white sm:text-[2.15rem]">Related products</h2>
             </div>
@@ -1882,7 +1882,7 @@ export function LibraryProductPage({
               Browse all <ArrowLeft className="size-4 rotate-180" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
+          <div className="grid min-w-0 max-w-full grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
             {related.map((item) => (
               <LibraryProductCard
                 key={item.id}
@@ -2381,12 +2381,12 @@ function buildBuyerFaqs(input: {
 
 function Panel({ title, icon: Icon, action, children }: { title: string; icon: typeof FileText; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-ink dark:text-white">
+    <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+      <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-3">
+        <h2 className="flex min-w-0 items-center gap-2 break-words text-lg font-semibold text-ink dark:text-white">
           <Icon className="size-5 text-emerald-700 dark:text-emerald-300" /> {title}
         </h2>
-        {action}
+        {action ? <div className="min-w-0 max-w-full">{action}</div> : null}
       </div>
       {children}
     </section>
