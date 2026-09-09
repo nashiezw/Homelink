@@ -912,11 +912,11 @@ export function LibraryProductPage({
         <article className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
           <div className="grid min-w-0 gap-4 p-3.5 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
             <div className="relative mx-auto w-full max-w-sm sm:max-w-md xl:mx-0 xl:max-w-none">
-              <div className="relative rounded-2xl bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-2 sm:rounded-[1.35rem] sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)]">
+              <div className="relative rounded-2xl bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-2 sm:rounded-[1.35rem] sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] lg:h-[34rem] xl:h-[38rem]">
                 <button
                   type="button"
                   onClick={() => openLightbox()}
-                  className="relative mx-auto block aspect-[4/3] w-full max-w-[24rem] text-left sm:max-w-[32rem] xl:h-[34rem] xl:max-w-none xl:aspect-auto"
+                  className="relative mx-auto block aspect-[4/3] w-full max-w-[24rem] text-left sm:max-w-[32rem] lg:h-full lg:max-w-none lg:aspect-auto"
                   aria-label="Open product cover"
                 >
                   {activeGalleryImage?.url ? (
