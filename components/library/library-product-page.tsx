@@ -962,14 +962,14 @@ export function LibraryProductPage({
                 </div>
               </div>
               {galleryImages.length > 0 ? (
-                <div className="mt-3 grid min-w-0 grid-cols-4 gap-2 sm:flex sm:justify-center sm:overflow-x-auto sm:overscroll-x-contain sm:pb-1 sm:gap-2.5" aria-label="Product image thumbnails">
+                <div className="mt-3 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain pb-1 sm:justify-center sm:gap-2.5" aria-label="Product image thumbnails">
                   {galleryImages.slice(0, 8).map((item, index) => (
                     <button
                       key={`${item.url}-${index}`}
                       type="button"
                       onClick={() => setGalleryIndex(index)}
                       className={cn(
-                        "relative aspect-square min-w-0 shrink-0 overflow-hidden rounded-lg border bg-white shadow-sm transition sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-xl dark:bg-slate-950",
+                        "relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border bg-white shadow-sm transition min-[390px]:h-[3.75rem] min-[390px]:w-[3.75rem] sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-xl dark:bg-slate-950",
                         galleryIndex === index
                           ? "border-emerald-600 ring-2 ring-emerald-600/20"
                           : "border-slate-200 hover:border-emerald-500/60 dark:border-slate-800",
@@ -998,7 +998,7 @@ export function LibraryProductPage({
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
                 {product.collection}
               </p>
-              <h1 className="mt-3 max-w-[40rem] text-balance text-[1.65rem] font-black leading-[1.1] tracking-normal text-ink min-[390px]:text-[1.8rem] sm:mt-4 sm:text-[2.35rem] sm:leading-[1.08] dark:text-white">
+              <h1 className="mt-3 w-full text-balance text-[1.65rem] font-black leading-[1.16] tracking-normal text-ink min-[390px]:text-[1.8rem] sm:mt-4 sm:max-w-[40rem] sm:text-[2.35rem] sm:leading-[1.08] dark:text-white">
                 {heroHeadline}
               </h1>
               {heroHeadline !== product.title ? (
