@@ -1270,8 +1270,8 @@ export function LibraryProductPage({
                     </button>
                   ) : null}
                 </div>
-                <div className="mt-5 grid min-w-0 gap-2.5 sm:grid-cols-2">
-                  <Button disabled={outOfStock} onClick={buyNow} className="min-h-12 w-full sm:col-span-2">
+                <div className="mt-5 grid min-w-0 gap-2.5">
+                  <Button disabled={outOfStock} onClick={buyNow} className="min-h-12 w-full">
                     <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{primaryCtaLabel}</span>
                   </Button>
                   <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="min-h-12 w-full">

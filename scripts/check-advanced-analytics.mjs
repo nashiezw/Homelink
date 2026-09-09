@@ -78,6 +78,7 @@ assert(/items-stretch[\s\S]*xl:row-span-2[\s\S]*xl:h-full[\s\S]*xl:min-h-\[34rem
 assert(/setReviewFormOpen[\s\S]*toggle_review_form[\s\S]*reviewFormOpen \? "Hide review form" : "Leave a review"[\s\S]*reviewFormOpen \?/.test(libraryProductPage), "library product page keeps review form behind a deliberate action");
 assert(/Access kept in your Library account[\s\S]*WhatsApp support available/.test(libraryProductPage), "library product page shows checkout trust signals");
 assert(/setPreviewOpen\(false\); buyNow\(\);/.test(libraryProductPage), "library sample preview includes a direct buy path");
+assert(/<div className="mt-5 grid min-w-0 gap-2\.5">[\s\S]*<Button disabled=\{outOfStock\} onClick=\{buyNow\} className="min-h-12 w-full">[\s\S]*<Button variant="secondary" disabled=\{outOfStock\} onClick=\{addToCart\} className="min-h-12 w-full">/.test(libraryProductPage), "library product hero stacks buy now and add to cart as full-width actions");
 assert(/setHouseLinkBottomDock\(showDock \? "library-product-buy" : null\)/.test(libraryProductPage), "mobile product page reserves space for the buy dock");
 assert(/openSamplePreview\("mobile_buy_bar"\)/.test(libraryProductPage), "mobile buy dock keeps preview as a secondary action");
 assert(/id="library-bundle-offer"[\s\S]*Bundle saves/.test(libraryProductPage), "mobile bundle offer is optional below the primary buy action");
