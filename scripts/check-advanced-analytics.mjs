@@ -72,7 +72,7 @@ assert(/export async function POST[\s\S]*action !== "view"[\s\S]*recordLibraryPr
 assert(/displayViewCount[\s\S]*Viewed \$\{displayViewCount\} times[\s\S]*\/api\/v1\/library\/products/.test(libraryProductPage), "library product viewed badge updates from recorded view count");
 assert(/Buy Digital PDF - \$\{product\.currency\} \$\{selectedPrice\.toFixed\(2\)\}/.test(libraryProductPage), "library product page makes buy digital the primary CTA");
 assert(/Digital PDF unlocks automatically once payment is confirmed/.test(libraryProductPage), "library product page clarifies digital access timing");
-assert(/aria-label="Product image thumbnails"[\s\S]*galleryImages\.slice\(0, 8\)[\s\S]*h-12 w-12 shrink-0[\s\S]*min-\[390px\]:h-14/.test(libraryProductPage), "library product page shows product image thumbnails directly below the main image on mobile");
+assert(/grid-cols-4[\s\S]*sm:overflow-x-auto[\s\S]*aria-label="Product image thumbnails"[\s\S]*galleryImages\.slice\(0, 8\)[\s\S]*aspect-square/.test(libraryProductPage), "library product page shows product image thumbnails in a bounded mobile grid below the main image");
 assert(/setReviewFormOpen[\s\S]*toggle_review_form[\s\S]*reviewFormOpen \? "Hide review form" : "Leave a review"[\s\S]*reviewFormOpen \?/.test(libraryProductPage), "library product page keeps review form behind a deliberate action");
 assert(/Access kept in your Library account[\s\S]*WhatsApp support available/.test(libraryProductPage), "library product page shows checkout trust signals");
 assert(/setPreviewOpen\(false\); buyNow\(\);/.test(libraryProductPage), "library sample preview includes a direct buy path");

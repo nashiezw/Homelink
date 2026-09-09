@@ -908,9 +908,9 @@ export function LibraryProductPage({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[88rem] px-3 py-4 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
-        <article className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
-          <div className="grid gap-4 p-4 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
+      <section className="mx-auto w-full max-w-[88rem] overflow-hidden px-2.5 py-4 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
+        <article className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:rounded-3xl">
+          <div className="grid min-w-0 gap-4 p-3.5 sm:gap-8 sm:p-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)] xl:gap-x-12 xl:gap-y-5 xl:p-10">
             <div className="relative mx-auto w-full max-w-sm sm:max-w-md xl:mx-0 xl:max-w-none">
               <div className="relative rounded-2xl bg-[radial-gradient(circle_at_50%_18%,#ffffff_0%,#f3f7f5_55%,#e8f0ec_100%)] p-2 sm:rounded-[1.35rem] sm:p-4 dark:bg-[radial-gradient(circle_at_50%_18%,#1e293b_0%,#0f172a_70%,#020617_100%)] xl:absolute xl:inset-0">
                 <button
@@ -962,21 +962,21 @@ export function LibraryProductPage({
                 </div>
               </div>
               {galleryImages.length > 0 ? (
-                <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1 sm:gap-2.5" aria-label="Product image thumbnails">
+                <div className="mt-3 grid min-w-0 grid-cols-4 gap-2 sm:flex sm:overflow-x-auto sm:overscroll-x-contain sm:pb-1 sm:gap-2.5" aria-label="Product image thumbnails">
                   {galleryImages.slice(0, 8).map((item, index) => (
                     <button
                       key={`${item.url}-${index}`}
                       type="button"
                       onClick={() => setGalleryIndex(index)}
                       className={cn(
-                        "relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border bg-white shadow-sm transition min-[390px]:h-14 min-[390px]:w-14 sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-xl dark:bg-slate-950",
+                        "relative aspect-square min-w-0 shrink-0 overflow-hidden rounded-lg border bg-white shadow-sm transition sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-xl dark:bg-slate-950",
                         galleryIndex === index
                           ? "border-emerald-600 ring-2 ring-emerald-600/20"
                           : "border-slate-200 hover:border-emerald-500/60 dark:border-slate-800",
                       )}
                       aria-label={`Show ${item.label || "gallery image"}`}
                     >
-                      <Image src={displayImageUrl(item.url, { width: 160, height: 160, crop: "fill" }) || item.url} alt={item.label || product.title} fill sizes="(max-width: 390px) 48px, 72px" className="object-cover" />
+                      <Image src={displayImageUrl(item.url, { width: 160, height: 160, crop: "fill" }) || item.url} alt="" fill sizes="(max-width: 640px) 25vw, 72px" className="object-cover" />
                     </button>
                   ))}
                 </div>
@@ -1031,9 +1031,9 @@ export function LibraryProductPage({
               ) : null}
 
               {formats.length > 0 && (
-                <div className="mt-7">
+                <div className="mt-7 min-w-0">
                   <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose format</p>
-                  <div className={cn("mt-3 grid gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
+                  <div className={cn("mt-3 grid min-w-0 gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
                     {formats.map((format) => {
                       const selected = selectedFormat?.id === format.id;
                       const compareAt = libraryFormatCompareAt(format);
@@ -1044,14 +1044,14 @@ export function LibraryProductPage({
                           type="button"
                           onClick={() => chooseFormat(format.id, "hero_format_picker")}
                           className={cn(
-                            "rounded-xl border px-4 py-3.5 text-left transition",
+                            "min-w-0 rounded-xl border px-3.5 py-3.5 text-left transition sm:px-4",
                             selected
                               ? "border-emerald-600 bg-emerald-50/90 ring-2 ring-emerald-600/15 dark:bg-emerald-950/35"
                               : "border-slate-200 bg-white hover:border-emerald-500/70 dark:border-slate-700 dark:bg-slate-950/40",
                           )}
                         >
-                          <span className="block text-[0.95rem] font-semibold leading-snug text-ink dark:text-white">{format.label}</span>
-                          <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span className="block break-words text-[0.95rem] font-semibold leading-snug text-ink dark:text-white">{format.label}</span>
+                          <span className="mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                             <span className="text-xl font-semibold tracking-tight text-ink dark:text-white">
                               {product.currency} {format.price.toFixed(2)}
                             </span>
@@ -1062,14 +1062,14 @@ export function LibraryProductPage({
                             )}
                           </span>
                           {discount != null && (
-                            <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                            <span className="mt-1 inline-flex max-w-full rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                               {softcopyBadgeVariant === "save_callout" && format.type !== "PRINTED_BOOK"
                                 ? `Soft copy — save ${discount}% vs print`
                                 : `Save ${discount}%`}
                             </span>
                           )}
                           {discount == null && softcopyBadgeVariant === "save_callout" && format.type !== "PRINTED_BOOK" ? (
-                            <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                            <span className="mt-1 inline-flex max-w-full rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                               Soft copy · instant download
                             </span>
                           ) : null}
@@ -1099,8 +1099,8 @@ export function LibraryProductPage({
                       ? volumePricing.savingsPercent
                       : libraryDiscountPercent(sellPrice, compareAt);
                   return (
-                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <p className="text-[2rem] font-semibold tracking-tight text-ink dark:text-white">
+                    <div className="grid min-w-0 gap-1 min-[430px]:flex min-[430px]:flex-wrap min-[430px]:items-baseline min-[430px]:gap-x-3">
+                      <p className="text-[1.95rem] font-semibold leading-none tracking-tight text-ink dark:text-white min-[390px]:text-[2rem]">
                         {product.currency} {sellPrice.toFixed(2)}
                         {isPrinted && selectedQty > 1 ? (
                           <span className="ml-2 text-base font-semibold text-slate-500">each</span>
@@ -1112,7 +1112,7 @@ export function LibraryProductPage({
                         </p>
                       )}
                       {discount != null && discount > 0 && (
-                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                        <span className="w-fit rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                           Save {discount}%
                         </span>
                       )}
@@ -1228,33 +1228,33 @@ export function LibraryProductPage({
                     ) : null}
                   </div>
                 ) : null}
-                <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900 dark:bg-emerald-950/25">
+                <div className="mt-5 min-w-0 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/25 sm:p-4">
                   <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">Quick decision check</p>
                   <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                    <p className="flex gap-2">
+                    <p className="flex min-w-0 gap-2">
                       <Users className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                      <span><strong>Best for:</strong> {decisionAudience}</span>
+                      <span className="min-w-0 break-words"><strong>Best for:</strong> {decisionAudience}</span>
                     </p>
-                    <p className="flex gap-2">
+                    <p className="flex min-w-0 gap-2">
                       <Download className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                      <span><strong>You get:</strong> {decisionDownloads}</span>
+                      <span className="min-w-0 break-words"><strong>You get:</strong> {decisionDownloads}</span>
                     </p>
-                    <p className="flex gap-2">
+                    <p className="flex min-w-0 gap-2">
                       <ShieldCheck className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                      <span><strong>Access:</strong> {accessCopy}</span>
+                      <span className="min-w-0 break-words"><strong>Access:</strong> {accessCopy}</span>
                     </p>
                   </div>
-                  <div className="mt-3 grid gap-2 rounded-xl border border-white/70 bg-white/70 p-3 text-xs font-semibold text-emerald-900 shadow-sm dark:border-emerald-900/40 dark:bg-slate-950/60 dark:text-emerald-100 sm:grid-cols-2">
+                  <div className="mt-3 grid min-w-0 gap-2 rounded-xl border border-white/70 bg-white/70 p-3 text-xs font-semibold leading-5 text-emerald-900 shadow-sm dark:border-emerald-900/40 dark:bg-slate-950/60 dark:text-emerald-100 sm:grid-cols-2">
                     {["Secure checkout", "Invoice provided", "Access kept in your account", "WhatsApp support available"].map((item) => (
-                      <span key={item} className="inline-flex items-center gap-2">
-                        <CheckCircle2 className="size-3.5 shrink-0" /> {item}
+                      <span key={item} className="inline-flex min-w-0 items-start gap-2">
+                        <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" /> <span className="min-w-0 break-words">{item}</span>
                       </span>
                     ))}
                   </div>
                   {urgencySignals.length ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {urgencySignals.slice(0, 3).map((signal) => (
-                        <span key={signal} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-100 dark:bg-slate-950 dark:text-emerald-100 dark:ring-emerald-900">
+                        <span key={signal} className="max-w-full rounded-full bg-white px-2.5 py-1 text-xs font-bold leading-5 text-emerald-800 ring-1 ring-emerald-100 dark:bg-slate-950 dark:text-emerald-100 dark:ring-emerald-900">
                           {signal}
                         </span>
                       ))}
@@ -1264,23 +1264,23 @@ export function LibraryProductPage({
                     <button
                       type="button"
                       onClick={() => openSamplePreview("decision_block")}
-                      className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-sm font-bold text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100"
+                      className="mt-4 inline-flex min-h-10 max-w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-bold leading-tight text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100"
                     >
                       <FileText className="size-4" /> Preview before buying
                     </button>
                   ) : null}
                 </div>
-                <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-                  <Button disabled={outOfStock} onClick={buyNow} className="h-11 sm:col-span-2">
-                    <ShoppingCart className="size-4" /> {primaryCtaLabel}
+                <div className="mt-5 grid min-w-0 gap-2.5 sm:grid-cols-2">
+                  <Button disabled={outOfStock} onClick={buyNow} className="min-h-12 w-full sm:col-span-2">
+                    <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{primaryCtaLabel}</span>
                   </Button>
-                  <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="h-11">
-                    <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
+                  <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="min-h-12 w-full">
+                    <ShoppingBag className="size-4 shrink-0" /> <span>{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
                   </Button>
                 </div>
                 <WhatsAppHelpLink
                   context={{ source: "library_product", lane: "library", productTitle: product.title }}
-                  className="mt-3 inline-flex text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                  className="mt-3 block max-w-full text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
                 >
                   Questions? WhatsApp us about this book
                 </WhatsAppHelpLink>
@@ -1288,7 +1288,7 @@ export function LibraryProductPage({
                   <button
                     type="button"
                     onClick={() => setQuoteOpen(true)}
-                    className="mt-3 text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                    className="mt-3 block max-w-full text-left text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
                   >
                     Need 20+ printed copies or a team pack? Request a quote
                   </button>
@@ -1296,7 +1296,7 @@ export function LibraryProductPage({
                   <button
                     type="button"
                     onClick={() => setQuoteOpen(true)}
-                    className="mt-3 text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                    className="mt-3 block max-w-full text-left text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
                   >
                     Need multi-seat / team digital access? Request a quote
                   </button>
@@ -1304,7 +1304,7 @@ export function LibraryProductPage({
               </div>
             </div>
 
-            <div className="grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3 dark:border-slate-800 xl:col-start-2 xl:border-0 xl:pt-0">
+            <div className="grid min-w-0 gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3 dark:border-slate-800 xl:col-start-2 xl:border-0 xl:pt-0">
               <HeroProof icon={ShieldCheck} label="Secure checkout" />
               <HeroProof icon={ReceiptText} label="Invoice ready" />
               <HeroProof icon={Download} label="Tracked access" />
@@ -1313,8 +1313,8 @@ export function LibraryProductPage({
         </article>
       </section>
 
-      <section className="mx-auto grid max-w-[88rem] gap-7 px-4 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8">
-        <div className="space-y-7">
+      <section className="mx-auto grid max-w-[88rem] min-w-0 gap-7 px-2.5 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8">
+        <div className="min-w-0 space-y-7">
           {showFullDescription ? (
             <section className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-5 shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:p-7">
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink dark:text-white">
@@ -1727,10 +1727,10 @@ export function LibraryProductPage({
           )}
         </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-24">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <aside className="min-w-0 space-y-4 lg:sticky lg:top-24">
+          <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Your selection</p>
-            <p className="mt-2 text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
+            <p className="mt-2 break-words text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
             {(() => {
               const sellPrice = volumePricing?.unitPrice ?? selectedFormat?.price ?? product.price;
               const listPrice = volumePricing?.listPrice ?? selectedFormat?.price ?? product.price;
@@ -1741,8 +1741,8 @@ export function LibraryProductPage({
                     ? libraryFormatCompareAt(selectedFormat)
                     : undefined;
               return (
-                <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <p className="text-3xl font-semibold tracking-tight text-ink dark:text-white">
+                <div className="mt-1 grid min-w-0 gap-1 min-[430px]:flex min-[430px]:flex-wrap min-[430px]:items-baseline min-[430px]:gap-x-2">
+                  <p className="text-3xl font-semibold leading-none tracking-tight text-ink dark:text-white">
                     {product.currency} {sellPrice.toFixed(2)}
                     {isPrinted && selectedQty > 1 ? (
                       <span className="ml-1 text-sm font-semibold text-slate-500">ea</span>
@@ -1789,12 +1789,12 @@ export function LibraryProductPage({
                       type="button"
                       onClick={() => chooseFormat(format.id, "sidebar_format_picker")}
                       className={cn(
-                        "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition",
+                        "flex min-w-0 items-start justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition",
                         selectedFormat?.id === format.id ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700",
                       )}
                     >
-                      <span className="font-semibold">{format.label}</span>
-                      <span className="text-right">
+                      <span className="min-w-0 break-words font-semibold">{format.label}</span>
+                      <span className="shrink-0 text-right">
                         <span className="block font-bold">{product.currency} {format.price.toFixed(2)}</span>
                         {compareAt != null && (
                           <span className="block text-xs text-slate-400 line-through">
@@ -1808,30 +1808,30 @@ export function LibraryProductPage({
               </div>
             )}
             <div className="mt-5 grid gap-2">
-              <Button disabled={outOfStock} onClick={buyNow}>
-                <ShoppingCart className="size-4" /> {primaryCtaLabel}
+              <Button disabled={outOfStock} onClick={buyNow} className="w-full">
+                <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{primaryCtaLabel}</span>
               </Button>
-              <Button variant="secondary" disabled={outOfStock} onClick={addToCart}>
-                <ShoppingBag className="size-4" /> {productQuantity ? `In bag (${productQuantity})` : "Add to cart"}
+              <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="w-full">
+                <ShoppingBag className="size-4 shrink-0" /> <span>{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
               </Button>
               {sampleUrl ? (
-                <Button variant="secondary" onClick={() => openSamplePreview("sticky_bar")}>
-                  <FileText className="size-4" /> Preview sample
+                <Button variant="secondary" onClick={() => openSamplePreview("sticky_bar")} className="w-full">
+                  <FileText className="size-4 shrink-0" /> Preview sample
                 </Button>
               ) : null}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
+              <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-bold leading-tight text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">
                 <Heart className={cn("size-4", wished && "fill-current text-rose-500")} /> {wished ? "Saved" : "Wishlist"}
               </button>
-              <button type="button" onClick={() => void shareProduct()} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Share product">
+              <button type="button" onClick={() => void shareProduct()} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-bold leading-tight text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Share product">
                 <Share2 className="size-4" /> {shareNotice || "Share"}
               </button>
             </div>
             <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
               {["Secure HouseLink checkout", "Invoice provided", "Access kept in your Library account", "WhatsApp support available"].map((item) => (
-                <p key={item} className="flex gap-2">
-                  <Lock className="mt-0.5 size-4 shrink-0 text-emerald-600" /> {item}
+                <p key={item} className="flex min-w-0 gap-2">
+                  <Lock className="mt-0.5 size-4 shrink-0 text-emerald-600" /> <span className="min-w-0 break-words">{item}</span>
                 </p>
               ))}
             </div>
@@ -1849,9 +1849,9 @@ export function LibraryProductPage({
               ]
                 .filter(([, value]) => Boolean(value?.toString().trim()))
                 .map(([label, value]) => (
-                <div key={label} className="flex justify-between gap-3 border-b border-slate-100 pb-2 last:border-0 dark:border-slate-800">
+                <div key={label} className="grid min-w-0 gap-1 border-b border-slate-100 pb-2 last:border-0 min-[420px]:grid-cols-[auto_minmax(0,1fr)] min-[420px]:gap-3 dark:border-slate-800">
                   <dt className="text-slate-500">{label}</dt>
-                  <dd className="text-right font-semibold">{value}</dd>
+                  <dd className="min-w-0 break-words font-semibold min-[420px]:text-right">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -2326,9 +2326,9 @@ function formatDescriptionSections(text: string) {
 
 function HeroProof({ icon: Icon, label }: { icon: typeof ShieldCheck; label: string }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-950/50">
+    <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-950/50">
       <Icon className="size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-      <p className="text-sm font-semibold leading-snug text-slate-700 dark:text-slate-200">{label}</p>
+      <p className="min-w-0 break-words text-sm font-semibold leading-snug text-slate-700 dark:text-slate-200">{label}</p>
     </div>
   );
 }
