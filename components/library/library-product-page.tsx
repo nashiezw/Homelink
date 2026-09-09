@@ -994,26 +994,26 @@ export function LibraryProductPage({
               )}
             </div>
 
-            <div className="min-w-0 pt-1 sm:pt-0">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+            <div className="min-w-0 max-w-full overflow-hidden pt-1 sm:pt-0">
+              <p className="max-w-full break-words text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300 sm:tracking-[0.2em]">
                 {product.collection}
               </p>
               <h1 className="mt-3 w-full text-balance text-[1.65rem] font-black leading-[1.16] tracking-normal text-ink min-[390px]:text-[1.8rem] sm:mt-4 sm:max-w-[40rem] sm:text-[2.35rem] sm:leading-[1.08] dark:text-white">
                 {heroHeadline}
               </h1>
               {heroHeadline !== product.title ? (
-                <p className="mt-2 max-w-[34rem] text-[0.8rem] font-semibold leading-5 text-slate-500 dark:text-slate-400">
+                <p className="mt-2 max-w-full break-words text-[0.8rem] font-semibold leading-5 text-slate-500 dark:text-slate-400 sm:max-w-[34rem]">
                   <span className="text-slate-400 dark:text-slate-500">Book title:</span> {product.title}
                 </p>
               ) : null}
               {heroPitch ? (
-                <p className="mt-5 max-w-[34rem] text-[1rem] leading-7 text-slate-600 dark:text-slate-300">
+                <p className="mt-5 max-w-full break-words text-[1rem] leading-7 text-slate-600 dark:text-slate-300 sm:max-w-[34rem]">
                   {readableSubtitle(heroPitch)}
                 </p>
               ) : null}
 
-              <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                <span>
+              <div className="mt-5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <span className="min-w-0 break-words">
                   By <strong className="font-semibold text-ink dark:text-white">{product.author}</strong>
                 </span>
                 <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block dark:bg-slate-600" aria-hidden />
@@ -1025,14 +1025,14 @@ export function LibraryProductPage({
               </div>
 
               {summaryExcerpt ? (
-                <p className="mt-5 max-w-[36rem] text-[0.98rem] leading-7 text-slate-600 dark:text-slate-300">
+                <p className="mt-5 max-w-full break-words text-[0.98rem] leading-7 text-slate-600 dark:text-slate-300 sm:max-w-[36rem]">
                   {summaryExcerpt}
                 </p>
               ) : null}
 
               {formats.length > 0 && (
                 <div className="mt-7 min-w-0">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose format</p>
+                  <p className="max-w-full break-words text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose format</p>
                   <div className={cn("mt-3 grid min-w-0 gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
                     {formats.map((format) => {
                       const selected = selectedFormat?.id === format.id;
@@ -1044,7 +1044,7 @@ export function LibraryProductPage({
                           type="button"
                           onClick={() => chooseFormat(format.id, "hero_format_picker")}
                           className={cn(
-                            "min-w-0 rounded-xl border px-3.5 py-3.5 text-left transition sm:px-4",
+                            "min-w-0 max-w-full overflow-hidden rounded-xl border px-3.5 py-3.5 text-left transition sm:px-4",
                             selected
                               ? "border-emerald-600 bg-emerald-50/90 ring-2 ring-emerald-600/15 dark:bg-emerald-950/35"
                               : "border-slate-200 bg-white hover:border-emerald-500/70 dark:border-slate-700 dark:bg-slate-950/40",
@@ -1062,18 +1062,18 @@ export function LibraryProductPage({
                             )}
                           </span>
                           {discount != null && (
-                            <span className="mt-1 inline-flex max-w-full rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                            <span className="mt-1 inline-flex max-w-full whitespace-normal break-words rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                               {softcopyBadgeVariant === "save_callout" && format.type !== "PRINTED_BOOK"
                                 ? `Soft copy — save ${discount}% vs print`
                                 : `Save ${discount}%`}
                             </span>
                           )}
                           {discount == null && softcopyBadgeVariant === "save_callout" && format.type !== "PRINTED_BOOK" ? (
-                            <span className="mt-1 inline-flex max-w-full rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                            <span className="mt-1 inline-flex max-w-full whitespace-normal break-words rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                               Soft copy · instant download
                             </span>
                           ) : null}
-                          <span className="mt-1.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          <span className="mt-1.5 block max-w-full break-words text-xs leading-5 text-slate-500 dark:text-slate-400">
                             {format.type === "PRINTED_BOOK" ? printStockLabel : "Digital · instant after payment"}
                           </span>
                         </button>
@@ -1083,7 +1083,7 @@ export function LibraryProductPage({
                 </div>
               )}
 
-              <div className="mt-7 border-t border-slate-100 pt-5 dark:border-slate-800">
+              <div className="mt-7 min-w-0 max-w-full overflow-hidden border-t border-slate-100 pt-5 dark:border-slate-800">
                 {(() => {
                   const sellPrice = volumePricing?.unitPrice ?? selectedFormat?.price ?? product.price;
                   const listPrice = volumePricing?.listPrice ?? selectedFormat?.price ?? product.price;
@@ -1099,20 +1099,20 @@ export function LibraryProductPage({
                       ? volumePricing.savingsPercent
                       : libraryDiscountPercent(sellPrice, compareAt);
                   return (
-                    <div className="grid min-w-0 gap-1 min-[430px]:flex min-[430px]:flex-wrap min-[430px]:items-baseline min-[430px]:gap-x-3">
-                      <p className="text-[1.95rem] font-semibold leading-none tracking-tight text-ink dark:text-white min-[390px]:text-[2rem]">
+                    <div className="grid min-w-0 max-w-full gap-1 min-[430px]:flex min-[430px]:flex-wrap min-[430px]:items-baseline min-[430px]:gap-x-3">
+                      <p className="min-w-0 break-words text-[1.95rem] font-semibold leading-none tracking-tight text-ink dark:text-white min-[390px]:text-[2rem]">
                         {product.currency} {sellPrice.toFixed(2)}
                         {isPrinted && selectedQty > 1 ? (
                           <span className="ml-2 text-base font-semibold text-slate-500">each</span>
                         ) : null}
                       </p>
                       {compareAt != null && compareAt > sellPrice + 0.001 && (
-                        <p className="text-base text-slate-400 line-through">
+                        <p className="min-w-0 break-words text-base text-slate-400 line-through">
                           {product.currency} {compareAt.toFixed(2)}
                         </p>
                       )}
                       {discount != null && discount > 0 && (
-                        <span className="w-fit rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                        <span className="max-w-full whitespace-normal break-words rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
                           Save {discount}%
                         </span>
                       )}
@@ -1133,7 +1133,7 @@ export function LibraryProductPage({
                 {activePromotion ? (
                   <LibraryPromotionOffer promotion={activePromotion} />
                 ) : null}
-                <p className="mt-2 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
+                <p className="mt-2 max-w-full break-words text-sm leading-6 text-emerald-800 dark:text-emerald-200">
                   {isPrinted ? printStockLabel : "Instant digital delivery after payment confirmation"}
                 </p>
                 {isPrinted && !outOfStock ? (
@@ -1228,9 +1228,9 @@ export function LibraryProductPage({
                     ) : null}
                   </div>
                 ) : null}
-                <div className="mt-5 min-w-0 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/25 sm:p-4">
-                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">Quick decision check</p>
-                  <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                <div className="mt-5 min-w-0 max-w-full overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/25 sm:p-4">
+                  <p className="max-w-full break-words text-[0.68rem] font-bold uppercase tracking-[0.14em] text-emerald-800 dark:text-emerald-200 sm:tracking-[0.16em]">Quick decision check</p>
+                  <div className="mt-3 grid min-w-0 gap-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
                     <p className="flex min-w-0 gap-2">
                       <Users className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
                       <span className="min-w-0 break-words"><strong>Best for:</strong> {decisionAudience}</span>
@@ -1252,9 +1252,9 @@ export function LibraryProductPage({
                     ))}
                   </div>
                   {urgencySignals.length ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex min-w-0 flex-wrap gap-2">
                       {urgencySignals.slice(0, 3).map((signal) => (
-                        <span key={signal} className="max-w-full rounded-full bg-white px-2.5 py-1 text-xs font-bold leading-5 text-emerald-800 ring-1 ring-emerald-100 dark:bg-slate-950 dark:text-emerald-100 dark:ring-emerald-900">
+                        <span key={signal} className="max-w-full whitespace-normal break-words rounded-full bg-white px-2.5 py-1 text-xs font-bold leading-5 text-emerald-800 ring-1 ring-emerald-100 dark:bg-slate-950 dark:text-emerald-100 dark:ring-emerald-900">
                           {signal}
                         </span>
                       ))}
@@ -1264,7 +1264,7 @@ export function LibraryProductPage({
                     <button
                       type="button"
                       onClick={() => openSamplePreview("decision_block")}
-                      className="mt-4 inline-flex min-h-10 max-w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-bold leading-tight text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100"
+                      className="mt-4 inline-flex min-h-10 max-w-full items-center justify-center gap-2 whitespace-normal break-words rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-bold leading-tight text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100"
                     >
                       <FileText className="size-4" /> Preview before buying
                     </button>
@@ -1275,12 +1275,12 @@ export function LibraryProductPage({
                     <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{primaryCtaLabel}</span>
                   </Button>
                   <Button variant="secondary" disabled={outOfStock} onClick={addToCart} className="min-h-12 w-full">
-                    <ShoppingBag className="size-4 shrink-0" /> <span>{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
+                    <ShoppingBag className="size-4 shrink-0" /> <span className="min-w-0 break-words">{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
                   </Button>
                 </div>
                 <WhatsAppHelpLink
                   context={{ source: "library_product", lane: "library", productTitle: product.title }}
-                  className="mt-3 block max-w-full text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                  className="mt-3 block max-w-full break-words text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
                 >
                   Questions? WhatsApp us about this book
                 </WhatsAppHelpLink>
@@ -1288,7 +1288,7 @@ export function LibraryProductPage({
                   <button
                     type="button"
                     onClick={() => setQuoteOpen(true)}
-                    className="mt-3 block max-w-full text-left text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                    className="mt-3 block max-w-full break-words text-left text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
                   >
                     Need 20+ printed copies or a team pack? Request a quote
                   </button>
@@ -1296,7 +1296,7 @@ export function LibraryProductPage({
                   <button
                     type="button"
                     onClick={() => setQuoteOpen(true)}
-                    className="mt-3 block max-w-full text-left text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+                    className="mt-3 block max-w-full break-words text-left text-sm font-semibold leading-6 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
                   >
                     Need multi-seat / team digital access? Request a quote
                   </button>
@@ -1304,7 +1304,7 @@ export function LibraryProductPage({
               </div>
             </div>
 
-            <div className="grid min-w-0 gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3 dark:border-slate-800 xl:col-start-2 xl:border-0 xl:pt-0">
+            <div className="grid min-w-0 max-w-full gap-3 overflow-hidden border-t border-slate-100 pt-5 sm:grid-cols-3 dark:border-slate-800 xl:col-start-2 xl:border-0 xl:pt-0">
               <HeroProof icon={ShieldCheck} label="Secure checkout" />
               <HeroProof icon={ReceiptText} label="Invoice ready" />
               <HeroProof icon={Download} label="Tracked access" />
