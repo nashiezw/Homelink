@@ -916,7 +916,7 @@ export function LibraryProductPage({
                 <button
                   type="button"
                   onClick={() => openLightbox()}
-                  className="relative mx-auto block aspect-[4/3] w-full max-w-[24rem] text-left sm:max-w-[32rem] xl:max-w-none"
+                  className="relative mx-auto block aspect-[4/3] w-full max-w-[24rem] text-left sm:max-w-[32rem] xl:h-[34rem] xl:max-w-none xl:aspect-auto"
                   aria-label="Open product cover"
                 >
                   {activeGalleryImage?.url ? (
@@ -962,7 +962,7 @@ export function LibraryProductPage({
                 </div>
               </div>
               {galleryImages.length > 0 ? (
-                <div className="mt-3 grid min-w-0 grid-cols-4 gap-2 sm:flex sm:overflow-x-auto sm:overscroll-x-contain sm:pb-1 sm:gap-2.5" aria-label="Product image thumbnails">
+                <div className="mt-3 grid min-w-0 grid-cols-4 gap-2 sm:flex sm:justify-center sm:overflow-x-auto sm:overscroll-x-contain sm:pb-1 sm:gap-2.5" aria-label="Product image thumbnails">
                   {galleryImages.slice(0, 8).map((item, index) => (
                     <button
                       key={`${item.url}-${index}`}
