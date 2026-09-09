@@ -297,7 +297,8 @@ export async function sendVisitorMessage(input: {
   if (isPostgresStoreEnabled() && !(await isLiveChatSchemaReady())) throw new LiveChatError("LIVE_CHAT_SETUP_REQUIRED", liveChatSetupMessage(), 503);
   if (!isPostgresStoreEnabled()) return memorySendVisitorMessage(input.visitorKey, body);
   await ensureLiveChatDefaults();
-  const visitor = await upsertVisitor({ request: input.request, visitorKey: input.visitorKey, context: input.context ?? {}, contact: input.contact, userId: input.userId });
+  const visitorContact = mergeContactInputs(input.contact, extractContactFromVisitorMessage(body));
+  const visitor = await upsertVisitor({ request: input.request, visitorKey: input.visitorKey, context: input.context ?? {}, contact: visitorContact, userId: input.userId });
   if (visitor.blockedAt) throw new LiveChatError("VISITOR_BLOCKED", "Chat is not available for this browser.", 403);
   const prisma = getMainPrisma();
   let conversation = await prisma.liveChatConversation.findFirst({
@@ -388,6 +389,7 @@ export async function sendVisitorMessage(input: {
     reason: "visitor_message",
     createdAt: new Date().toISOString(),
   });
+  void maybePromptForContactFollowUp(conversation.id, conversation.publicId, visitor, body, input.context).catch(() => null);
   void captureLeadIntentFromVisitorMessage(conversation.id, visitor.id, body, input.context).catch(() => null);
   void auditEvent(visitor.id, conversation.id, "VISITOR_MESSAGE_RECEIVED", undefined, { idempotencyKey: input.idempotencyKey }).catch(() => null);
   return shaped;
@@ -1471,8 +1473,79 @@ async function captureLeadIntentFromVisitorMessage(conversationId: string, visit
   }).catch(() => null);
 }
 
+async function maybePromptForContactFollowUp(
+  conversationId: string,
+  publicConversationId: string,
+  visitor: { id: string; publicId: string; name?: string | null; email?: string | null; phone?: string | null },
+  body: string,
+  context?: LiveChatVisitorContext,
+) {
+  if (!isContactFollowUpRequest(body)) return;
+  const contact = mergeContactInputs(
+    { name: visitor.name ?? undefined, email: visitor.email ?? undefined, phone: visitor.phone ?? undefined },
+    extractContactFromVisitorMessage(body),
+  );
+  const missing = missingContactFollowUpFields(contact, body);
+  if (!missing.length) {
+    await auditEvent(visitor.id, conversationId, "CONTACT_CAPTURE_COMPLETE", undefined, { requestedChannel: requestedContactChannel(body) });
+    return;
+  }
+
+  const channel = requestedContactChannel(body);
+  const text = contactFollowUpPrompt(missing, channel, context);
+  const idempotencyKey = `contact-follow-up:${missing.join("-")}`;
+  const prisma = getMainPrisma();
+  const existing = await prisma.liveChatMessage.findFirst({ where: { conversationId, idempotencyKey } }).catch(() => null);
+  if (existing) return;
+  const message = await prisma.liveChatMessage.create({
+    data: {
+      publicId: makePublicId("msg"),
+      conversationId,
+      senderKind: "AUTOMATION",
+      senderName: "HouseLink",
+      body: text,
+      messageType: "TEXT",
+      automated: true,
+      idempotencyKey,
+      deliveredAt: new Date(),
+      metadata: { missingContactFields: missing, trigger: "visitor_contact_follow_up" } as Prisma.InputJsonObject,
+    },
+  }).catch(async (error: unknown) => {
+    if (isUniqueError(error)) return prisma.liveChatMessage.findFirst({ where: { conversationId, idempotencyKey } });
+    throw error;
+  });
+  if (!message) return;
+  await prisma.liveChatConversation.update({
+    where: { id: conversationId },
+    data: {
+      status: "FOLLOW_UP",
+      lastMessagePreview: preview(text),
+      lastMessageAt: message.createdAt,
+      updatedAt: new Date(),
+    },
+  }).catch(() => null);
+  await auditEvent(visitor.id, conversationId, "CONTACT_CAPTURE_PROMPTED", undefined, { missingContactFields: missing });
+  publishLiveChatRealtime({
+    type: "message",
+    conversationId: publicConversationId,
+    visitorId: visitor.publicId,
+    message: shapeMessage(message),
+    createdAt: new Date().toISOString(),
+  });
+  publishLiveChatRealtime({
+    type: "inbox",
+    conversationId: publicConversationId,
+    visitorId: visitor.publicId,
+    reason: "contact_capture_prompted",
+    createdAt: new Date().toISOString(),
+  });
+}
+
 function inferLeadIntent(body: string, context?: LiveChatVisitorContext) {
   const text = `${body} ${context?.path ?? ""} ${context?.title ?? ""}`.toLowerCase();
+  if (isContactFollowUpRequest(body)) {
+    return { leadType: "SUPPORT", tagSlug: "needs-follow-up", interest: "Visitor requested WhatsApp/contact follow-up" };
+  }
   if (/\b(pay|payment|paid|ecocash|zipit|bank|invoice|proof|checkout|buy|purchase|order|delivery|format|book|pdf|hard copy)\b/.test(text)) {
     return { leadType: "LIBRARY", tagSlug: text.includes("payment") || text.includes("proof") ? "payment-issue" : "book-buyer", interest: "Book/order or payment help" };
   }
@@ -1503,6 +1576,70 @@ function inferDepartmentSlug(body: string, context?: LiveChatVisitorContext) {
   if (/\/listings|property-for-sale|buy|sale|viewing|price|investment/.test(text)) return "property-sales";
   if (/error|bug|not working|failed|technical|support/.test(text)) return "technical-support";
   return null;
+}
+
+function mergeContactInputs(...contacts: Array<LiveChatContactInput | undefined>): LiveChatContactInput {
+  return contacts.reduce<LiveChatContactInput>((merged, contact) => ({
+    name: cleanText(merged.name || contact?.name, 120) || undefined,
+    email: cleanText(merged.email || contact?.email, 160) || undefined,
+    phone: cleanText(merged.phone || contact?.phone, 80) || undefined,
+  }), {});
+}
+
+function extractContactFromVisitorMessage(body: string): LiveChatContactInput {
+  const email = body.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+  const phone = body.match(/(?:\+?\d[\d\s().-]{6,}\d)/)?.[0]?.replace(/[^\d+]/g, "");
+  const name = extractVisitorName(body);
+  return {
+    name: name || undefined,
+    email: email ? cleanText(email.toLowerCase(), 160) : undefined,
+    phone: phone ? cleanText(phone, 80) : undefined,
+  };
+}
+
+function extractVisitorName(body: string) {
+  const match = body.match(/\b(?:my name is|name is|i am|i'm|im)\s+([a-z][a-z' -]{1,60})/i);
+  const value = cleanText(match?.[1], 80)
+    .replace(/\b(?:and|my|phone|whatsapp|number|email|is|at)\b.*$/i, "")
+    .trim();
+  if (!value || /\d|@/.test(value)) return "";
+  return value.replace(/\s+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function isContactFollowUpRequest(body: string) {
+  const text = body.toLowerCase();
+  return /\b(whats\s*app|whatsapp|wa|email me|send me|call me|phone me|contact me|message me|text me|reach me|get back to me|follow up|callback|call back)\b/.test(text);
+}
+
+function requestedContactChannel(body: string): "email" | "whatsapp" {
+  const text = body.toLowerCase();
+  if (/\b(email me|send me.*email|mail me)\b/.test(text)) return "email";
+  return "whatsapp";
+}
+
+function missingContactFollowUpFields(contact: LiveChatContactInput, body: string) {
+  const missing: string[] = [];
+  if (requestedContactChannel(body) === "email") {
+    if (!cleanText(contact.email, 160)) missing.push("email");
+  } else if (!cleanText(contact.phone, 80)) {
+    missing.push("phone");
+  }
+  if (!cleanText(contact.name, 120)) missing.push("name");
+  return missing;
+}
+
+function contactFollowUpPrompt(missing: string[], channel: "email" | "whatsapp", context?: LiveChatVisitorContext) {
+  const page = cleanHouseLinkTitle(context?.viewed?.productTitle || context?.viewed?.propertyTitle || context?.viewed?.courseTitle || context?.title);
+  const fields = missingContactFieldsLabel(missing);
+  const contextText = page ? ` about ${page}` : "";
+  const channelText = channel === "email" ? "send the details by email" : "follow up on WhatsApp";
+  return `Sure, we can ${channelText}. Please send your ${fields} and what you need help with${contextText}, so the HouseLink team has everything needed to contact you properly.`;
+}
+
+function missingContactFieldsLabel(missing: string[]) {
+  const labels = missing.map((field) => field === "phone" ? "WhatsApp number" : field);
+  if (labels.length <= 1) return labels[0] || "contact details";
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 }
 
 function proactiveMessageIdempotencyKey(visitorId: string, body: string) {

@@ -88,6 +88,11 @@ const checks = [
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
+    label: "public chat captures visitor names from conversation text",
+    pattern: /extractVisitorName[\s\S]*my name is/,
+  },
+  {
+    file: "components/live-chat/live-chat-widget.tsx",
     label: "public chat hides while the Library bag drawer is open",
     pattern: /libraryBagOpen/,
   },
@@ -448,8 +453,23 @@ const checks = [
   },
   {
     file: "lib/live-chat/repository.ts",
+    label: "visitor contact details are extracted server-side before upsert",
+    pattern: /mergeContactInputs\(input\.contact,\s*extractContactFromVisitorMessage\(body\)\)[\s\S]*upsertVisitor/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "WhatsApp or email requests trigger an automated contact capture prompt",
+    pattern: /maybePromptForContactFollowUp[\s\S]*visitor_contact_follow_up[\s\S]*CONTACT_CAPTURE_PROMPTED/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
+    label: "contact capture prompts are idempotent per missing field set",
+    pattern: /contact-follow-up:\$\{missing\.join\("-"\)\}[\s\S]*isUniqueError/,
+  },
+  {
+    file: "lib/live-chat/repository.ts",
     label: "visitor sends return before non-critical lead capture and audit work",
-    pattern: /publishLiveChatRealtime\(\{[\s\S]*reason:\s*"visitor_message"[\s\S]*void captureLeadIntentFromVisitorMessage[\s\S]*void auditEvent[\s\S]*return shaped/,
+    pattern: /publishLiveChatRealtime\(\{[\s\S]*reason:\s*"visitor_message"[\s\S]*void maybePromptForContactFollowUp[\s\S]*void captureLeadIntentFromVisitorMessage[\s\S]*void auditEvent[\s\S]*return shaped/,
   },
   {
     file: "lib/live-chat/repository.ts",

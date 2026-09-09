@@ -320,9 +320,10 @@ export function LiveChatWidget() {
     const nextContact = mergeContactFromMessage({ ...contactRef.current }, text, pendingContactField);
     const capturedPhone = !contactRef.current.phone && nextContact.phone;
     const capturedEmail = !contactRef.current.email && nextContact.email;
-    if (capturedPhone || capturedEmail) {
+    const capturedName = !contactRef.current.name && nextContact.name;
+    if (capturedPhone || capturedEmail || capturedName) {
       setContact(nextContact);
-      setContactNotice(capturedPhone ? "Saved your WhatsApp number with this chat." : "Saved your email with this chat.");
+      setContactNotice(capturedPhone ? "Saved your WhatsApp number with this chat." : capturedEmail ? "Saved your email with this chat." : "Saved your name with this chat.");
     }
     const idempotencyKey = crypto.randomUUID();
     const optimistic: LiveChatMessageView = {
@@ -377,8 +378,8 @@ export function LiveChatWidget() {
   function handleQuickReply(body: string, contactField?: "phone" | "email") {
     if (contactField) {
       setPendingContactField(contactField);
-      setDraft(contactField === "phone" ? "My WhatsApp number is " : "My email is ");
-      setContactNotice(contactField === "phone" ? "Type your WhatsApp number in the message box and send it. We will save it with this chat." : "Type your email in the message box and send it. We will save it with this chat.");
+      setDraft("My name is ");
+      setContactNotice(contactField === "phone" ? "Send your name, WhatsApp number, and what you need help with. We will save it with this chat." : "Send your name, email, and what you need help with. We will save it with this chat.");
       return;
     }
     void sendMessage(body);
@@ -712,9 +713,20 @@ function normalizeContact(contact: { name?: string; phone?: string; email?: stri
 function mergeContactFromMessage(contact: ContactState, body: string, expectedField: "phone" | "email" | null) {
   const email = body.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
   const phone = body.match(/(?:\+?\d[\d\s().-]{6,}\d)/)?.[0]?.replace(/[^\d+]/g, "");
+  const name = extractVisitorName(body);
+  if (name) contact.name = name;
   if ((expectedField === "email" || email) && email) contact.email = email;
   if ((expectedField === "phone" || phone) && phone) contact.phone = phone;
   return contact;
+}
+
+function extractVisitorName(body: string) {
+  const match = body.match(/\b(?:my name is|name is|i am|i'm|im)\s+([a-z][a-z' -]{1,60})/i);
+  const value = (match?.[1] || "")
+    .replace(/\b(?:and|my|phone|whatsapp|number|email|is|at)\b.*$/i, "")
+    .trim();
+  if (!value || /\d|@/.test(value)) return "";
+  return value.replace(/\s+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function isVisitorPreviewMessage(message: LiveChatMessageView) {
