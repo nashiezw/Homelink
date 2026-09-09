@@ -961,6 +961,37 @@ export function LibraryProductPage({
                   </button>
                 </div>
               </div>
+              {galleryImages.length > 0 ? (
+                <div className="-mx-1 mt-3 flex gap-2.5 overflow-x-auto px-1 pb-1" aria-label="Product image thumbnails">
+                  {galleryImages.slice(0, 8).map((item, index) => (
+                    <button
+                      key={`${item.url}-${index}`}
+                      type="button"
+                      onClick={() => setGalleryIndex(index)}
+                      className={cn(
+                        "relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-white shadow-sm transition sm:h-[4.5rem] sm:w-[4.5rem] dark:bg-slate-950",
+                        galleryIndex === index
+                          ? "border-emerald-600 ring-2 ring-emerald-600/20"
+                          : "border-slate-200 hover:border-emerald-500/60 dark:border-slate-800",
+                      )}
+                      aria-label={`Show ${item.label || "gallery image"}`}
+                    >
+                      <Image src={displayImageUrl(item.url, { width: 160, height: 160, crop: "fill" }) || item.url} alt={item.label || product.title} fill sizes="72px" className="object-cover" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[product.productType.replace(/_/g, " "), product.category, product.difficulty].map((item, index) => (
+                    <div
+                      key={`${item}-${index}`}
+                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="min-w-0">
@@ -1271,40 +1302,6 @@ export function LibraryProductPage({
                   </button>
                 )}
               </div>
-            </div>
-
-            <div className="xl:col-start-1">
-              {galleryImages.length > 0 ? (
-                <div className="flex flex-wrap gap-2.5">
-                  {galleryImages.slice(0, 6).map((item, index) => (
-                    <button
-                      key={`${item.url}-${index}`}
-                      type="button"
-                      onClick={() => setGalleryIndex(index)}
-                      className={cn(
-                        "relative h-[4.5rem] w-[3.35rem] overflow-hidden rounded-lg border bg-white shadow-sm transition dark:bg-slate-950",
-                        galleryIndex === index
-                          ? "border-emerald-600 ring-2 ring-emerald-600/20"
-                          : "border-slate-200 hover:border-emerald-500/60 dark:border-slate-800",
-                      )}
-                      aria-label={`Show ${item.label || "gallery image"}`}
-                    >
-                      <Image src={displayImageUrl(item.url, { width: 120, height: 120, crop: "fill" }) || item.url} alt={item.label || product.title} fill sizes="54px" className="object-cover" />
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {[product.productType.replace(/_/g, " "), product.category, product.difficulty].map((item, index) => (
-                    <div
-                      key={`${item}-${index}`}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             <div className="grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3 dark:border-slate-800 xl:col-start-2 xl:border-0 xl:pt-0">

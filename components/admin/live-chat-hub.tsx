@@ -38,7 +38,7 @@ const FILTERS = [
 type LiveChatPanel = "inbox" | "visitors" | "profile" | "settings";
 type LiveChatAdminAction = (body: Record<string, unknown>, success?: string) => Promise<unknown>;
 
-const LIVE_VISITORS_REFRESH_MS = 6_000;
+const LIVE_VISITORS_REFRESH_MS = 5_000;
 const LIVE_VISITOR_SECONDS = 45;
 export function LiveChatHub() {
   const [data, setData] = useState<LiveChatInboxView | null>(null);
@@ -294,7 +294,7 @@ export function LiveChatHub() {
         body: JSON.stringify(body),
       });
       if (result.error) {
-        setError(result.error.message);
+        showLiveChatActionProblem(result.error, String(body.action ?? ""));
       } else {
         setNotice(success);
         window.setTimeout(() => setNotice(null), 2500);
@@ -334,7 +334,7 @@ export function LiveChatHub() {
     setError(null);
     const visitor = data?.activeVisitors.find((item) => item.id === visitorId) ?? data?.conversations.find((conversation) => conversation.visitor.id === visitorId)?.visitor;
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8_000);
+    const timeout = window.setTimeout(() => controller.abort(), liveChatActionTimeoutMs("start_conversation"));
     try {
       const text = message || proactiveMessageForVisitor(visitor);
       const result = await apiFetch<{ conversationId: string }>("/api/v1/admin/live-chat", {
@@ -348,7 +348,7 @@ export function LiveChatHub() {
         }),
       });
       if (result.error) {
-        setError(result.error.message);
+        showLiveChatActionProblem(result.error, "start_conversation");
       } else {
         const conversationId = result.data?.conversationId;
         const duplicateSuppressed = (result.data as { duplicateSuppressed?: boolean } | undefined)?.duplicateSuppressed;
@@ -384,6 +384,17 @@ export function LiveChatHub() {
     setNote("");
   }
 
+  function showLiveChatActionProblem(error: { code?: string; message?: string }, actionName: string) {
+    const lightweight = ["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"].includes(actionName);
+    if (error.code === "NETWORK_ERROR" && lightweight) {
+      setNotice("HouseLink Live is still connecting. Refresh in a moment if the message does not appear.");
+      window.setTimeout(() => setNotice(null), 3500);
+      void load({ silent: true });
+      return;
+    }
+    setError(liveChatFriendlyErrorMessage(error.message));
+  }
+
   async function deleteConversation(conversation: LiveChatConversationView) {
     if (!window.confirm("Delete this conversation from the inbox? This removes the chat history for the team, but does not block the visitor from using support later.")) return;
     setBusy(`delete_conversation:${conversation.id}`);
@@ -393,7 +404,7 @@ export function LiveChatHub() {
       body: JSON.stringify({ action: "delete_conversation", conversationId: conversation.id }),
     });
     if (result.error) {
-      setError(result.error.message);
+      setError(liveChatFriendlyErrorMessage(result.error.message));
     } else {
       setNotice("Conversation deleted.");
       window.setTimeout(() => setNotice(null), 2500);
@@ -416,7 +427,7 @@ export function LiveChatHub() {
       body: JSON.stringify({ action: "delete_conversations", filter, query }),
     });
     if (result.error) {
-      setError(result.error.message);
+      setError(liveChatFriendlyErrorMessage(result.error.message));
     } else {
       setNotice(`${result.data?.count ?? 0} conversation${result.data?.count === 1 ? "" : "s"} deleted.`);
       window.setTimeout(() => setNotice(null), 2500);
@@ -1796,7 +1807,16 @@ function proactiveSendKey(visitorId: string, message: string) {
 }
 
 function liveChatActionTimeoutMs(action: string) {
-  return ["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"].includes(action) ? 8_000 : 20_000;
+  return ["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"].includes(action) ? 15_000 : 20_000;
+}
+
+function liveChatFriendlyErrorMessage(message?: string) {
+  const text = String(message || "").trim();
+  if (!text) return "HouseLink Live could not complete that action. Please try again.";
+  if (/server error|unexpected server response|request took longer|longer than expected|\(\d{3}\)/i.test(text)) {
+    return "HouseLink Live could not complete that action. Please try again.";
+  }
+  return text;
 }
 
 function statusTone(status: string) {

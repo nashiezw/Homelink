@@ -1,6 +1,6 @@
 import { requireAdminAsync, requireAdmin } from "@/lib/admin/require-admin";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { canManageLiveChat, subscribeLiveChatAdminRealtime } from "@/lib/live-chat/repository";
+import { canManageLiveChat, subscribeLiveChatAdminRealtime, touchLiveChatAgentPresence } from "@/lib/live-chat/repository";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
       unsubscribe = subscribeLiveChatAdminRealtime((event) => send(event.type, event));
       send("ready", { ok: true });
       heartbeat = setInterval(() => {
+        void touchLiveChatAgentPresence(auth.user, "admin_stream_heartbeat").catch(() => null);
         send("heartbeat", { now: new Date().toISOString() });
       }, 20_000);
     },

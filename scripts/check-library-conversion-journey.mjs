@@ -42,8 +42,8 @@ const checks = [
     pass: /Before You Buy/.test(productPage) && /trackFaqOpened/.test(productPage) && /library_faq_opened/.test(productPage),
   },
   {
-    label: "digital CTA says Get instant access",
-    pass: /Get instant access/.test(productPage),
+    label: "digital CTA keeps the direct buy label with price",
+    pass: /Buy Digital PDF - \$\{product\.currency\} \$\{selectedPrice\.toFixed\(2\)\}/.test(productPage),
   },
   {
     label: "format selections and purchase CTAs are tracked",

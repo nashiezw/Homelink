@@ -25,7 +25,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
       data: undefined as T,
       error: {
         code: "NETWORK_ERROR",
-        message: aborted ? "The request took longer than expected. Please try again." : "We could not reach the server just now. Please try again.",
+        message: aborted ? "This is taking longer than expected. Please check again in a moment." : "We could not connect just now. Please try again.",
       },
     };
   }
@@ -35,8 +35,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
       response.status === 413
         ? "The upload is too large for the server request limit. Try a smaller file."
         : response.ok
-          ? "Unexpected server response."
-          : `Server error (${response.status}). Please try again.`;
+          ? "We received an unexpected response. Please try again."
+          : "This part of HouseLink is temporarily unavailable. Please try again.";
     return {
       data: undefined as T,
       error: {
@@ -45,7 +45,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<Api
       },
     };
   }
-  return response.json() as Promise<ApiEnvelope<T>>;
+  const envelope = await response.json() as ApiEnvelope<T>;
+  if (envelope.error?.message) {
+    envelope.error.message = friendlyApiErrorMessage(envelope.error.message);
+  }
+  return envelope;
+}
+
+function friendlyApiErrorMessage(message: string) {
+  const text = message.trim();
+  if (/server error|unexpected server response|request took longer|longer than expected|\(\d{3}\)/i.test(text)) {
+    return "This part of HouseLink is temporarily unavailable. Please try again.";
+  }
+  return text;
 }
 
 export type PublicUser = {

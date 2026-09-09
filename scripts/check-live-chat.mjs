@@ -67,6 +67,11 @@ const checks = [
     pattern: /defaultsReadyCache/,
   },
   {
+    file: "lib/api/client.ts",
+    label: "shared API client hides raw server and timeout wording from user-facing messages",
+    pattern: /friendlyApiErrorMessage[\s\S]*server error[\s\S]*This part of HouseLink is temporarily unavailable(?![\s\S]*Server error \(\$\{response\.status\}\))/,
+  },
+  {
     file: "lib/live-chat/repository.ts",
     label: "admin analytics are cached to protect Vercel CPU",
     pattern: /analyticsCache/,
@@ -388,8 +393,8 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
-    label: "admin proactive sends have an 8s timeout and clicked-button loading",
-    pattern: /async function startConversation[\s\S]*setStartingVisitorId\(visitorId\)[\s\S]*new AbortController\(\)[\s\S]*8_000[\s\S]*signal: controller\.signal[\s\S]*setStartingVisitorId\(null\)/,
+    label: "admin proactive sends use a bounded timeout and clicked-button loading",
+    pattern: /async function startConversation[\s\S]*setStartingVisitorId\(visitorId\)[\s\S]*new AbortController\(\)[\s\S]*liveChatActionTimeoutMs\("start_conversation"\)[\s\S]*signal: controller\.signal[\s\S]*setStartingVisitorId\(null\)/,
   },
   {
     file: "lib/live-chat/repository.ts",
@@ -398,8 +403,13 @@ const checks = [
   },
   {
     file: "components/admin/live-chat-hub.tsx",
-    label: "admin live chat actions time out message sends quickly",
-    pattern: /liveChatActionTimeoutMs[\s\S]*\["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"\][\s\S]*8_000/,
+    label: "admin live chat actions time out message sends without raw server copy",
+    pattern: /liveChatActionTimeoutMs[\s\S]*\["send_message", "start_conversation", "internal_note", "typing", "mark_staff_read"\][\s\S]*15_000[\s\S]*liveChatFriendlyErrorMessage/,
+  },
+  {
+    file: "components/admin/live-chat-hub.tsx",
+    label: "admin live chat network timeouts show a calm notice instead of a red server error",
+    pattern: /showLiveChatActionProblem[\s\S]*NETWORK_ERROR[\s\S]*setNotice\("HouseLink Live is still connecting/,
   },
   {
     file: "components/live-chat/live-chat-widget.tsx",
