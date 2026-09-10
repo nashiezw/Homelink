@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Boxes, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, ImagePlus, Link2, Loader2, MessageCircle, Plus, Search, Star, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -38,7 +39,7 @@ import {
   type LibraryProductFormat,
   type LibraryVolumeTier,
 } from "@/lib/library/catalog";
-import { defaultLibraryStoreSettings, type LibraryStoreSettings } from "@/lib/library/settings-shared";
+import { defaultLibraryStoreSettings, type LibrarySalesFunnelConfig, type LibrarySalesFunnelOffer, type LibraryStoreSettings } from "@/lib/library/settings-shared";
 import { socialShareImageUrl } from "@/lib/seo/social-image";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,7 @@ const views = [
   "Collections",
   "Authors",
   "Orders",
+  "Sales Funnels",
   "Customers",
   "Reviews",
   "Coupons",
@@ -88,6 +90,40 @@ type LibraryCustomerJourney = {
   averageJourneyTime: number;
   conversionRate: number;
   returnVisitorRate: number;
+};
+
+type LibrarySalesFunnelDashboard = {
+  funnels: Array<{
+    id: string;
+    slug: string;
+    productSlug: string;
+    productTitle: string;
+    status: string;
+    version: number;
+    offerStatus: string;
+    visitors: number;
+    ctaClicks: number;
+    checkoutStarts: number;
+    paymentStarts: number;
+    purchases: number;
+    revenue: number;
+    conversionRate: number;
+    topCta: string;
+  }>;
+  totals: {
+    visitors: number;
+    ctaClicks: number;
+    checkoutStarts: number;
+    paymentStarts: number;
+    purchases: number;
+    revenue: number;
+    conversionRate: number;
+  };
+  ctaPerformance: Array<{ cta: string; clicks: number; checkoutStarts: number; purchases: number; revenue: number; conversionRate: number }>;
+  offerPerformance: Array<{ offerId: string; views: number; clicks: number; checkoutStarts: number; purchases: number; revenue: number; conversionRate: number }>;
+  dropOff: Array<{ stage: string; count: number; dropOff: number; dropOffRate: number }>;
+  productComparison: Array<{ product: string; visitors: number; purchases: number; revenue: number; conversionRate: number }>;
+  campaignRows: Array<{ campaign: string; visitors: number; ctaClicks: number; checkoutStarts: number; purchases: number; revenue: number; adSpend: null; cpa: null; roas: null }>;
 };
 
 type LibraryConfirmRequest = {
@@ -452,6 +488,9 @@ export function LibraryAdminHub() {
   const [customerJourney, setCustomerJourney] = useState<LibraryCustomerJourney | null>(null);
   const [customerJourneyLoading, setCustomerJourneyLoading] = useState(false);
   const [customerJourneyError, setCustomerJourneyError] = useState<string | null>(null);
+  const [salesFunnelDashboard, setSalesFunnelDashboard] = useState<LibrarySalesFunnelDashboard | null>(null);
+  const [salesFunnelLoading, setSalesFunnelLoading] = useState(false);
+  const [salesFunnelError, setSalesFunnelError] = useState<string | null>(null);
   const [confirmRequest, setConfirmRequest] = useState<LibraryConfirmRequest | null>(null);
   const confirmResolverRef = useRef<((confirmed: boolean) => void) | null>(null);
   const [draftOpen, setDraftOpen] = useState(false);
@@ -621,6 +660,17 @@ export function LibraryAdminHub() {
       if (result.data) setCustomerJourney(result.data);
       else setCustomerJourneyError(result.error?.message ?? "Customer journey analytics could not be loaded.");
       setCustomerJourneyLoading(false);
+    });
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "Sales Funnels") return;
+    setSalesFunnelLoading(true);
+    setSalesFunnelError(null);
+    void apiFetch<LibrarySalesFunnelDashboard>("/api/v1/admin/library?type=sales-funnels&days=30").then((result) => {
+      if (result.data) setSalesFunnelDashboard(result.data);
+      else setSalesFunnelError(result.error?.message ?? "Sales funnel intelligence could not be loaded.");
+      setSalesFunnelLoading(false);
     });
   }, [view]);
 
@@ -1481,6 +1531,37 @@ export function LibraryAdminHub() {
     await load();
   }
 
+  async function saveSalesFunnel(funnel: LibrarySalesFunnelConfig) {
+    setFeedback(null);
+    const result = await apiFetch<{ funnel: LibrarySalesFunnelConfig }>("/api/v1/admin/library", {
+      method: "POST",
+      body: JSON.stringify({ action: "save_sales_funnel", funnel }),
+    });
+    if (result.error || !result.data?.funnel) {
+      setFeedback({ tone: "error", message: result.error?.message || "Sales funnel could not be saved." });
+      return;
+    }
+    setOperations((current) => ({
+      ...current,
+      storeSettings: {
+        ...(current.storeSettings ?? defaultLibraryStoreSettings),
+        salesFunnels: {
+          ...(current.storeSettings ?? defaultLibraryStoreSettings).salesFunnels,
+          funnels: [
+            result.data!.funnel,
+            ...(current.storeSettings ?? defaultLibraryStoreSettings).salesFunnels.funnels.filter((item) => item.id !== result.data!.funnel.id && item.slug !== result.data!.funnel.slug),
+          ],
+        },
+      },
+    }));
+    setFeedback({ tone: "success", message: "Sales funnel saved. Public routes and offer pricing have been refreshed." });
+    await load();
+    if (view === "Sales Funnels") {
+      const fresh = await apiFetch<LibrarySalesFunnelDashboard>("/api/v1/admin/library?type=sales-funnels&days=30");
+      if (fresh.data) setSalesFunnelDashboard(fresh.data);
+    }
+  }
+
   function openFulfilmentEditor(row: LibraryOperations["fulfilments"][number]) {
     setFulfilmentDraft({ id: row.id, status: row.status, courier: row.courier ?? "", trackingNumber: row.trackingNumber ?? "", trackingUrl: row.trackingUrl ?? "", dispatchNotes: row.dispatchNotes ?? "", deliveryNotes: row.deliveryNotes ?? "" });
   }
@@ -1880,6 +1961,17 @@ export function LibraryAdminHub() {
           <FulfilmentTable rows={operations.fulfilments} onEdit={openFulfilmentEditor} />
           <OperationsList title="Invoices" rows={operations.invoices.map((item) => ({ label: item.invoiceNumber, value: `${item.currency} ${Number(item.total).toFixed(2)}`, detail: item.order?.orderNumber ?? "Library invoice", href: item.orderId ? `/api/v1/library/orders/${item.orderId}/invoice` : undefined }))} />
         </AdminPanel>
+      )}
+
+      {view === "Sales Funnels" && (
+        <SalesFunnelsAdminView
+          dashboard={salesFunnelDashboard}
+          loading={salesFunnelLoading}
+          error={salesFunnelError}
+          settings={operations.storeSettings}
+          products={source}
+          onSave={saveSalesFunnel}
+        />
       )}
 
       {["Categories", "Collections", "Authors", "Customers", "Reviews", "Coupons", "Downloads", "Inventory", "Reports", "Analytics", "Settings"].includes(view) && (
@@ -4411,6 +4503,339 @@ function LibraryTabManagement({
   }
 
   return null;
+}
+
+function SalesFunnelsAdminView({
+  dashboard,
+  loading,
+  error,
+  settings,
+  products,
+  onSave,
+}: {
+  dashboard: LibrarySalesFunnelDashboard | null;
+  loading: boolean;
+  error: string | null;
+  settings?: LibraryStoreSettings;
+  products: LibraryProduct[];
+  onSave: (funnel: LibrarySalesFunnelConfig) => Promise<void>;
+}) {
+  const configuredFunnels = settings?.salesFunnels.funnels ?? defaultLibraryStoreSettings.salesFunnels.funnels;
+  const [selectedId, setSelectedId] = useState(configuredFunnels[0]?.id ?? "");
+  const selected = configuredFunnels.find((item) => item.id === selectedId) ?? configuredFunnels[0] ?? defaultLibraryStoreSettings.salesFunnels.funnels[0];
+  const [draft, setDraft] = useState<LibrarySalesFunnelConfig>(selected);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const next = configuredFunnels.find((item) => item.id === selectedId) ?? configuredFunnels[0] ?? defaultLibraryStoreSettings.salesFunnels.funnels[0];
+    setDraft(next);
+    if (next && next.id !== selectedId) setSelectedId(next.id);
+  }, [configuredFunnels, selectedId]);
+
+  const selectedProduct = products.find((product) => product.slug === draft.productSlug);
+  const availableFormats = enabledLibraryFormats(selectedProduct ?? products.find((product) => product.slug === draft.productSlug) ?? products[0]).filter((format) =>
+    ["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(format.type),
+  );
+  const funnelOptions = configuredFunnels.map((funnel) => ({ value: funnel.id, label: `${funnel.label || funnel.slug} (${funnel.status})` }));
+
+  function update<K extends keyof LibrarySalesFunnelConfig>(key: K, value: LibrarySalesFunnelConfig[K]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateOffer<K extends keyof LibrarySalesFunnelOffer>(key: K, value: LibrarySalesFunnelOffer[K]) {
+    setDraft((current) => ({ ...current, offer: { ...current.offer, [key]: value } }));
+  }
+
+  function updateOfferPrice(formatType: LibrarySalesFunnelOffer["formatPrices"][number]["formatType"], key: "normalPrice" | "offerPrice", value: string) {
+    const amount = Math.max(0, Number(value) || 0);
+    setDraft((current) => ({
+      ...current,
+      offer: {
+        ...current.offer,
+        formatPrices: upsertFunnelFormatPrice(current.offer.formatPrices, formatType, key, amount),
+      },
+    }));
+  }
+
+  async function saveDraft(status?: LibrarySalesFunnelConfig["status"]) {
+    setSaving(true);
+    try {
+      await onSave({ ...draft, status: status ?? draft.status, version: Math.max(1, Number(draft.version) || 1) + 1 });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function createDraftFromProduct(productSlug?: string) {
+    const product = products.find((item) => item.slug === productSlug) ?? products[0];
+    const base = defaultLibraryStoreSettings.salesFunnels.funnels[0];
+    const seed = product ? slugifyFunnelId(product.title || product.slug) : `sales-funnel-${Date.now()}`;
+    const next: LibrarySalesFunnelConfig = {
+      ...base,
+      id: seed,
+      slug: seed,
+      productSlug: product?.slug ?? base.productSlug,
+      status: "DRAFT",
+      version: 1,
+      label: product?.title ?? "New sales funnel",
+      headline: product ? `Get ${product.title}` : "Build a focused sales funnel",
+      subheadline: product?.subtitle || product?.description || base.subheadline,
+      offer: {
+        ...base.offer,
+        id: `${seed}-offer`,
+        title: "Launch offer",
+        startsAt: new Date().toISOString(),
+        endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
+        formatPrices: (product ? enabledLibraryFormats(product) : []).filter((format) => ["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(format.type)).map((format) => ({
+          formatType: format.type as LibrarySalesFunnelOffer["formatPrices"][number]["formatType"],
+          normalPrice: libraryFormatCompareAt(format) ?? format.price,
+          offerPrice: format.price,
+        })),
+      },
+    };
+    setSelectedId(next.id);
+    setDraft(next);
+  }
+
+  if (loading && !dashboard) {
+    return (
+      <div className="flex items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 py-14 text-slate-400">
+        <Loader2 className="mr-2 size-5 animate-spin" /> Loading sales funnel intelligence...
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm font-semibold text-red-200">{error}</div>;
+  }
+  if (!dashboard) {
+    return <div className="rounded-xl border border-dashed border-white/10 p-6 text-sm text-slate-500">No sales funnel data available yet.</div>;
+  }
+
+  return (
+    <div className="grid gap-5">
+      <AdminPanel
+        title="HouseLink Sales Intelligence"
+        description="Sales-first funnel metrics: visitors, buy clicks, checkout starts, payment starts, purchases, revenue, and drop-off."
+        action={<Link href="/property-development-guide" target="_blank" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-cyan-400/40"><ExternalLink className="size-4" /> Open pilot funnel</Link>}
+      >
+        <AdminMetricGrid cols={6}>
+          <AdminStatPill label="Visitors" value={dashboard.totals.visitors} />
+          <AdminStatPill label="Buy Now Clicks" value={dashboard.totals.ctaClicks} tone="info" />
+          <AdminStatPill label="Checkouts" value={dashboard.totals.checkoutStarts} />
+          <AdminStatPill label="Payments" value={dashboard.totals.paymentStarts} />
+          <AdminStatPill label="Purchases" value={dashboard.totals.purchases} tone="success" />
+          <AdminStatPill label="Revenue" value={`USD ${dashboard.totals.revenue.toFixed(2)}`} tone="success" />
+        </AdminMetricGrid>
+        <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+          <p className="text-sm font-black uppercase tracking-[0.16em] text-emerald-300">Sales conversion rate</p>
+          <p className="mt-2 text-4xl font-black text-white">{dashboard.totals.conversionRate.toFixed(1)}%</p>
+          <p className="mt-1 text-sm text-emerald-100">Purchases divided by visitors. This is the primary sales funnel KPI.</p>
+        </div>
+      </AdminPanel>
+
+      <AdminPanel
+        title="Funnel Builder"
+        description="Create, edit, preview, publish, and pause reusable sales-first funnels for existing Library products."
+        action={<Button onClick={() => createDraftFromProduct()}><Plus className="size-4" /> New Funnel</Button>}
+      >
+        <div className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
+          <div className="grid content-start gap-3">
+            <AdminSelect value={draft.id} onChange={(value) => {
+              setSelectedId(value);
+              const next = configuredFunnels.find((item) => item.id === value);
+              if (next) setDraft(next);
+            }} options={funnelOptions.length ? funnelOptions : [{ value: draft.id, label: draft.label || draft.slug }]} />
+            <AdminDataTable
+              rows={configuredFunnels}
+              emptyMessage="No funnels configured."
+              columns={[
+                { key: "funnel", header: "Reusable funnel", render: (row) => <button type="button" onClick={() => { setSelectedId(row.id); setDraft(row); }} className="text-left"><span className="block font-semibold text-white">{row.label || row.slug}</span><span className="text-xs text-slate-500">{row.productSlug}</span></button> },
+                { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "PUBLISHED" ? "success" : "muted"} /> },
+              ]}
+            />
+          </div>
+          <div className="grid gap-4">
+            <EditorSection title="Product and route">
+              <div className="grid gap-3 lg:grid-cols-3">
+                <SelectField label="Library product" value={draft.productSlug} onChange={(value) => update("productSlug", value)} options={products.map((product) => product.slug)} optionLabels={Object.fromEntries(products.map((product) => [product.slug, product.title]))} />
+                <Field label="Funnel slug" value={draft.slug} onChange={(value) => update("slug", slugifyFunnelId(value))} required />
+                <SelectField label="Status" value={draft.status} onChange={(value) => update("status", value as LibrarySalesFunnelConfig["status"])} options={["DRAFT", "PUBLISHED", "PAUSED"]} />
+              </div>
+              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                <Field label="Funnel name" value={draft.label} onChange={(value) => update("label", value)} required />
+                <SelectField label="Template" value={draft.template} onChange={(value) => update("template", value as LibrarySalesFunnelConfig["template"])} options={["GUIDE_SALES", "BOOK_SALES", "SIMPLE_OFFER"]} />
+                <Field label="WhatsApp URL" value={draft.whatsappUrl} onChange={(value) => update("whatsappUrl", value)} />
+              </div>
+            </EditorSection>
+
+            <EditorSection title="Sales copy">
+              <div className="grid gap-3">
+                <Field label="Headline" value={draft.headline} onChange={(value) => update("headline", value)} required />
+                <TextAreaField label="Subheadline" value={draft.subheadline} onChange={(value) => update("subheadline", value)} />
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <Field label="Primary CTA" value={draft.primaryCta} onChange={(value) => update("primaryCta", value)} />
+                  <Field label="Secondary CTA" value={draft.secondaryCta} onChange={(value) => update("secondaryCta", value)} />
+                </div>
+                <TextAreaField label="Problem bullets" value={draft.problemPoints.join("\n")} onChange={(value) => update("problemPoints", textLines(value))} />
+                <TextAreaField label="Audience bullets" value={draft.audience.join("\n")} onChange={(value) => update("audience", textLines(value))} />
+                <TextAreaField label="Trust bullets" value={draft.trust.join("\n")} onChange={(value) => update("trust", textLines(value))} />
+              </div>
+            </EditorSection>
+
+            <EditorSection title="Offer and pricing">
+              <div className="grid gap-3 lg:grid-cols-4">
+                <Field label="Offer title" value={draft.offer.title} onChange={(value) => updateOffer("title", value)} />
+                <SelectField label="Offer status" value={draft.offer.status} onChange={(value) => updateOffer("status", value as LibrarySalesFunnelOffer["status"])} options={["DRAFT", "SCHEDULED", "ACTIVE", "PAUSED", "EXPIRED"]} />
+                <Field label="Starts at" value={draft.offer.startsAt} onChange={(value) => updateOffer("startsAt", value)} />
+                <Field label="Ends at" value={draft.offer.endsAt} onChange={(value) => updateOffer("endsAt", value)} />
+              </div>
+              <TextAreaField label="Offer description" value={draft.offer.description} onChange={(value) => updateOffer("description", value)} />
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                {(availableFormats.length ? availableFormats : [{ id: "pdf", type: "PDF", price: 0, label: "PDF", enabled: true } as LibraryProductFormat]).map((format) => {
+                  const configured = draft.offer.formatPrices.find((item) => item.formatType === format.type);
+                  const formatType = format.type as LibrarySalesFunnelOffer["formatPrices"][number]["formatType"];
+                  return (
+                    <div key={format.id} className="rounded-lg border border-white/10 bg-slate-950/70 p-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">{format.label || format.type}</p>
+                      <div className="mt-3 grid gap-2">
+                        <Field label="Normal USD" type="number" value={String(configured?.normalPrice ?? libraryFormatCompareAt(format) ?? format.price)} onChange={(value) => updateOfferPrice(formatType, "normalPrice", value)} />
+                        <Field label="Offer USD" type="number" value={String(configured?.offerPrice ?? format.price)} onChange={(value) => updateOfferPrice(formatType, "offerPrice", value)} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </EditorSection>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+              <div>
+                <p className="text-sm font-semibold text-white">Preview route</p>
+                <Link href={`/funnel/${draft.slug}`} target="_blank" className="text-sm text-cyan-300 underline">/funnel/{draft.slug}</Link>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button disabled={saving} variant="secondary" onClick={() => void saveDraft("DRAFT")}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Save Draft</Button>
+                <Button disabled={saving} onClick={() => void saveDraft("PUBLISHED")}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Publish Funnel</Button>
+                <Button disabled={saving} variant="secondary" onClick={() => void saveDraft("PAUSED")}>Pause</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </AdminPanel>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <AdminPanel title="Funnel drop-off">
+          <BarChart data={dashboard.dropOff.map((row) => ({ label: row.stage, value: row.count }))} color="bg-cyan-500" />
+          <div className="mt-4 grid gap-2">
+            {dashboard.dropOff.map((row) => (
+              <div key={row.stage} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/60 p-3 text-sm">
+                <span className="font-semibold text-white">{row.stage}</span>
+                <span className="text-slate-400">{row.count} reached / {row.dropOff} dropped ({row.dropOffRate.toFixed(1)}%)</span>
+              </div>
+            ))}
+          </div>
+        </AdminPanel>
+        <AdminPanel title="Offer performance">
+          <AdminDataTable
+            rows={dashboard.offerPerformance.map((row) => ({ id: row.offerId, ...row }))}
+            emptyMessage="No offer events yet."
+            columns={[
+              { key: "offer", header: "Offer", render: (row) => <span className="font-semibold text-white">{row.offerId}</span> },
+              { key: "views", header: "Views", render: (row) => row.views },
+              { key: "clicks", header: "Clicks", render: (row) => row.clicks },
+              { key: "checkouts", header: "Checkouts", render: (row) => row.checkoutStarts },
+              { key: "purchases", header: "Purchases", render: (row) => row.purchases },
+              { key: "revenue", header: "Revenue", render: (row) => `USD ${row.revenue.toFixed(2)}` },
+            ]}
+          />
+        </AdminPanel>
+      </div>
+
+      <AdminPanel title="Reusable funnels">
+        <AdminDataTable
+          rows={dashboard.funnels}
+          emptyMessage="No sales funnels configured."
+          columns={[
+            { key: "product", header: "Product", render: (row) => <span className="font-semibold text-white">{row.productTitle}</span> },
+            { key: "slug", header: "Funnel", render: (row) => <Link href={`/funnel/${row.slug}`} target="_blank" className="text-cyan-300 underline">{row.slug}</Link> },
+            { key: "status", header: "Status", render: (row) => <AdminStatusBadge status={row.status} variant={row.status === "PUBLISHED" ? "success" : "muted"} /> },
+            { key: "offer", header: "Offer", render: (row) => row.offerStatus },
+            { key: "clicks", header: "CTA", render: (row) => row.ctaClicks },
+            { key: "purchases", header: "Purchases", render: (row) => row.purchases },
+            { key: "conversion", header: "Conversion", render: (row) => `${row.conversionRate.toFixed(1)}%` },
+            { key: "topCta", header: "Top CTA", render: (row) => row.topCta },
+          ]}
+        />
+      </AdminPanel>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <AdminPanel title="CTA performance">
+          <AdminDataTable
+            rows={dashboard.ctaPerformance.map((row) => ({ id: row.cta, ...row }))}
+            emptyMessage="No CTA clicks yet."
+            columns={[
+              { key: "cta", header: "CTA", render: (row) => <span className="font-semibold text-white">{row.cta}</span> },
+              { key: "clicks", header: "Clicks", render: (row) => row.clicks },
+              { key: "checkouts", header: "Checkouts", render: (row) => row.checkoutStarts },
+              { key: "purchases", header: "Purchases", render: (row) => row.purchases },
+              { key: "conversion", header: "Conversion", render: (row) => `${row.conversionRate.toFixed(1)}%` },
+            ]}
+          />
+        </AdminPanel>
+        <AdminPanel title="Campaign attribution">
+          <AdminDataTable
+            rows={dashboard.campaignRows.map((row) => ({ id: row.campaign, ...row }))}
+            emptyMessage="No campaign-attributed funnel traffic yet."
+            columns={[
+              { key: "campaign", header: "Campaign", render: (row) => <span className="font-semibold text-white">{row.campaign}</span> },
+              { key: "visitors", header: "Visitors", render: (row) => row.visitors },
+              { key: "clicks", header: "Clicks", render: (row) => row.ctaClicks },
+              { key: "checkouts", header: "Checkouts", render: (row) => row.checkoutStarts },
+              { key: "purchases", header: "Purchases", render: (row) => row.purchases },
+              { key: "adSpend", header: "Ad spend", render: () => "Not configured" },
+            ]}
+          />
+        </AdminPanel>
+      </div>
+
+      <AdminPanel title="Product comparison">
+        <AdminDataTable
+          rows={dashboard.productComparison.map((row) => ({ id: row.product, ...row }))}
+          emptyMessage="No product comparison data yet."
+          columns={[
+            { key: "product", header: "Product", render: (row) => <span className="font-semibold text-white">{row.product}</span> },
+            { key: "visitors", header: "Visitors", render: (row) => row.visitors },
+            { key: "purchases", header: "Purchases", render: (row) => row.purchases },
+            { key: "revenue", header: "Revenue", render: (row) => `USD ${row.revenue.toFixed(2)}` },
+            { key: "conversion", header: "Conversion", render: (row) => `${row.conversionRate.toFixed(1)}%` },
+          ]}
+        />
+      </AdminPanel>
+    </div>
+  );
+}
+
+function textLines(value: string) {
+  return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+function slugifyFunnelId(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return slug || `sales-funnel-${Date.now()}`;
+}
+
+function upsertFunnelFormatPrice(
+  rows: LibrarySalesFunnelOffer["formatPrices"],
+  formatType: LibrarySalesFunnelOffer["formatPrices"][number]["formatType"],
+  key: "normalPrice" | "offerPrice",
+  amount: number,
+) {
+  const existing = rows.find((row) => row.formatType === formatType);
+  if (!existing) return [...rows, { formatType, normalPrice: key === "normalPrice" ? amount : 0, offerPrice: key === "offerPrice" ? amount : 0 }];
+  return rows.map((row) => row.formatType === formatType ? { ...row, [key]: amount } : row);
 }
 
 function GroupTable({

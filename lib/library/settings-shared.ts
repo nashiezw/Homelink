@@ -133,6 +133,62 @@ export type LibraryStoreSettings = {
     abandonedCart: boolean;
     fromName: string;
   };
+  salesFunnels: {
+    enabled: boolean;
+    defaultTimezone: string;
+    funnels: LibrarySalesFunnelConfig[];
+  };
+};
+
+export type LibrarySalesFunnelOffer = {
+  id: string;
+  status: "DRAFT" | "SCHEDULED" | "ACTIVE" | "PAUSED" | "EXPIRED";
+  title: string;
+  description: string;
+  startsAt: string;
+  endsAt: string;
+  timezone: string;
+  countdown: boolean;
+  urgencyMessage: string;
+  formatPrices: Array<{
+    formatType: "PDF" | "DIGITAL_BOOK" | "PRINTED_BOOK";
+    normalPrice: number;
+    offerPrice: number;
+  }>;
+};
+
+export type LibrarySalesFunnelConfig = {
+  id: string;
+  slug: string;
+  productSlug: string;
+  template: "BOOK_SALES" | "GUIDE_SALES" | "SIMPLE_OFFER";
+  status: "DRAFT" | "PUBLISHED" | "PAUSED";
+  version: number;
+  headline: string;
+  subheadline: string;
+  label: string;
+  primaryCta: string;
+  secondaryCta: string;
+  whatsappUrl: string;
+  heroImageUrl: string;
+  problemTitle: string;
+  problemPoints: string[];
+  audienceTitle: string;
+  audience: string[];
+  learningTitle: string;
+  learning: Array<{ title: string; description: string }>;
+  delayTitle: string;
+  delayPoints: string[];
+  trust: string[];
+  faq: Array<{ question: string; answer: string }>;
+  disclaimer: string;
+  finalTitle: string;
+  offer: LibrarySalesFunnelOffer;
+  abTest?: {
+    id: string;
+    status: "DRAFT" | "RUNNING" | "PAUSED" | "COMPLETE";
+    variants: Array<{ id: string; name: string; weight: number; headline?: string; primaryCta?: string }>;
+  };
 };
 
 const defaultZones: LibraryShippingZone[] = [
@@ -314,6 +370,79 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
     abandonedCart: true,
     fromName: "HouseLink Library",
   },
+  salesFunnels: {
+    enabled: true,
+    defaultTimezone: "Africa/Harare",
+    funnels: [
+      {
+        id: "property-development-law",
+        slug: "property-development-law",
+        productSlug: "the-complete-guide-to-property-development-and-property-law-in-zimbabwe",
+        template: "GUIDE_SALES",
+        status: "PUBLISHED",
+        version: 1,
+        label: "Property Development in Zimbabwe",
+        headline: "Before you buy land, build or develop - know what you're getting into.",
+        subheadline:
+          "A practical Zimbabwe-focused guide covering property development, land due diligence, approvals, construction, compliance, subdivisions and property law.",
+        primaryCta: "Get the book now",
+        secondaryCta: "Read a free sample",
+        whatsappUrl: "https://wa.me/263",
+        heroImageUrl: "",
+        problemTitle: "Property development involves more than buying land and starting to build.",
+        problemPoints: ["Land", "Due diligence", "Planning", "Approvals", "Construction", "Compliance", "Subdivision", "Property law"],
+        audienceTitle: "This guide is for you if...",
+        audience: [
+          "You want to buy land for development",
+          "You want to build property",
+          "You are planning a development project",
+          "You are considering subdivision",
+          "You want to invest in property",
+          "You work in real estate",
+          "You work in construction",
+          "You want to understand property law",
+        ],
+        learningTitle: "What you will learn",
+        learning: [
+          { title: "Property Development", description: "From concept to completion." },
+          { title: "Land & Due Diligence", description: "What to investigate before committing." },
+          { title: "Council Approvals", description: "Planning, building plans and approvals." },
+          { title: "Construction", description: "Key construction and inspection considerations." },
+          { title: "Compliance", description: "Building compliance and occupancy." },
+          { title: "Subdivision", description: "Land development and subdivision considerations." },
+        ],
+        delayTitle: "Before you put serious money into property development...",
+        delayPoints: ["Land", "Planning", "Approvals", "Construction", "Professionals", "Compliance", "Legal considerations", "Capital", "Time"],
+        trust: ["HouseLink Library", "Secure checkout", "Invoice or receipt provided", "Digital access after successful payment", "Printed edition availability", "Customer support"],
+        faq: [
+          { question: "Is there a digital version?", answer: "Yes. Choose the digital edition for Library account access after payment is confirmed." },
+          { question: "Is there a printed version?", answer: "Yes. Choose the printed edition if stock and fulfilment are available in the existing Library checkout." },
+          { question: "How do I receive the digital book?", answer: "After successful payment confirmation, access is handled through your HouseLink Library account." },
+          { question: "Will I receive an invoice?", answer: "Yes. HouseLink Library checkout creates an order record and invoice/receipt trail." },
+          { question: "Is this legal advice?", answer: "No. It is educational information and does not replace advice from qualified professionals." },
+        ],
+        disclaimer:
+          "This guide is educational information. It does not replace current advice from qualified lawyers, planners, architects, engineers, valuers, or other specialists.",
+        finalTitle: "Before you make your next property move, be prepared.",
+        offer: {
+          id: "pilot-launch-offer",
+          status: "ACTIVE",
+          title: "Special offer",
+          description: "Get the guide at the current promotional price before the configured deadline.",
+          startsAt: "2026-09-10T00:00:00+02:00",
+          endsAt: "2026-12-31T23:59:59+02:00",
+          timezone: "Africa/Harare",
+          countdown: true,
+          urgencyMessage: "The promotional price ends at the configured deadline, then the normal price appears.",
+          formatPrices: [
+            { formatType: "PDF", normalPrice: 20, offerPrice: 15 },
+            { formatType: "DIGITAL_BOOK", normalPrice: 20, offerPrice: 15 },
+            { formatType: "PRINTED_BOOK", normalPrice: 35, offerPrice: 25 },
+          ],
+        },
+      },
+    ],
+  },
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -420,6 +549,128 @@ function mergeEmailTemplates(value: unknown): Record<LibraryEmailTemplateKey, Li
   ) as Record<LibraryEmailTemplateKey, LibraryEmailTemplate>;
 }
 
+function mergeSalesFunnels(value: unknown): LibraryStoreSettings["salesFunnels"] {
+  const raw = asRecord(value);
+  const fallback = defaultLibraryStoreSettings.salesFunnels;
+  const funnels = Array.isArray(raw.funnels) ? raw.funnels.map(mergeSalesFunnel).filter(Boolean) as LibrarySalesFunnelConfig[] : fallback.funnels;
+  return {
+    enabled: bool(raw.enabled, fallback.enabled),
+    defaultTimezone: str(raw.defaultTimezone, fallback.defaultTimezone),
+    funnels: funnels.length ? funnels : fallback.funnels,
+  };
+}
+
+function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
+  const row = asRecord(value);
+  const id = str(row.id, str(row.slug, "")).trim();
+  const slug = str(row.slug, id).trim();
+  const productSlug = str(row.productSlug, "").trim();
+  if (!id || !slug || !productSlug) return null;
+  const fallback = defaultLibraryStoreSettings.salesFunnels.funnels.find((item) => item.id === id || item.slug === slug) ?? defaultLibraryStoreSettings.salesFunnels.funnels[0];
+  const offer = asRecord(row.offer);
+  const fallbackOffer = fallback.offer;
+  const status = str(row.status, fallback.status).toUpperCase();
+  const template = str(row.template, fallback.template).toUpperCase();
+  return {
+    id,
+    slug,
+    productSlug,
+    template: (["BOOK_SALES", "GUIDE_SALES", "SIMPLE_OFFER"].includes(template) ? template : fallback.template) as LibrarySalesFunnelConfig["template"],
+    status: (["DRAFT", "PUBLISHED", "PAUSED"].includes(status) ? status : fallback.status) as LibrarySalesFunnelConfig["status"],
+    version: Math.max(1, Math.round(num(row.version, fallback.version))),
+    label: str(row.label, fallback.label),
+    headline: str(row.headline, fallback.headline),
+    subheadline: str(row.subheadline, fallback.subheadline),
+    primaryCta: str(row.primaryCta, fallback.primaryCta),
+    secondaryCta: str(row.secondaryCta, fallback.secondaryCta),
+    whatsappUrl: str(row.whatsappUrl, fallback.whatsappUrl),
+    heroImageUrl: str(row.heroImageUrl, fallback.heroImageUrl),
+    problemTitle: str(row.problemTitle, fallback.problemTitle),
+    problemPoints: stringList(row.problemPoints).length ? stringList(row.problemPoints) : fallback.problemPoints,
+    audienceTitle: str(row.audienceTitle, fallback.audienceTitle),
+    audience: stringList(row.audience).length ? stringList(row.audience) : fallback.audience,
+    learningTitle: str(row.learningTitle, fallback.learningTitle),
+    learning: mergeLearningList(row.learning, fallback.learning),
+    delayTitle: str(row.delayTitle, fallback.delayTitle),
+    delayPoints: stringList(row.delayPoints).length ? stringList(row.delayPoints) : fallback.delayPoints,
+    trust: stringList(row.trust).length ? stringList(row.trust) : fallback.trust,
+    faq: mergeFaqList(row.faq, fallback.faq),
+    disclaimer: str(row.disclaimer, fallback.disclaimer),
+    finalTitle: str(row.finalTitle, fallback.finalTitle),
+    offer: {
+      id: str(offer.id, fallbackOffer.id),
+      status: (["DRAFT", "SCHEDULED", "ACTIVE", "PAUSED", "EXPIRED"].includes(str(offer.status, fallbackOffer.status).toUpperCase())
+        ? str(offer.status, fallbackOffer.status).toUpperCase()
+        : fallbackOffer.status) as LibrarySalesFunnelOffer["status"],
+      title: str(offer.title, fallbackOffer.title),
+      description: str(offer.description, fallbackOffer.description),
+      startsAt: str(offer.startsAt, fallbackOffer.startsAt),
+      endsAt: str(offer.endsAt, fallbackOffer.endsAt),
+      timezone: str(offer.timezone, fallbackOffer.timezone),
+      countdown: bool(offer.countdown, fallbackOffer.countdown),
+      urgencyMessage: str(offer.urgencyMessage, fallbackOffer.urgencyMessage),
+      formatPrices: mergeOfferPrices(offer.formatPrices, fallbackOffer.formatPrices),
+    },
+    abTest: mergeAbTest(row.abTest),
+  };
+}
+
+function mergeLearningList(value: unknown, fallback: LibrarySalesFunnelConfig["learning"]) {
+  if (!Array.isArray(value) || !value.length) return fallback;
+  return value.map((item) => {
+    const row = asRecord(item);
+    return { title: str(row.title, "").trim(), description: str(row.description, "").trim() };
+  }).filter((item) => item.title || item.description);
+}
+
+function mergeFaqList(value: unknown, fallback: LibrarySalesFunnelConfig["faq"]) {
+  if (!Array.isArray(value) || !value.length) return fallback;
+  return value.map((item) => {
+    const row = asRecord(item);
+    return { question: str(row.question, "").trim(), answer: str(row.answer, "").trim() };
+  }).filter((item) => item.question && item.answer);
+}
+
+function mergeOfferPrices(value: unknown, fallback: LibrarySalesFunnelOffer["formatPrices"]) {
+  if (!Array.isArray(value) || !value.length) return fallback;
+  return value.map((item) => {
+    const row = asRecord(item);
+    const formatType = str(row.formatType, "PDF").toUpperCase();
+    if (!["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(formatType)) return null;
+    return {
+      formatType: formatType as LibrarySalesFunnelOffer["formatPrices"][number]["formatType"],
+      normalPrice: Math.max(0, num(row.normalPrice, 0)),
+      offerPrice: Math.max(0, num(row.offerPrice, 0)),
+    };
+  }).filter(Boolean) as LibrarySalesFunnelOffer["formatPrices"];
+}
+
+function mergeAbTest(value: unknown): LibrarySalesFunnelConfig["abTest"] | undefined {
+  const row = asRecord(value);
+  const id = str(row.id, "").trim();
+  if (!id) return undefined;
+  const status = str(row.status, "DRAFT").toUpperCase();
+  const variants = Array.isArray(row.variants)
+    ? row.variants.map((item) => {
+        const variant = asRecord(item);
+        const variantId = str(variant.id, "").trim();
+        if (!variantId) return null;
+        return {
+          id: variantId,
+          name: str(variant.name, variantId),
+          weight: Math.max(0, num(variant.weight, 1)),
+          headline: str(variant.headline, "").trim() || undefined,
+          primaryCta: str(variant.primaryCta, "").trim() || undefined,
+        };
+      }).filter(Boolean) as NonNullable<LibrarySalesFunnelConfig["abTest"]>["variants"]
+    : [];
+  return {
+    id,
+    status: (["DRAFT", "RUNNING", "PAUSED", "COMPLETE"].includes(status) ? status : "DRAFT") as NonNullable<LibrarySalesFunnelConfig["abTest"]>["status"],
+    variants,
+  };
+}
+
 export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettings {
   const raw = asRecord(payload);
   const store = asRecord(raw.store);
@@ -437,6 +688,7 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
   const preview = asRecord(raw.preview);
   const inventory = asRecord(raw.inventory);
   const notifications = asRecord(raw.notifications);
+  const salesFunnels = asRecord(raw.salesFunnels);
   const d = defaultLibraryStoreSettings;
   const sort = str(merchandising.defaultSort, d.merchandising.defaultSort);
   const allowedSort = ["newest", "best-selling", "downloads", "rating", "price-asc", "price-desc"] as const;
@@ -570,6 +822,7 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
       abandonedCart: bool(notifications.abandonedCart, d.notifications.abandonedCart),
       fromName: str(notifications.fromName, d.notifications.fromName),
     },
+    salesFunnels: mergeSalesFunnels(salesFunnels),
   };
 }
 

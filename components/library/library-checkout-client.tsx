@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CreditCard, Gift, Lock, MapPin, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
@@ -9,6 +10,7 @@ import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { trackEvent } from "@/lib/analytics/client";
+import { readStoredMetaInitiateCheckout } from "@/lib/analytics/meta-commerce";
 import { apiFetch } from "@/lib/api/client";
 import {
   clearLibraryCart,
@@ -128,6 +130,7 @@ const emptyShipping: ShippingForm = {
 };
 
 export function LibraryCheckoutClient() {
+  const searchParams = useSearchParams();
   const { showToast, user, refreshUser, loading: authLoading } = useApp();
   const { cart, setCart, total } = useLibraryCart();
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
@@ -150,6 +153,7 @@ export function LibraryCheckoutClient() {
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const buyerDetailsRef = useRef<HTMLElement | null>(null);
+  const funnelAttribution = useMemo(() => readFunnelCheckoutAttribution(searchParams), [searchParams]);
 
   // Autofill shipping form with user data when available
   useEffect(() => {
@@ -414,6 +418,7 @@ export function LibraryCheckoutClient() {
   }
 
   async function checkout() {
+    if (busy) return;
     setBusy(true);
     setError("");
     if (storeSettings?.store.enabled === false) {
@@ -472,9 +477,20 @@ export function LibraryCheckoutClient() {
             : {}),
           phone: buyerPhone.trim(),
         },
+        attribution: {
+          ...(funnelAttribution ?? {}),
+          metaInitiateCheckout: readStoredMetaInitiateCheckout(),
+        },
       }),
     });
     if (result.data?.redirectUrl) {
+      if (funnelAttribution?.funnelId) {
+        trackEvent("library_funnel_checkout_started", cart[0]?.productId, {
+          funnelId: stringMeta(funnelAttribution.funnelId),
+          offerId: stringMeta(funnelAttribution.offerId),
+          formatId: stringMeta(funnelAttribution.selectedFormatId),
+        });
+      }
       void import("@/lib/analytics/experiments").then(({ peekExperimentVariant }) => {
         const variant = peekExperimentVariant("library_softcopy_badge") || "control";
         trackEvent("library_purchase_completed", result.data?.order?.id, {
@@ -484,6 +500,8 @@ export function LibraryCheckoutClient() {
           orderNumber: result.data?.order?.orderNumber,
           experiment: "library_softcopy_badge",
           variant,
+          funnelId: stringMeta(funnelAttribution?.funnelId),
+          offerId: stringMeta(funnelAttribution?.offerId),
         });
       });
       void import("@/lib/analytics/identity-client").then(({ stitchAnalyticsIdentity }) => {
@@ -1004,4 +1022,29 @@ export function LibraryCheckoutClient() {
       </div>
     </PageShell>
   );
+}
+
+type CheckoutFunnelAttribution = Record<string, unknown> & {
+  funnelId?: string;
+  offerId?: string;
+  selectedFormatId?: string;
+};
+
+function readFunnelCheckoutAttribution(searchParams: ReturnType<typeof useSearchParams>): CheckoutFunnelAttribution | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem("houselink_library_funnel_attribution") || "{}") as Record<string, unknown>;
+    const funnelId = typeof parsed.funnelId === "string" ? parsed.funnelId : searchParams?.get("funnelId") || "";
+    const offerId = typeof parsed.offerId === "string" ? parsed.offerId : searchParams?.get("offerId") || "";
+    if (!funnelId && !offerId) return undefined;
+    return { ...parsed, funnelId, offerId } as CheckoutFunnelAttribution;
+  } catch {
+    const funnelId = searchParams?.get("funnelId") || "";
+    const offerId = searchParams?.get("offerId") || "";
+    return funnelId || offerId ? { funnelId, offerId } : undefined;
+  }
+}
+
+function stringMeta(value: unknown) {
+  return typeof value === "string" ? value : undefined;
 }

@@ -157,6 +157,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: "library", label: "Collections", icon: FolderOpen, libraryView: "Collections" },
       { id: "library", label: "Authors", icon: Users, libraryView: "Authors" },
       { id: "library", label: "Orders", icon: ShoppingBag, libraryView: "Orders" },
+      { id: "library", label: "Sales Funnels", icon: Megaphone, libraryView: "Sales Funnels" },
       { id: "library", label: "Customers", icon: Users, libraryView: "Customers" },
       { id: "library", label: "Reviews", icon: Star, libraryView: "Reviews" },
       { id: "library", label: "Coupons", icon: CreditCard, libraryView: "Coupons" },

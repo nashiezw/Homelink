@@ -1,4 +1,5 @@
 import { requireAdmin, requireAdminAsync } from "@/lib/admin/require-admin";
+import { sendMetaPurchaseForLibraryPayment } from "@/lib/analytics/meta-capi";
 import { getPostgresAdminPayment, updatePostgresPayment } from "@/lib/admin/postgres-admin-config";
 import { ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
@@ -44,6 +45,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const isLibrary = Boolean(payment.plan?.startsWith("library_"));
     if ((action === "approve" || action === "mark_received") && isLibrary) {
       await fulfillPaidLibraryOrdersForPayment(id);
+      await sendMetaPurchaseForLibraryPayment(id, request);
       await notifyPaymentUser(payment.userId, "Library payment approved", "Your HouseLink Library payment has been approved. Open My Library to access your purchases.");
     }
     if (action === "reject" && isLibrary) {

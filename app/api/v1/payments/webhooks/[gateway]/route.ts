@@ -1,4 +1,5 @@
 import { getStore } from "@/lib/store/app-store";
+import { sendMetaPurchaseForLibraryPayment } from "@/lib/analytics/meta-capi";
 import { ok, problem } from "@/lib/api/response";
 import { requireStrictProductionConfig } from "@/lib/production/runtime";
 import { completePaymentInPostgres, getProductionPaymentSettings, shouldUsePostgresPayments } from "@/lib/payments/postgres-payment-repository";
@@ -27,6 +28,7 @@ export async function POST(request: Request, context: RouteContext) {
       (verified.body as { reference?: string }).reference;
     if (paymentId && (verified.body as { status?: string }).status === "paid") {
       await completePaymentInPostgres(paymentId);
+      await sendMetaPurchaseForLibraryPayment(paymentId, request);
     }
     return ok({ received: true });
   }

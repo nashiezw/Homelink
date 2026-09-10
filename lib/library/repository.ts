@@ -35,6 +35,26 @@ export type LibraryCartLine = {
   formatId?: string;
   formatType?: string;
   formatLabel?: string;
+  funnelId?: string;
+  offerId?: string;
+};
+
+export type LibraryCheckoutAttribution = {
+  funnelId?: string;
+  funnelSlug?: string;
+  funnelVersion?: number;
+  productId?: string;
+  productSlug?: string;
+  offerId?: string;
+  offerState?: string;
+  selectedFormatId?: string;
+  selectedFormatType?: string;
+  selectedPrice?: number;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
 };
 
 export type LibraryShippingAddress = {
@@ -766,6 +786,7 @@ export async function quoteLibraryCart(
         };
       }
       const format = resolveLibraryFormat(product, item.formatId, item.formatType);
+      const offerPrice = resolveServerFunnelOfferPrice(settings, product, format, item);
       let quantity = Math.max(1, Number(item.quantity) || 1);
       if (format.type === "PRINTED_BOOK" && product.stock != null && !allowBackorder) {
         if (product.stock <= 0) {
@@ -787,12 +808,14 @@ export async function quoteLibraryCart(
       return {
         productId: product.id,
         title: formatLabelTitle(product.title, format.label),
-        price: resolveLibraryVolumeUnitPrice(format, Math.max(1, quantity || 1)),
+        price: offerPrice ?? resolveLibraryVolumeUnitPrice(format, Math.max(1, quantity || 1)),
         currency: product.currency,
         quantity: Math.max(0, quantity),
         formatId: format.id,
         formatType: format.type,
         formatLabel: format.label,
+        funnelId: item.funnelId,
+        offerId: item.offerId,
       };
     }).filter((line) => line.quantity > 0);
 
@@ -882,6 +905,35 @@ export async function quoteLibraryCart(
   }
   for (const item of mapped) byId.set(item.id, item);
   return finishQuote(Array.from(byId.values()), products);
+}
+
+function resolveServerFunnelOfferPrice(
+  settings: LibraryStoreSettings,
+  product: LibraryProduct,
+  format: ReturnType<typeof resolveLibraryFormat>,
+  item: LibraryCartLine,
+) {
+  if (!item.funnelId || !item.offerId || !settings.salesFunnels.enabled) return null;
+  const funnel = settings.salesFunnels.funnels.find((entry) =>
+    (entry.id === item.funnelId || entry.slug === item.funnelId) &&
+    entry.productSlug === product.slug &&
+    entry.offer.id === item.offerId &&
+    entry.status === "PUBLISHED",
+  );
+  if (!funnel) return null;
+  const now = Date.now();
+  const starts = Date.parse(funnel.offer.startsAt);
+  const ends = Date.parse(funnel.offer.endsAt);
+  const active =
+    funnel.offer.status === "ACTIVE" &&
+    (!Number.isFinite(starts) || starts <= now) &&
+    (!Number.isFinite(ends) || ends > now);
+  if (!active) return null;
+  const configured = funnel.offer.formatPrices.find((entry) => entry.formatType === format.type);
+  if (!configured) return null;
+  const price = Number(configured.offerPrice);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return roundMoney(price);
 }
 
 export function validateLibraryProductPublish(input: Partial<LibraryProductInput>, existing?: Pick<LibraryProduct, "formats" | "downloads" | "productType" | "status"> | null) {
@@ -1116,6 +1168,7 @@ export async function createLibraryOrderFromCheckout(input: {
   customerPhone?: string;
   shipping?: LibraryShippingAddress | null;
   shippingMethod?: "SHIPPING" | "PICKUP";
+  attribution?: LibraryCheckoutAttribution;
 }) {
   const settings = await getLibraryStoreSettings();
   if (!settings.store.enabled) throw new Error("HouseLink Library checkout is temporarily disabled.");
@@ -1279,6 +1332,7 @@ export async function createLibraryOrderFromCheckout(input: {
           stockReserved: printedLines.some((line) => line.product.stock != null) && !settings.inventory.allowBackorder,
           needsShipping: printedLines.length > 0 && quote.shippingMethod !== "PICKUP",
           hasDigital: lines.some((line) => line.productType !== LibraryProductType.PRINTED_BOOK),
+          ...(input.attribution ? sanitizeCheckoutAttribution(input.attribution) : {}),
         } as Prisma.InputJsonValue,
         items: {
           create: lines.map((line) => ({
@@ -1361,6 +1415,32 @@ export async function createLibraryOrderFromCheckout(input: {
     },
   });
   return { order: toLibraryOrder(order), accessGranted: false };
+}
+
+function sanitizeCheckoutAttribution(input: LibraryCheckoutAttribution) {
+  return {
+    funnelId: stringOrNull(input.funnelId),
+    funnelSlug: stringOrNull(input.funnelSlug),
+    funnelVersion: Number.isFinite(Number(input.funnelVersion)) ? Number(input.funnelVersion) : null,
+    productId: stringOrNull(input.productId),
+    productSlug: stringOrNull(input.productSlug),
+    offerId: stringOrNull(input.offerId),
+    offerState: stringOrNull(input.offerState),
+    selectedFormatId: stringOrNull(input.selectedFormatId),
+    selectedFormatType: stringOrNull(input.selectedFormatType),
+    selectedPrice: Number.isFinite(Number(input.selectedPrice)) ? Number(input.selectedPrice) : null,
+    utm_source: stringOrNull(input.utm_source),
+    utm_medium: stringOrNull(input.utm_medium),
+    utm_campaign: stringOrNull(input.utm_campaign),
+    utm_term: stringOrNull(input.utm_term),
+    utm_content: stringOrNull(input.utm_content),
+  };
+}
+
+function stringOrNull(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, 240) : null;
 }
 
 export async function createAdminLibraryManualOrder(input: {

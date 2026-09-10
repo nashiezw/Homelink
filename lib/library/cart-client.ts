@@ -16,6 +16,8 @@ export type LibraryCartLine = {
   formatId?: string;
   formatType?: string;
   formatLabel?: string;
+  funnelId?: string;
+  offerId?: string;
   /** Base format list price before volume tiers. */
   listPrice?: number;
   /** Printed volume tiers copied from the product at add-to-bag time. */

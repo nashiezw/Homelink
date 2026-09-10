@@ -37,7 +37,9 @@ import {
   type LibraryProductInput,
   type LibraryTaxonomyKind,
 } from "@/lib/library/repository";
+import { getSalesFunnelDashboard, upsertSalesFunnelConfig } from "@/lib/library/funnels";
 import { revalidatePath } from "next/cache";
+import type { LibrarySalesFunnelConfig } from "@/lib/library/settings-shared";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +58,16 @@ export async function GET(request: Request) {
     } catch (error) {
       console.error("[admin/library] customer-journey failed", error);
       return problem(500, "CUSTOMER_JOURNEY_FAILED", "Customer journey analytics could not be loaded.");
+    }
+  }
+
+  if (type === "sales-funnels") {
+    try {
+      const days = parseInt(searchParams.get("days") || "30");
+      return ok(await getSalesFunnelDashboard(Number.isFinite(days) ? days : 30));
+    } catch (error) {
+      console.error("[admin/library] sales funnels failed", error);
+      return problem(500, "SALES_FUNNELS_FAILED", "Sales funnel intelligence could not be loaded.");
     }
   }
   
@@ -229,6 +241,19 @@ export async function POST(request: Request) {
         const message = error instanceof Error ? error.message : "Library store settings could not be saved.";
         return problem(500, "LIBRARY_SETTINGS_SAVE_FAILED", message);
       }
+    }
+    if (body.action === "save_sales_funnel") {
+      const funnel = body.funnel && typeof body.funnel === "object" && !Array.isArray(body.funnel)
+        ? body.funnel as LibrarySalesFunnelConfig
+        : null;
+      if (!funnel?.id || !funnel.slug || !funnel.productSlug) {
+        return problem(400, "INVALID_SALES_FUNNEL", "Funnel id, slug, and product slug are required.");
+      }
+      const saved = await upsertSalesFunnelConfig(funnel, auth.user.id);
+      revalidatePath("/funnel/[slug]", "page");
+      revalidatePath(`/funnel/${saved.slug}`);
+      if (saved.slug === "property-development-law") revalidatePath("/property-development-guide");
+      return ok({ funnel: saved });
     }
     if (body.action === "save_coupon") {
       if (!String(body.code ?? "").trim()) return problem(400, "INVALID_COUPON", "Coupon code is required.");

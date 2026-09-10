@@ -1,5 +1,6 @@
 import { getSessionUserIdFromRequest, sessionCookieHeader } from "@/lib/auth/session";
 import { ensureLibraryCheckoutBuyer } from "@/lib/auth/lightweight-user";
+import { sendMetaCapiEvent, sendMetaPurchaseForLibraryPayment } from "@/lib/analytics/meta-capi";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { created, problem } from "@/lib/api/response";
 import {
@@ -13,6 +14,7 @@ import {
   createLibraryOrderFromCheckout,
   fulfillPaidLibraryOrdersForPayment,
   quoteLibraryCart,
+  type LibraryCheckoutAttribution,
   type LibraryShippingAddress,
 } from "@/lib/library/repository";
 import { getLibraryStoreSettings } from "@/lib/library/settings";
@@ -32,6 +34,15 @@ type CheckoutCustomer = {
   name?: unknown;
   email?: unknown;
   phone?: unknown;
+};
+
+type MetaInitiateCheckoutAttribution = {
+  eventId: string;
+  value?: number;
+  currency?: string;
+  productId?: string;
+  formatId?: string;
+  createdAt?: number;
 };
 
 function withOptionalSessionCookie<T>(data: T, session?: { sessionId: string; maxAgeSeconds: number; userId: string } | null) {
@@ -102,6 +113,8 @@ export async function POST(request: Request) {
   }
   const shipping = (body.shipping ?? null) as LibraryShippingAddress | null;
   const shippingMethod = body.shippingMethod === "PICKUP" ? ("PICKUP" as const) : ("SHIPPING" as const);
+  const attribution = checkoutAttribution(body.attribution);
+  const metaInitiateCheckout = checkoutMetaAttribution(body.attribution);
   const quote = await quoteLibraryCart(items, typeof body.couponCode === "string" ? body.couponCode : undefined, userId, {
     country: shipping?.country,
     province: shipping?.province,
@@ -147,6 +160,7 @@ export async function POST(request: Request) {
         customerPhone,
         shipping,
         shippingMethod,
+        attribution,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Payment was started, but the Library order could not be created.";
@@ -159,6 +173,23 @@ export async function POST(request: Request) {
     }
     const grant = completed ? await fulfillPaidLibraryOrdersForPayment(payment.id) : { orders: 0, downloads: 0 };
     const status = completed ? "success" : "pending";
+    void sendMetaCapiEvent({
+      eventName: "InitiateCheckout",
+      eventId: metaInitiateCheckout?.eventId || `InitiateCheckout-${order.order.id}`,
+      request,
+      value: quote.total,
+      currency: quote.currency,
+      userId,
+      email: typeof customer.email === "string" ? customer.email : undefined,
+      phone: customerPhone,
+    }).catch((error) => {
+      if (process.env.NODE_ENV === "development") console.debug("meta_initiate_checkout_capi_failed", error);
+    });
+    if (completed) {
+      void sendMetaPurchaseForLibraryPayment(payment.id, request).catch((error) => {
+        if (process.env.NODE_ENV === "development") console.debug("meta_purchase_capi_failed", error);
+      });
+    }
     return withOptionalSessionCookie(
       {
         ...(completed ?? payment),
@@ -194,6 +225,19 @@ export async function POST(request: Request) {
       customerPhone,
       shipping,
       shippingMethod,
+      attribution,
+    });
+    void sendMetaCapiEvent({
+      eventName: "InitiateCheckout",
+      eventId: metaInitiateCheckout?.eventId || `InitiateCheckout-${order.order.id}`,
+      request,
+      value: quote.total,
+      currency: quote.currency,
+      userId,
+      email: typeof customer.email === "string" ? customer.email : undefined,
+      phone: customerPhone,
+    }).catch((error) => {
+      if (process.env.NODE_ENV === "development") console.debug("meta_initiate_checkout_capi_failed", error);
     });
     return withOptionalSessionCookie(
       {
@@ -214,6 +258,61 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Library order could not be created.";
     return problem(500, "LIBRARY_ORDER_FAILED", message);
   }
+}
+
+function checkoutAttribution(value: unknown): LibraryCheckoutAttribution | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const row = value as Record<string, unknown>;
+  const picked: LibraryCheckoutAttribution = {};
+  for (const key of [
+    "funnelId",
+    "funnelSlug",
+    "productId",
+    "productSlug",
+    "offerId",
+    "offerState",
+    "selectedFormatId",
+    "selectedFormatType",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+  ] as const) {
+    if (typeof row[key] === "string") picked[key] = row[key].slice(0, 240);
+  }
+  const utmAliases = [
+    ["utmSource", "utm_source"],
+    ["utmMedium", "utm_medium"],
+    ["utmCampaign", "utm_campaign"],
+    ["utmTerm", "utm_term"],
+    ["utmContent", "utm_content"],
+  ] as const;
+  for (const [sourceKey, targetKey] of utmAliases) {
+    if (!picked[targetKey] && typeof row[sourceKey] === "string") picked[targetKey] = row[sourceKey].slice(0, 240);
+  }
+  if (Number.isFinite(Number(row.funnelVersion))) picked.funnelVersion = Number(row.funnelVersion);
+  if (Number.isFinite(Number(row.selectedPrice))) picked.selectedPrice = Number(row.selectedPrice);
+  return Object.keys(picked).length ? picked : undefined;
+}
+
+function checkoutMetaAttribution(value: unknown): MetaInitiateCheckoutAttribution | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const row = value as Record<string, unknown>;
+  const meta = row.metaInitiateCheckout;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return undefined;
+  const parsed = meta as Record<string, unknown>;
+  if (typeof parsed.eventId !== "string" || !parsed.eventId.trim()) return undefined;
+  const createdAt = Number(parsed.createdAt);
+  if (Number.isFinite(createdAt) && Date.now() - createdAt > 30 * 60 * 1000) return undefined;
+  return {
+    eventId: parsed.eventId.slice(0, 240),
+    value: Number.isFinite(Number(parsed.value)) ? Number(parsed.value) : undefined,
+    currency: typeof parsed.currency === "string" ? parsed.currency.slice(0, 12) : undefined,
+    productId: typeof parsed.productId === "string" ? parsed.productId.slice(0, 160) : undefined,
+    formatId: typeof parsed.formatId === "string" ? parsed.formatId.slice(0, 160) : undefined,
+    createdAt: Number.isFinite(createdAt) ? createdAt : undefined,
+  };
 }
 
 async function saveLibraryCheckoutPhone(userId: string, phone: string) {

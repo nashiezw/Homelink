@@ -42,6 +42,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { trackEvent } from "@/lib/analytics/client";
 import { getExperimentVariant } from "@/lib/analytics/experiments";
+import { trackMetaInitiateCheckout } from "@/lib/analytics/meta-commerce";
 import { apiFetch } from "@/lib/api/client";
 import { displayImageUrl } from "@/lib/images/display-image";
 import {
@@ -137,6 +138,7 @@ export function LibraryProductPage({
   const [sampleTouched, setSampleTouched] = useState(false);
   const [displayViewCount, setDisplayViewCount] = useState(product.viewCount);
   const reviewSectionRef = useRef<HTMLDivElement>(null);
+  const buyNowInFlightRef = useRef(false);
 
   useEffect(() => {
     setSoftcopyBadgeVariant(getExperimentVariant("library_softcopy_badge", ["control", "save_callout"]));
@@ -712,8 +714,19 @@ export function LibraryProductPage({
 
   function buyNow() {
     if (!selectedFormat) return;
+    if (buyNowInFlightRef.current) return;
+    buyNowInFlightRef.current = true;
     trackEvent("library_cta_clicked", product.id, { title: product.title, slug: product.slug, cta: "buy_now", formatId: selectedFormat.id });
     const line = cartLineFromFormat(selectedFormat, selectedQty);
+    const metaCheckout = trackMetaInitiateCheckout({
+      value: line.price * line.quantity,
+      currency: line.currency,
+      productId: product.id,
+      productTitle: product.title,
+      formatId: selectedFormat.id,
+      formatLabel: selectedFormat.label,
+      quantity: line.quantity,
+    });
     writeLibraryCart([line]);
     trackLibraryCartEvent("CART_ADD_SINGLE", product.id, {
       title: product.title,
@@ -724,6 +737,7 @@ export function LibraryProductPage({
       price: line.price,
       quantity: line.quantity,
       buyNow: true,
+      metaEventId: metaCheckout?.eventId,
     });
     window.location.href = "/library/checkout";
   }
