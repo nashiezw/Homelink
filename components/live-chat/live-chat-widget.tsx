@@ -58,7 +58,12 @@ export function LiveChatWidget() {
   const bottomDock = useHouseLinkBottomDock();
   const libraryBagOpen = useLibraryBagFloatingOpen();
   const lastMessageId = messages[messages.length - 1]?.id;
-  const hiddenOnThisRoute = pathname?.startsWith("/dashboard") || pathname?.startsWith("/auth") || pathname?.startsWith("/maintenance");
+  const hiddenOnThisRoute =
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/auth") ||
+    pathname?.startsWith("/maintenance") ||
+    pathname?.startsWith("/funnel/") ||
+    pathname === "/property-development-guide";
 
   const context = useMemo<LiveChatVisitorContext>(() => {
     const params = searchParams;

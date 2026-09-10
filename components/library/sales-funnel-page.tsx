@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
@@ -10,7 +8,6 @@ import {
   FileText,
   HelpCircle,
   Lock,
-  MessageCircle,
   ReceiptText,
   ShieldCheck,
   ShoppingCart,
@@ -212,53 +209,39 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f8fb] text-[#121923]">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link href="/library" className="text-sm font-black uppercase tracking-[0.16em] text-[#0e2235]">HouseLink Library</Link>
-          <a
-            href={funnel.whatsappUrl || "#"}
-            onClick={() => {
-              trackEvent("whatsapp_click", product.id, funnelMeta());
-              trackFunnel("whatsapp_clicked");
-            }}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"
-          >
-            <MessageCircle className="size-4 text-cyan-700" /> WhatsApp Support
-          </a>
-        </div>
-      </header>
-
-      <section className="relative overflow-hidden bg-[#081425] text-white">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(8,20,37,0.96),rgba(8,20,37,0.82)_46%,rgba(15,47,64,0.76))]" />
-        {heroImage ? (
-          <Image src={heroImage} alt="" fill priority sizes="100vw" className="object-cover opacity-18" />
-        ) : null}
-        <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.75fr)] lg:py-14">
+    <main className="min-h-screen bg-[#f8faf7] text-[#121923]">
+      <section className="relative overflow-hidden border-b border-[#d8dfd3] bg-[#f8faf7]">
+        <div className="absolute inset-x-0 top-0 h-2 bg-[#0b6b43]" />
+        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pb-10 pt-8 sm:px-6 lg:min-h-[88svh] lg:grid-cols-[minmax(0,0.98fr)_minmax(18rem,0.64fr)] lg:pb-16 lg:pt-12">
           <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">{funnel.label}</p>
-            <h1 className="mt-4 text-4xl font-black leading-[1.02] tracking-normal sm:text-6xl">{funnel.headline}</h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">{funnel.subheadline}</p>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0b6b43]">HouseLink Library special guide</p>
+            <h1 className="mt-4 max-w-4xl text-3xl font-black leading-[1.04] tracking-normal text-[#102033] sm:text-6xl lg:text-7xl">{funnel.headline}</h1>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-700">{funnel.subheadline}</p>
             <OfferStrip resolved={resolved} now={now} />
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Button onClick={() => openEditionSelector("HERO_BUY")} className="min-h-14 bg-cyan-500 text-base text-[#06131f] hover:bg-cyan-400">
+              <Button onClick={() => openEditionSelector("HERO_BUY")} className="min-h-14 bg-[#0b6b43] text-base text-white shadow-[0_16px_40px_rgba(11,107,67,0.24)] hover:bg-[#084f33]">
                 <ShoppingCart className="size-5" /> {funnel.primaryCta}
               </Button>
               {sampleUrl ? (
-                <Button variant="secondary" onClick={() => openSample("HERO_SAMPLE")} className="min-h-14 border-white/20 bg-white/10 text-base text-white hover:bg-white/15">
+                <Button variant="secondary" onClick={() => openSample("HERO_SAMPLE")} className="min-h-14 border-[#b9c7b5] bg-white text-base text-[#102033] hover:bg-[#eef4eb]">
                   <BookOpen className="size-5" /> {funnel.secondaryCta}
                 </Button>
               ) : null}
             </div>
-            <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-slate-300">
-              <span>Secure checkout</span>
-              <span>HouseLink Library</span>
-              <span>Invoice provided</span>
+            <div className="mt-6 grid max-w-2xl gap-2 text-sm font-bold text-slate-700 sm:grid-cols-3">
+              <span className="inline-flex items-center gap-2"><ShieldCheck className="size-4 text-[#0b6b43]" /> Secure checkout</span>
+              <span className="inline-flex items-center gap-2"><ReceiptText className="size-4 text-[#0b6b43]" /> Invoice provided</span>
+              <span className="inline-flex items-center gap-2"><Lock className="size-4 text-[#0b6b43]" /> Library access</span>
             </div>
           </div>
-          <div className="mx-auto w-full max-w-[21rem] lg:max-w-[25rem]">
-            <div className="relative mx-auto aspect-[3/4] w-[min(78vw,21rem)] lg:w-full">
-              <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="h-full w-full shadow-[0_30px_80px_rgba(0,0,0,0.38)]" />
+          <div className="relative mx-auto w-full max-w-[22rem] lg:max-w-[25rem]">
+            <div className="absolute -inset-4 rounded-[2rem] bg-[#dce9d5]" />
+            <div className="relative rounded-[1.25rem] border border-[#c7d3c1] bg-white p-4 shadow-[0_30px_80px_rgba(16,32,51,0.18)]">
+              <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="mx-auto h-auto w-full shadow-none" />
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b6b43]">Choose your edition</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">Digital access or printed copy, priced by the active offer at checkout.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -448,13 +431,13 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
 function OfferStrip({ resolved, now }: { resolved: ResolvedLibrarySalesFunnel; now: number }) {
   const { product, formats, funnel, offerActive, offerExpired } = resolved;
   return (
-    <div className="mt-6 rounded-lg border border-white/15 bg-white/10 p-4 backdrop-blur">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">{offerExpired ? "Normal price" : funnel.offer.title}</p>
+    <div className="mt-7 max-w-2xl rounded-[0.9rem] border border-[#bfd0ba] bg-white p-4 shadow-[0_18px_50px_rgba(16,32,51,0.08)]">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b6b43]">{offerExpired ? "Normal price" : funnel.offer.title}</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {formats.slice(0, 2).map((format) => (
-          <div key={format.id} className="rounded-lg bg-white/10 p-3">
-            <p className="text-xs font-bold uppercase text-slate-300">{format.type === "PRINTED_BOOK" ? "Printed" : "Digital"}</p>
-            <p className="mt-1 text-2xl font-black">
+          <div key={format.id} className="rounded-lg border border-[#e3eadf] bg-[#f8faf7] p-3">
+            <p className="text-xs font-bold uppercase text-slate-500">{format.type === "PRINTED_BOOK" ? "Printed" : "Digital"}</p>
+            <p className="mt-1 text-2xl font-black text-[#102033]">
               {format.normalPrice && offerActive ? <span className="mr-2 text-base text-slate-400 line-through">{product.currency} {format.normalPrice.toFixed(2)}</span> : null}
               {product.currency} {format.activePrice.toFixed(2)}
             </p>

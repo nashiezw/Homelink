@@ -13,24 +13,26 @@ import { WhatsAppStickyFab } from "@/components/layout/whatsapp-sticky-fab";
 export function ChromeGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/dashboard/admin") ?? false;
+  const isSalesFunnel = pathname?.startsWith("/funnel/") || pathname === "/property-development-guide";
+  const hideChrome = isAdmin || isSalesFunnel;
 
   return (
     <>
-      {!isAdmin && <MaintenanceBanner />}
-      {!isAdmin && (
+      {!hideChrome && <MaintenanceBanner />}
+      {!hideChrome && (
         <Suspense fallback={<header className="h-20 border-b border-slate-200/60 bg-white" aria-hidden />}>
           <SiteHeader />
         </Suspense>
       )}
       {children}
-      {!isAdmin && <SiteFooter />}
-      {!isAdmin && (
+      {!hideChrome && <SiteFooter />}
+      {!hideChrome && (
         <Suspense fallback={null}>
           <SiteAnalyticsTracker />
           <AdvancedBehaviorTracker />
         </Suspense>
       )}
-      {!isAdmin && <WhatsAppStickyFab />}
+      {!hideChrome && <WhatsAppStickyFab />}
     </>
   );
 }
