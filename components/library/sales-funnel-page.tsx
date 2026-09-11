@@ -199,15 +199,15 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
 
   return (
     <main className="min-h-screen bg-[#e9e9e4] text-[#101010]">
-      <section className="relative overflow-hidden bg-[#080b10] text-white">
+      <section className="relative overflow-hidden bg-[#07111f] text-white">
         <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center px-4 pb-0 pt-5 text-center sm:px-6 sm:pt-8">
           <div className="w-full max-w-4xl">
             <FunnelLogo />
             <p className="mt-5 text-[0.68rem] font-black uppercase tracking-[0.14em] text-white sm:mt-9 sm:text-base sm:tracking-normal">
-              Time is running out to get the offer for <span className="text-[#f3c316]">Zimbabwe property developers</span>
+              Time is running out to get the offer for <span className="text-[#20c36b]">Zimbabwe property developers</span>
             </p>
             <h1 className="mx-auto mt-2 max-w-4xl text-[2rem] font-black uppercase leading-[0.94] tracking-normal sm:mt-4 sm:text-6xl lg:text-[4.6rem]">
-              <span className="text-[#f3c316]">Quick!</span> Your property guide offer ends soon.
+              <span className="text-[#20c36b]">Quick!</span> Your property guide offer ends soon.
             </h1>
             {funnel.offer.countdown && !offerExpired ? <Countdown endsAt={funnel.offer.endsAt} now={now} compact minimal /> : null}
             <div className="relative mx-auto mt-5 flex max-w-[25rem] flex-col items-stretch sm:mt-7">
@@ -222,22 +222,19 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
           <div className="relative mt-6 w-full max-w-4xl border-[6px] border-white bg-white p-2 shadow-[0_24px_70px_rgba(0,0,0,0.45)] sm:mt-10 sm:border-[9px]">
             <div className="relative grid min-h-[15rem] overflow-hidden bg-[#f3f0e8] sm:min-h-[25rem] md:grid-cols-[minmax(0,1fr)_18rem]">
               <div className="flex flex-col justify-center bg-[#f8f6f0] p-5 text-left text-[#101010] sm:p-8">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff3d00]">Inside the complete guide</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b8f54]">Inside the complete guide</p>
                 <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">Land. Plans. Approvals. Law.</h2>
                 <p className="mt-4 max-w-xl text-sm font-bold leading-7 text-slate-700 sm:text-base">
                   Know what to check before you buy, build, subdivide, appoint contractors, or commit serious money.
                 </p>
               </div>
-              <div className="relative flex items-center justify-center bg-[#f3c316] p-5">
+              <div className="relative flex items-center justify-center bg-[#0b8f54] p-5">
                 <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="w-full max-w-[13rem] shadow-[12px_12px_0_rgba(0,0,0,0.25)] sm:max-w-[15rem]" />
-              </div>
-              <div className="absolute left-1/2 top-1/2 grid size-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#ff3d00] text-white shadow-xl sm:size-16">
-                <ArrowRight className="size-8" />
               </div>
             </div>
           </div>
 
-          <div className="w-full max-w-4xl bg-[#f3c316] px-4 py-4 text-center text-[#101010]">
+          <div className="w-full max-w-4xl bg-[#0b8f54] px-4 py-4 text-center text-white">
             <p className="text-sm font-black leading-6">
               Launch price starts at <span className="text-xl uppercase">{product.currency} {minPrice.toFixed(2)}</span>. Secure checkout, invoice provided, digital access after payment.
             </p>
@@ -248,7 +245,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
       <section className="bg-[#f7f3ea] px-4 py-16 sm:px-6">
         <div className="mx-auto max-w-5xl">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-[0.68rem] font-black uppercase tracking-[0.26em] text-[#d64000]">Wait, your order is not complete</p>
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.26em] text-[#0b8f54]">Wait, your order is not complete</p>
             <h2 className="mt-3 text-[2rem] font-black uppercase leading-[0.96] text-[#0d1422] sm:text-[3rem]">
               Upgrade your decision before you spend thousands.
             </h2>
@@ -259,12 +256,20 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
 
           <div className="mt-10 overflow-hidden border border-[#d8d1c3] bg-white shadow-[0_28px_70px_rgba(16,24,40,0.12)]">
             <div className="grid lg:grid-cols-[0.78fr_1fr]">
-              <div className="bg-[#0b0d12] p-6 text-white sm:p-8">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#f0b90b]">Avoid these expensive mistakes</p>
-                <div className="mt-6 grid gap-3">
-                  {fastRisks.map((point) => (
-                    <SalesBullet key={point} inverse>{point}</SalesBullet>
-                  ))}
+              <div className="flex min-h-[24rem] flex-col justify-between bg-[#07111f] p-6 text-white sm:p-8 lg:min-h-0">
+                <div>
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#20c36b]">Avoid these expensive mistakes</p>
+                  <div className="mt-6 grid gap-3">
+                    {fastRisks.map((point) => (
+                      <SalesBullet key={point} inverse>{point}</SalesBullet>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-8 border border-white/15 bg-white/[0.06] p-4">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#20c36b]">Why this matters</p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-white/85">
+                    One missed document, approval, or contractor decision can cost far more than the guide.
+                  </p>
                 </div>
               </div>
 
@@ -273,7 +278,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
                 <div className="mt-5 grid gap-px overflow-hidden border border-[#d8d1c3] bg-[#d8d1c3]">
                   {coreInclusions.map((item, index) => (
                     <div key={item.title} className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 bg-white p-4 sm:p-5">
-                      <span className="grid size-9 place-items-center bg-[#f0b90b] text-sm font-black text-[#0d1422]">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="grid size-9 place-items-center bg-[#0b8f54] text-sm font-black text-white">{String(index + 1).padStart(2, "0")}</span>
                       <span>
                         <span className="block text-sm font-black uppercase leading-tight text-[#0d1422]">{item.title}</span>
                         <span className="mt-1.5 block text-sm font-semibold leading-6 text-slate-700">{item.description}</span>
@@ -284,7 +289,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
               </div>
             </div>
 
-            <div className="border-t border-[#d8d1c3] bg-[#fffaf0] p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+            <div className="border-t border-[#d8d1c3] bg-[#f4f8f6] p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
               <p className="text-sm font-black uppercase leading-6 text-[#0d1422]">
                 Get the guide now at the launch offer price before the deadline changes.
               </p>
@@ -296,10 +301,10 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
         </div>
       </section>
 
-      <section id="funnel-offer" className="bg-[#f0b90b] px-4 py-14 sm:px-6">
-        <div className="mx-auto max-w-5xl border border-[#b98900] bg-white p-5 shadow-[0_24px_60px_rgba(16,24,40,0.18)] sm:p-8">
+      <section id="funnel-offer" className="bg-[#0b8f54] px-4 py-14 sm:px-6">
+        <div className="mx-auto max-w-5xl border border-[#087044] bg-white p-5 shadow-[0_24px_60px_rgba(16,24,40,0.18)] sm:p-8">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#d64000]">Yes, I want this offer now</p>
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#0b8f54]">Yes, I want this offer now</p>
             <h2 className="mt-2 text-4xl font-black uppercase leading-none text-[#0d1422] sm:text-[3.25rem]">{funnel.offer.title}</h2>
             <p className="mt-2 text-sm font-bold leading-6 text-slate-700">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
           </div>
@@ -319,7 +324,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
       <section className="bg-[#f7f3ea] px-4 py-14 sm:px-6">
         <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[0.72fr_1fr] lg:items-start">
           <div>
-            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#d64000]">Last checks before buying</p>
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#0b8f54]">Last checks before buying</p>
             <h2 className="mt-2 text-[2rem] font-black uppercase leading-[0.96] text-[#0d1422] sm:text-[2.65rem]">Questions before you order</h2>
             <p className="mt-4 text-sm font-semibold leading-7 text-slate-700">{funnel.disclaimer}</p>
           </div>
@@ -336,7 +341,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
                 }}
               >
                 <summary className="flex cursor-pointer list-none items-center gap-3 text-sm font-black text-[#0d1422]">
-                  <HelpCircle className="size-4 text-[#d64000]" /> {faq.question}
+                  <HelpCircle className="size-4 text-[#0b8f54]" /> {faq.question}
                 </summary>
                 <p className="mt-2 pl-7 text-sm font-semibold leading-7 text-slate-700">{faq.answer}</p>
               </details>
@@ -345,9 +350,9 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
         </div>
       </section>
 
-      <section className="bg-[#0b0d12] px-4 py-12 text-center text-white sm:px-6">
+      <section className="bg-[#07111f] px-4 py-12 text-center text-white sm:px-6">
         <div className="mx-auto max-w-4xl">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f3c316]">Do not leave this until after the mistake</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">Do not leave this until after the mistake</p>
           <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">{funnel.finalTitle}</h2>
           <SalesCtaButton onClick={() => openEditionSelector("FINAL_BUY")} className="mt-6" subtitle="Hurry - Time is Running Out">
             {funnel.primaryCta}
@@ -369,10 +374,10 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
 
       {selectorOpen ? (
         <div className="fixed inset-0 z-50 flex items-end bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => setSelectorOpen(false)}>
-          <div className="w-full border-t-[6px] border-[#f4c430] bg-white p-4 shadow-2xl sm:mx-auto sm:max-w-2xl sm:border-[6px] sm:border-[#08111f]" onClick={(event) => event.stopPropagation()}>
+          <div className="w-full border-t-[6px] border-[#0b8f54] bg-white p-4 shadow-2xl sm:mx-auto sm:max-w-2xl sm:border-[6px] sm:border-[#08111f]" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff4d14]">Choose your edition</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b8f54]">Choose your edition</p>
                 <h2 className="mt-1 text-2xl font-black uppercase text-[#08111f]">Yes, I want the guide</h2>
               </div>
               <button type="button" onClick={() => setSelectorOpen(false)} className="border-2 border-slate-200 p-2 text-slate-500 hover:bg-slate-100" aria-label="Close edition selector">
@@ -412,14 +417,14 @@ function Countdown({ endsAt, now, compact = false, minimal = false }: { endsAt: 
     { label: "Secs", value: totalSeconds % 60 },
   ];
   return (
-    <div className={cn("mt-4 text-center sm:mt-6", !minimal && "border-2 border-[#08111f] p-3", compact ? "text-[#f3c316]" : "bg-white text-[#08111f]")}>
+    <div className={cn("mt-4 text-center sm:mt-6", !minimal && "border-2 border-[#08111f] p-3", compact ? "text-[#20c36b]" : "bg-white text-[#08111f]")}>
       <div className="mx-auto inline-grid grid-cols-[1fr_auto_1fr_auto_1fr] items-end gap-x-2">
         {units.map((unit, index) => (
           <span key={unit.label} className="contents">
-            {index > 0 ? <span className="pb-4 text-2xl font-black leading-none text-[#f3c316]">:</span> : null}
+            {index > 0 ? <span className="pb-4 text-2xl font-black leading-none text-[#20c36b]">:</span> : null}
             <span className="text-center">
-              <span className="block text-2xl font-black leading-none tabular-nums text-[#f3c316] sm:text-3xl">{String(unit.value).padStart(2, "0")}</span>
-              <span className="mt-1 block text-[0.6rem] font-black text-[#f3c316]">{unit.label}</span>
+              <span className="block text-2xl font-black leading-none tabular-nums text-[#20c36b] sm:text-3xl">{String(unit.value).padStart(2, "0")}</span>
+              <span className="mt-1 block text-[0.6rem] font-black text-[#20c36b]">{unit.label}</span>
             </span>
           </span>
         ))}
@@ -434,7 +439,7 @@ function SalesCtaButton({ children, className, onClick, subtitle }: { children: 
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-[3.55rem] max-w-full flex-col items-center justify-center bg-[#ff3d00] px-6 py-3 text-center text-lg font-black uppercase leading-none text-white shadow-[0_10px_0_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:bg-[#e63600] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3c316] active:translate-y-0 sm:text-xl",
+        "inline-flex min-h-[3.55rem] max-w-full flex-col items-center justify-center bg-[#0b8f54] px-6 py-3 text-center text-lg font-black uppercase leading-none text-white shadow-[0_10px_0_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:bg-[#087044] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#20c36b] active:translate-y-0 sm:text-xl",
         className,
       )}
     >
@@ -449,7 +454,8 @@ function CurvedArrow({ side }: { side: "left" | "right" }) {
     <span
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute top-[-3.1rem] hidden h-24 w-16 border-b-[6px] border-[#f3c316] sm:block",
+        "pointer-events-none absolute top-[-3.1rem] hidden h-24 w-16 border-b-[6px] sm:block",
+        "border-[#20c36b]",
         side === "left" ? "-left-24 rotate-[-24deg] rounded-bl-[4rem] border-l-[6px]" : "-right-24 rotate-[24deg] rounded-br-[4rem] border-r-[6px]",
       )}
     />
@@ -459,7 +465,7 @@ function CurvedArrow({ side }: { side: "left" | "right" }) {
 function SalesBullet({ children, inverse = false }: { children: React.ReactNode; inverse?: boolean }) {
   return (
     <div className={cn("grid grid-cols-[auto_minmax(0,1fr)] gap-3 text-sm font-bold leading-6", inverse ? "text-white" : "text-[#172033]")}>
-      <ArrowRight className={cn("mt-1 size-4 shrink-0", inverse ? "text-[#f0b90b]" : "text-[#d64000]")} />
+      <ArrowRight className={cn("mt-1 size-4 shrink-0", inverse ? "text-[#20c36b]" : "text-[#0b8f54]")} />
       <span>{children}</span>
     </div>
   );
@@ -473,12 +479,12 @@ function EditionCard({ format, currency, onClick, compact = false }: { format: R
       onClick={onClick}
       className={cn("border border-[#d8d1c3] bg-white p-5 text-left shadow-[0_14px_30px_rgba(16,24,40,0.08)] transition hover:-translate-y-0.5 hover:border-[#0b6b43] hover:shadow-[0_18px_38px_rgba(16,24,40,0.12)]", compact && "p-4")}
     >
-      <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-[#d64000]">{label}</p>
+      <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-[#0b8f54]">{label}</p>
       <p className="mt-1.5">
         {format.normalPrice && format.normalPrice > format.activePrice ? <span className="block text-sm font-black text-slate-400 line-through">{currency} {format.normalPrice.toFixed(2)}</span> : null}
         <span className="block whitespace-nowrap text-3xl font-black text-[#0d1422]">{currency} {format.activePrice.toFixed(2)}</span>
       </p>
-      {format.savings ? <p className="mt-3 inline-flex bg-[#f0b90b] px-2 py-1 text-xs font-black text-[#0d1422]">Save {currency} {format.savings.toFixed(2)}</p> : null}
+      {format.savings ? <p className="mt-3 inline-flex bg-[#dff8ea] px-2 py-1 text-xs font-black text-[#075f3b]">Save {currency} {format.savings.toFixed(2)}</p> : null}
       <span className="ml-2 mt-3 inline-flex items-center gap-2 bg-[#0d1422] px-3 py-2 text-xs font-black uppercase text-white">
         Get {format.type === "PRINTED_BOOK" ? "printed" : "digital"} <ArrowRight className="size-4" />
       </span>
@@ -492,7 +498,7 @@ function FunnelLogo() {
       <span className="grid size-10 place-items-center border-2 border-white bg-white text-lg font-black text-[#0b6b43]">HL</span>
       <span>
         <span className="block text-sm font-black uppercase tracking-[0.18em] text-white">HouseLink</span>
-        <span className="block text-[0.68rem] font-black uppercase tracking-[0.22em] text-yellow-300">Library funnel</span>
+        <span className="block text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#20c36b]">Library funnel</span>
       </span>
     </div>
   );
