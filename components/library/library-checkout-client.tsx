@@ -27,6 +27,7 @@ import {
 import type { LibraryDigitalUpsellPack } from "@/lib/library/catalog";
 import type { ResolvedLibrarySalesFunnel } from "@/lib/library/funnels";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
+import { cn } from "@/lib/utils";
 
 type LibraryQuote = {
   subtotal: number;
@@ -646,7 +647,12 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <div className="min-w-0 space-y-6">
           <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
-            <h2 className="text-lg font-semibold text-ink dark:text-white">Order summary</h2>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b8f54]">
+              {isFunnelCheckout ? "Your selected offer" : "Order summary"}
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-ink dark:text-white">
+              {isFunnelCheckout ? "Confirm what you are buying" : "Order summary"}
+            </h2>
             <div className="mt-4 space-y-3">
               {cart.length ? cart.map((item) => {
                 const quoted = quote?.items?.find(
@@ -707,9 +713,14 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
 
           {needsContinueEmail ? (
             <section ref={buyerDetailsRef} className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
-              <h2 className="text-lg font-semibold text-ink dark:text-white">Continue with email</h2>
+              {isFunnelCheckout && <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b8f54]">Step 1</p>}
+              <h2 className="mt-2 text-lg font-semibold text-ink dark:text-white">
+                {isFunnelCheckout ? "Where should we send your guide?" : "Continue with email"}
+              </h2>
               <p className="mt-1 break-words text-sm text-slate-500">
-                Please fill in these details to place your order. We use your phone number for payment-proof follow-ups and your invoice.
+                {isFunnelCheckout
+                  ? "Add your details so your order, payment reference, invoice, and digital access are attached to the right person."
+                  : "Please fill in these details to place your order. We use your phone number for payment-proof follow-ups and your invoice."}
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <label className="block text-sm font-medium sm:col-span-2">
@@ -773,7 +784,10 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
             </section>
           ) : user ? (
             <section ref={buyerDetailsRef} className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
-              <h2 className="text-lg font-semibold text-ink dark:text-white">Buying as</h2>
+              {isFunnelCheckout && <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b8f54]">Step 1</p>}
+              <h2 className="mt-2 text-lg font-semibold text-ink dark:text-white">
+                {isFunnelCheckout ? "Confirm your contact details" : "Buying as"}
+              </h2>
               <p className="mt-2 break-words text-sm text-slate-600 dark:text-slate-300">
                 <span className="font-semibold text-ink dark:text-white">{user.name}</span>
                 <span className="text-slate-400"> · </span>
@@ -797,38 +811,40 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
             </section>
           ) : null}
 
-          <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
-            <h2 className="text-lg font-semibold text-ink dark:text-white">Invoice & gift details</h2>
-            <p className="mt-1 break-words text-sm text-slate-500">Optional for firms, training cohorts, and gift orders.</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm font-medium sm:col-span-2">
-                Company / organisation (optional)
-                <input
-                  value={shipping.company}
-                  onChange={(e) => setShipping({ ...shipping, company: e.target.value })}
-                  className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
-                  placeholder="e.g. Harare Property Group"
-                />
-              </label>
-              <label className="block text-sm font-medium sm:col-span-2">
-                Gift note (optional)
-                <textarea
-                  value={shipping.giftNote}
-                  onChange={(e) => setShipping({ ...shipping, giftNote: e.target.value })}
-                  rows={2}
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
-                  placeholder={storeSettings?.checkout.notePlaceholder || "Message to include with the order"}
-                />
-              </label>
-            </div>
-            <p className="mt-3 text-xs text-slate-500">
-              See our{" "}
-              <Link href={storeSettings?.checkout.returnsUrl || "/returns"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">
-                returns & reprints policy
-              </Link>
-              .
-            </p>
-          </section>
+          {!isFunnelCheckout && (
+            <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+              <h2 className="text-lg font-semibold text-ink dark:text-white">Invoice & gift details</h2>
+              <p className="mt-1 break-words text-sm text-slate-500">Optional for firms, training cohorts, and gift orders.</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-medium sm:col-span-2">
+                  Company / organisation (optional)
+                  <input
+                    value={shipping.company}
+                    onChange={(e) => setShipping({ ...shipping, company: e.target.value })}
+                    className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900"
+                    placeholder="e.g. Harare Property Group"
+                  />
+                </label>
+                <label className="block text-sm font-medium sm:col-span-2">
+                  Gift note (optional)
+                  <textarea
+                    value={shipping.giftNote}
+                    onChange={(e) => setShipping({ ...shipping, giftNote: e.target.value })}
+                    rows={2}
+                    className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                    placeholder={storeSettings?.checkout.notePlaceholder || "Message to include with the order"}
+                  />
+                </label>
+              </div>
+              <p className="mt-3 text-xs text-slate-500">
+                See our{" "}
+                <Link href={storeSettings?.checkout.returnsUrl || "/returns"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                  returns & reprints policy
+                </Link>
+                .
+              </p>
+            </section>
+          )}
 
           {needsShipping && (
             <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
@@ -931,7 +947,10 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
 
         <aside className="h-fit min-w-0 space-y-4 lg:sticky lg:top-24">
           <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
-            <h2 className="text-lg font-semibold text-ink dark:text-white">Payment</h2>
+            {isFunnelCheckout && <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b8f54]">Step 2</p>}
+            <h2 className="mt-2 text-lg font-semibold text-ink dark:text-white">
+              {isFunnelCheckout ? "Choose payment and place order" : "Payment"}
+            </h2>
             {storeSettings?.payments?.instructions && (
               <p className="mt-2 text-xs leading-5 text-slate-500">{storeSettings.payments.instructions}</p>
             )}
@@ -941,7 +960,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
                 {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.label}</option>)}
               </select>
             </label>
-            {storeSettings?.checkout.allowCoupons !== false && (
+            {storeSettings?.checkout.allowCoupons !== false && !isFunnelCheckout && (
               <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Coupon or gift card
                 <div className="mt-2 flex gap-2">
@@ -1006,7 +1025,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
                 <span>{quote?.currency ?? "USD"} {payable.toFixed(2)}{quoting ? "…" : ""}</span>
               </div>
               <Button
-                className="mt-4 w-full"
+                className={cn("mt-4 w-full", isFunnelCheckout && "min-h-12 text-base font-black uppercase")}
                 loading={busy}
                 loadingText="Creating order..."
                 disabled={
@@ -1019,7 +1038,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
                 }
                 onClick={() => void checkout()}
               >
-                <CreditCard className="size-4" /> {needsContinueEmail ? "Continue & place order" : "Place order"}
+                <CreditCard className="size-4" /> {isFunnelCheckout ? "Complete secure order" : needsContinueEmail ? "Continue & place order" : "Place order"}
               </Button>
               {error && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
             </div>
@@ -1027,10 +1046,12 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
           <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
             <p className="flex gap-2 font-semibold"><Lock className="size-4" /> Secure checkout</p>
             <p className="mt-2 leading-6">
-              {needsContinueEmail
-                ? "Continue with email creates a light account for this order — set a password after checkout to sign back in later."
-                : "Orders, payments, invoices, and downloads are tied to your HouseLink account."}{" "}
-              Zone rates, Library payment methods, and tax settings are applied live from admin.
+              {isFunnelCheckout
+                ? "After placing the order, you will get one clear payment reference and the next page will show exactly what to do."
+                : needsContinueEmail
+                  ? "Continue with email creates a light account for this order — set a password after checkout to sign back in later."
+                  : "Orders, payments, invoices, and downloads are tied to your HouseLink account."}{" "}
+              {!isFunnelCheckout && "Zone rates, Library payment methods, and tax settings are applied live from admin."}
             </p>
           </section>
         </aside>
