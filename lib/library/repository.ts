@@ -467,16 +467,44 @@ export async function recordLibraryProductView(slug: string) {
 export async function getAdminLibraryData() {
   const products = await listLibraryProducts({ includeDrafts: true });
   const operations = await getLibraryOperationsSummary();
+  const orders = await listLibraryOrders();
+  const analytics = await getLibraryAnalytics();
+  const recoveredReports = shouldRecoverLibraryAdminReports(operations.reports, orders)
+    ? buildLibraryAdminReports({
+        orders,
+        products,
+        coupons: operations.coupons ?? [],
+        downloadAccess: (operations.downloadAccess ?? []).map((access) => ({
+          ...access,
+          downloadLimit: access.downloadLimit ?? null,
+          expiresAt: access.expiresAt ?? null,
+          lastDownloadAt: access.lastDownloadAt ?? null,
+        })),
+        reviews: operations.reviews ?? [],
+        taxSettings: operations.taxSettings ?? [],
+        inventoryMovements: [],
+        storeSettings: operations.storeSettings,
+      })
+    : operations.reports;
   return {
     products,
-    orders: await listLibraryOrders(),
-    analytics: await getLibraryAnalytics(),
+    orders,
+    analytics,
     facets: getLibraryFacets(products),
     operations: {
       ...operations,
+      reports: recoveredReports,
       settingsAudit: await listLibrarySettingsAudit(24),
     },
   };
+}
+
+function shouldRecoverLibraryAdminReports(reports: LibraryAdminReports, orders: LibraryOrder[]) {
+  if (!orders.length) return false;
+  const reportedOrders = reports.funnel.find((row) => row.label === "Orders")?.value ?? 0;
+  const reportedPaid = reports.funnel.find((row) => row.label === "Paid")?.value ?? 0;
+  const actualPaid = orders.filter((order) => order.status === "PAID" || order.status === "FULFILLED").length;
+  return reportedOrders === 0 && (orders.length > 0 || actualPaid > reportedPaid);
 }
 
 export type LibraryFunnelAnalytics = {
