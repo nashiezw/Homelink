@@ -398,7 +398,7 @@ function fallbackFunnelProduct(funnel: LibrarySalesFunnelConfig): LibraryProduct
     promotionEnabled: true,
     promotionTitle: funnel.offer.title,
     promotionDescription: funnel.offer.description,
-    promotionBadge: "Special offer",
+    promotionBadge: "Launch offer",
     promotionStartsAt: funnel.offer.startsAt,
     promotionEndsAt: funnel.offer.endsAt,
     promotionCountdown: funnel.offer.countdown,

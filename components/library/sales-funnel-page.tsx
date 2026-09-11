@@ -2,8 +2,6 @@
 
 import {
   ArrowRight,
-  BookOpen,
-  CheckCircle2,
   CreditCard,
   FileText,
   HelpCircle,
@@ -11,13 +9,11 @@ import {
   ReceiptText,
   ShieldCheck,
   ShoppingCart,
-  Timer,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
 import { PdfSampleViewer } from "@/components/library/pdf-sample-viewer";
-import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/analytics/client";
 import { getOrCreateSessionId, getOrCreateVisitorId, readUtmParams } from "@/lib/analytics/visitor-client";
 import {
@@ -54,6 +50,9 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
   const digitalFormats = formats.filter((format) => format.type !== "PRINTED_BOOK");
   const printedFormats = formats.filter((format) => format.type === "PRINTED_BOOK");
   const formatChoices = [...digitalFormats, ...printedFormats];
+  const coreInclusions = funnel.learning.slice(0, 4);
+  const fastRisks = funnel.problemPoints.slice(0, 6);
+  const shortFaq = funnel.faq.slice(0, 3);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -209,162 +208,141 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8faf7] text-[#121923]">
-      <section className="relative overflow-hidden border-b border-[#d8dfd3] bg-[#f8faf7]">
-        <div className="absolute inset-x-0 top-0 h-2 bg-[#0b6b43]" />
-        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pb-10 pt-8 sm:px-6 lg:min-h-[88svh] lg:grid-cols-[minmax(0,0.98fr)_minmax(18rem,0.64fr)] lg:pb-16 lg:pt-12">
-          <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#0b6b43]">HouseLink Library special guide</p>
-            <h1 className="mt-4 max-w-4xl text-3xl font-black leading-[1.04] tracking-normal text-[#102033] sm:text-6xl lg:text-7xl">{funnel.headline}</h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-700">{funnel.subheadline}</p>
-            <OfferStrip resolved={resolved} now={now} />
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Button onClick={() => openEditionSelector("HERO_BUY")} className="min-h-14 bg-[#0b6b43] text-base text-white shadow-[0_16px_40px_rgba(11,107,67,0.24)] hover:bg-[#084f33]">
-                <ShoppingCart className="size-5" /> {funnel.primaryCta}
-              </Button>
-              {sampleUrl ? (
-                <Button variant="secondary" onClick={() => openSample("HERO_SAMPLE")} className="min-h-14 border-[#b9c7b5] bg-white text-base text-[#102033] hover:bg-[#eef4eb]">
-                  <BookOpen className="size-5" /> {funnel.secondaryCta}
-                </Button>
-              ) : null}
-            </div>
-            <div className="mt-6 grid max-w-2xl gap-2 text-sm font-bold text-slate-700 sm:grid-cols-3">
-              <span className="inline-flex items-center gap-2"><ShieldCheck className="size-4 text-[#0b6b43]" /> Secure checkout</span>
-              <span className="inline-flex items-center gap-2"><ReceiptText className="size-4 text-[#0b6b43]" /> Invoice provided</span>
-              <span className="inline-flex items-center gap-2"><Lock className="size-4 text-[#0b6b43]" /> Library access</span>
+    <main className="min-h-screen bg-[#e9e9e4] text-[#101010]">
+      <section className="relative overflow-hidden bg-[#0b0d12] text-white">
+        <div className="absolute inset-0 opacity-[0.17] [background-image:linear-gradient(30deg,#ffffff_12%,transparent_12.5%,transparent_87%,#ffffff_87.5%,#ffffff),linear-gradient(150deg,#ffffff_12%,transparent_12.5%,transparent_87%,#ffffff_87.5%,#ffffff),linear-gradient(30deg,#ffffff_12%,transparent_12.5%,transparent_87%,#ffffff_87.5%,#ffffff),linear-gradient(150deg,#ffffff_12%,transparent_12.5%,transparent_87%,#ffffff_87.5%,#ffffff)] [background-position:0_0,0_0,22px_38px,22px_38px] [background-size:44px_76px]" />
+        <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center px-4 pb-0 pt-5 text-center sm:px-6 sm:pt-8">
+          <div className="w-full max-w-4xl">
+            <FunnelLogo />
+            <p className="mt-5 text-[0.68rem] font-black uppercase tracking-[0.14em] text-white sm:mt-9 sm:text-base sm:tracking-normal">
+              Time is running out to get the offer for <span className="text-[#f3c316]">Zimbabwe property developers</span>
+            </p>
+            <h1 className="mx-auto mt-2 max-w-4xl text-[2rem] font-black uppercase leading-[0.94] tracking-normal sm:mt-4 sm:text-6xl lg:text-[4.6rem]">
+              <span className="text-[#f3c316]">Quick!</span> Your property guide offer ends soon.
+            </h1>
+            {funnel.offer.countdown && !offerExpired ? <Countdown endsAt={funnel.offer.endsAt} now={now} compact minimal /> : null}
+            <div className="relative mx-auto mt-5 flex max-w-[25rem] flex-col items-stretch sm:mt-7">
+              <CurvedArrow side="left" />
+              <CurvedArrow side="right" />
+              <SalesCtaButton onClick={() => openEditionSelector("HERO_BUY")} subtitle="Hurry - Time is Running Out">
+                {funnel.primaryCta}
+              </SalesCtaButton>
             </div>
           </div>
-          <div className="relative mx-auto w-full max-w-[22rem] lg:max-w-[25rem]">
-            <div className="absolute -inset-4 rounded-[2rem] bg-[#dce9d5]" />
-            <div className="relative rounded-[1.25rem] border border-[#c7d3c1] bg-white p-4 shadow-[0_30px_80px_rgba(16,32,51,0.18)]">
-              <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="mx-auto h-auto w-full shadow-none" />
-              <div className="mt-4 border-t border-slate-200 pt-4">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#0b6b43]">Choose your edition</p>
-                <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">Digital access or printed copy, priced by the active offer at checkout.</p>
+
+          <div className="relative mt-6 w-full max-w-4xl border-[6px] border-white bg-white p-2 shadow-[0_24px_70px_rgba(0,0,0,0.45)] sm:mt-10 sm:border-[9px]">
+            <div className="relative grid min-h-[15rem] overflow-hidden bg-[#f3f0e8] sm:min-h-[25rem] md:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="flex flex-col justify-center bg-[#f8f6f0] p-5 text-left text-[#101010] sm:p-8">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff3d00]">Inside the complete guide</p>
+                <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">Land. Plans. Approvals. Law.</h2>
+                <p className="mt-4 max-w-xl text-sm font-bold leading-7 text-slate-700 sm:text-base">
+                  Know what to check before you buy, build, subdivide, appoint contractors, or commit serious money.
+                </p>
+              </div>
+              <div className="relative flex items-center justify-center bg-[#f3c316] p-5">
+                <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="w-full max-w-[13rem] shadow-[12px_12px_0_rgba(0,0,0,0.25)] sm:max-w-[15rem]" />
+              </div>
+              <div className="absolute left-1/2 top-1/2 grid size-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#ff3d00] text-white shadow-xl sm:size-16">
+                <ArrowRight className="size-8" />
               </div>
             </div>
+          </div>
+
+          <div className="w-full max-w-4xl bg-[#f3c316] px-4 py-4 text-center text-[#101010]">
+            <p className="text-sm font-black leading-6">
+              Launch price starts at <span className="text-xl uppercase">{product.currency} {minPrice.toFixed(2)}</span>. Secure checkout, invoice provided, digital access after payment.
+            </p>
           </div>
         </div>
       </section>
 
-      <FunnelBand title={funnel.problemTitle} cta={() => openEditionSelector("VALUE_BUY")}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {funnel.problemPoints.map((point) => <ValueChip key={point}>{point}</ValueChip>)}
-        </div>
-      </FunnelBand>
-
-      <FunnelBand title={funnel.audienceTitle} cta={() => openEditionSelector("AUDIENCE_BUY")} tone="white">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {funnel.audience.map((item) => (
-            <div key={item} className="rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold leading-6 text-slate-700 shadow-sm">
-              <CheckCircle2 className="mb-3 size-5 text-cyan-700" /> {item}
+      <section className="bg-white px-4 py-12 sm:px-6">
+        <div className="mx-auto grid max-w-6xl gap-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] lg:items-center">
+          <div className="border-[5px] border-[#101010] bg-[#f8f8f0] p-5 shadow-[12px_12px_0_#f3c316]">
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-[#ff3d00]">Wait, your order is not complete</p>
+            <h2 className="mt-3 text-3xl font-black uppercase leading-[1.02] sm:text-5xl">Upgrade your decision before you spend thousands.</h2>
+            <div className="mt-5 grid gap-2">
+              {fastRisks.map((point) => (
+                <SalesBullet key={point}>{point}</SalesBullet>
+              ))}
             </div>
-          ))}
-        </div>
-      </FunnelBand>
-
-      <FunnelBand title={funnel.learningTitle} cta={() => openEditionSelector("LEARNING_BUY")}>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {funnel.learning.map((item, index) => (
-            <article key={item.title} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">{String(index + 1).padStart(2, "0")}</p>
-              <h3 className="mt-3 text-xl font-black text-[#102033]">{item.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
-            </article>
-          ))}
-        </div>
-      </FunnelBand>
-
-      <section className="bg-[#0c1727] px-4 py-14 text-white sm:px-6">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)]">
+          </div>
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Cost of delay</p>
-            <h2 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">{funnel.delayTitle}</h2>
-            <p className="mt-4 text-base leading-8 text-slate-300">Take time to understand the process before serious money, time, and professional commitments are on the line.</p>
-            <Button onClick={() => openEditionSelector("VALUE_BUY")} className="mt-6 min-h-12 bg-cyan-500 text-[#06131f] hover:bg-cyan-400">
-              <ShoppingCart className="size-5" /> Get the guide today
-            </Button>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {funnel.delayPoints.map((point) => <ValueChip key={point} dark>{point}</ValueChip>)}
+            <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-slate-500 lg:text-left">Here is everything you are getting when you order now</p>
+            <div className="mt-4 grid gap-3">
+              {coreInclusions.map((item) => (
+                <div key={item.title} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 border-2 border-[#101010] bg-white p-4 shadow-[7px_7px_0_#0b6b43]">
+                  <span className="grid size-8 place-items-center bg-[#f3c316] text-sm font-black text-[#101010]"><FileText className="size-4" /></span>
+                  <span>
+                    <span className="block text-base font-black uppercase leading-tight">{item.title}</span>
+                    <span className="mt-1 block text-sm font-semibold leading-6 text-slate-700">{item.description}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-6 w-full" subtitle="Choose digital or printed">
+              Yes, add this to my order
+            </SalesCtaButton>
           </div>
         </div>
       </section>
 
-      {sampleUrl ? (
-        <FunnelBand title="See what's inside" cta={() => openEditionSelector("SAMPLE_BUY")} tone="white">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)] lg:items-center">
-            <BookCover product={product} interactive={false} className="mx-auto w-full max-w-[16rem]" />
-            <div>
-              <p className="text-base leading-8 text-slate-600">Preview a legitimate sample, then come back to get the complete guide when it looks like the right fit.</p>
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                <Button onClick={() => openSample("SAMPLE_OPEN")} className="min-h-12"><BookOpen className="size-5" /> Read the free sample</Button>
-                <Button variant="secondary" onClick={() => openEditionSelector("SAMPLE_BUY")} className="min-h-12"><ShoppingCart className="size-5" /> Ready to get the complete guide?</Button>
-              </div>
-            </div>
-          </div>
-        </FunnelBand>
-      ) : null}
-
-      <FunnelBand title="HouseLink Library trust" cta={() => openEditionSelector("TRUST_BUY")}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {funnel.trust.map((item) => (
-            <div key={item} className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 shadow-sm">
-              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-cyan-700" /> {item}
-            </div>
-          ))}
-        </div>
-      </FunnelBand>
-
-      <section id="funnel-offer" className="bg-white px-4 py-14 sm:px-6">
-        <div className="mx-auto max-w-7xl">
-          <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">{resolved.offerState}</p>
-            <h2 className="mt-3 text-3xl font-black text-[#102033] sm:text-4xl">{funnel.offer.title}</h2>
-            <p className="mt-3 text-base leading-8 text-slate-600">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
+      <section id="funnel-offer" className="bg-[#f3c316] px-4 py-12 sm:px-6">
+        <div className="mx-auto max-w-6xl border-[6px] border-[#101010] bg-white p-5 shadow-[14px_14px_0_rgba(0,0,0,0.22)] sm:p-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff3d00]">Yes. I want this offer now.</p>
+            <h2 className="mt-3 text-4xl font-black uppercase leading-tight text-[#101010] sm:text-5xl">{funnel.offer.title}</h2>
+            <p className="mt-3 text-base font-bold leading-8 text-slate-700">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
           </div>
           <div className="mt-7 grid gap-4 md:grid-cols-2">
             {formatChoices.map((format) => (
               <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} />
             ))}
           </div>
-          {funnel.offer.countdown && !offerExpired ? <Countdown endsAt={funnel.offer.endsAt} now={now} /> : null}
+          <div className="mt-5 grid gap-2 text-sm font-black text-[#101010] sm:grid-cols-3">
+            <span className="inline-flex items-center justify-center gap-2 border-2 border-[#101010] bg-[#f8f8f0] p-3"><Lock className="size-4" /> Secure checkout</span>
+            <span className="inline-flex items-center justify-center gap-2 border-2 border-[#101010] bg-[#f8f8f0] p-3"><ReceiptText className="size-4" /> Invoice provided</span>
+            <span className="inline-flex items-center justify-center gap-2 border-2 border-[#101010] bg-[#f8f8f0] p-3"><ShieldCheck className="size-4" /> HouseLink Library</span>
+          </div>
         </div>
       </section>
 
-      <FunnelBand title="Questions before buying" cta={() => openEditionSelector("FAQ_BUY")}>
-        <div className="grid gap-3">
-          {funnel.faq.map((faq) => (
-            <details
-              key={faq.question}
-              className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-              onToggle={(event) => {
-                if (event.currentTarget.open) {
-                  trackEvent("library_faq_opened", product.id, funnelMeta({ question: faq.question }));
-                  trackFunnel("faq_opened", { question: faq.question });
-                }
-              }}
-            >
-              <summary className="flex cursor-pointer list-none items-center gap-3 text-base font-black text-[#102033]">
-                <HelpCircle className="size-5 text-cyan-700" /> {faq.question}
-              </summary>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{faq.answer}</p>
-            </details>
-          ))}
-        </div>
-      </FunnelBand>
-
-      <section className="bg-[#081425] px-4 py-14 text-white sm:px-6">
-        <div className="mx-auto max-w-5xl text-center">
-          <h2 className="text-3xl font-black leading-tight sm:text-5xl">{funnel.finalTitle}</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-300">{product.title}</p>
-          <div className="mt-6 flex justify-center">
-            <Button onClick={() => openEditionSelector("FINAL_BUY")} className="min-h-14 bg-cyan-500 text-base text-[#06131f] hover:bg-cyan-400">
-              <ShoppingCart className="size-5" /> {funnel.primaryCta}
-            </Button>
+      <section className="bg-white px-4 py-12 sm:px-6">
+        <div className="mx-auto grid max-w-6xl gap-7 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff3d00]">Last checks before buying</p>
+            <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">Questions before you order</h2>
+            <p className="mt-4 text-sm font-semibold leading-7 text-slate-700">{funnel.disclaimer}</p>
           </div>
-          <p className="mt-4 text-xs font-bold text-slate-300">Secure checkout · HouseLink Library · Invoice provided</p>
-          <p className="mx-auto mt-5 max-w-3xl text-xs leading-6 text-slate-400">{funnel.disclaimer}</p>
+          <div className="grid gap-3">
+            {shortFaq.map((faq) => (
+              <details
+                key={faq.question}
+                className="border-2 border-[#101010] bg-[#f8f8f0] p-4"
+                onToggle={(event) => {
+                  if (event.currentTarget.open) {
+                    trackEvent("library_faq_opened", product.id, funnelMeta({ question: faq.question }));
+                    trackFunnel("faq_opened", { question: faq.question });
+                  }
+                }}
+              >
+                <summary className="flex cursor-pointer list-none items-center gap-3 text-base font-black text-[#101010]">
+                  <HelpCircle className="size-5 text-[#ff3d00]" /> {faq.question}
+                </summary>
+                <p className="mt-3 text-sm font-semibold leading-7 text-slate-700">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#0b0d12] px-4 py-12 text-center text-white sm:px-6">
+        <div className="mx-auto max-w-4xl">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#f3c316]">Do not leave this until after the mistake</p>
+          <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">{funnel.finalTitle}</h2>
+          <SalesCtaButton onClick={() => openEditionSelector("FINAL_BUY")} className="mt-6" subtitle="Hurry - Time is Running Out">
+            {funnel.primaryCta}
+          </SalesCtaButton>
         </div>
       </section>
 
@@ -375,20 +353,20 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
               <p className="truncate text-sm font-black text-[#102033]">{shortTitle(product.title)}</p>
               <p className="text-xs font-bold text-slate-500">From {product.currency} {minPrice.toFixed(2)}</p>
             </div>
-            <Button onClick={() => openEditionSelector("STICKY_BUY")} className="min-h-11 px-4"><ShoppingCart className="size-4" /> Buy now</Button>
+            <SalesCtaButton onClick={() => openEditionSelector("STICKY_BUY")} className="min-h-11 px-4 text-sm shadow-none"><ShoppingCart className="size-4" /> Buy now</SalesCtaButton>
           </div>
         </div>
       ) : null}
 
       {selectorOpen ? (
         <div className="fixed inset-0 z-50 flex items-end bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => setSelectorOpen(false)}>
-          <div className="w-full rounded-t-2xl bg-white p-4 shadow-2xl sm:mx-auto sm:max-w-2xl sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
+          <div className="w-full border-t-[6px] border-[#f4c430] bg-white p-4 shadow-2xl sm:mx-auto sm:max-w-2xl sm:border-[6px] sm:border-[#08111f]" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Choose your edition</p>
-                <h2 className="mt-1 text-2xl font-black text-[#102033]">Get the book now</h2>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff4d14]">Choose your edition</p>
+                <h2 className="mt-1 text-2xl font-black uppercase text-[#08111f]">Yes, I want the guide</h2>
               </div>
-              <button type="button" onClick={() => setSelectorOpen(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Close edition selector">
+              <button type="button" onClick={() => setSelectorOpen(false)} className="border-2 border-slate-200 p-2 text-slate-500 hover:bg-slate-100" aria-label="Close edition selector">
                 <X className="size-5" />
               </button>
             </div>
@@ -417,9 +395,9 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
               <PdfSampleViewer url={sampleUrl} title={product.title} onViewed={() => trackEvent("library_sample_viewed", product.id, funnelMeta())} />
             </div>
             <div className="border-t border-slate-200 p-3 text-right">
-              <Button onClick={() => { setSampleOpen(false); openEditionSelector("SAMPLE_MODAL_BUY"); }}>
+              <SalesCtaButton onClick={() => { setSampleOpen(false); openEditionSelector("SAMPLE_MODAL_BUY"); }} className="min-h-11 px-4 text-sm">
                 <ShoppingCart className="size-5" /> Get the complete guide
-              </Button>
+              </SalesCtaButton>
             </div>
           </div>
         </div>
@@ -428,47 +406,30 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
   );
 }
 
-function OfferStrip({ resolved, now }: { resolved: ResolvedLibrarySalesFunnel; now: number }) {
-  const { product, formats, funnel, offerActive, offerExpired } = resolved;
-  return (
-    <div className="mt-7 max-w-2xl rounded-[0.9rem] border border-[#bfd0ba] bg-white p-4 shadow-[0_18px_50px_rgba(16,32,51,0.08)]">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b6b43]">{offerExpired ? "Normal price" : funnel.offer.title}</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        {formats.slice(0, 2).map((format) => (
-          <div key={format.id} className="rounded-lg border border-[#e3eadf] bg-[#f8faf7] p-3">
-            <p className="text-xs font-bold uppercase text-slate-500">{format.type === "PRINTED_BOOK" ? "Printed" : "Digital"}</p>
-            <p className="mt-1 text-2xl font-black text-[#102033]">
-              {format.normalPrice && offerActive ? <span className="mr-2 text-base text-slate-400 line-through">{product.currency} {format.normalPrice.toFixed(2)}</span> : null}
-              {product.currency} {format.activePrice.toFixed(2)}
-            </p>
-          </div>
-        ))}
-      </div>
-      {funnel.offer.countdown && !offerExpired ? <Countdown endsAt={funnel.offer.endsAt} now={now} compact /> : null}
-    </div>
-  );
-}
-
-function Countdown({ endsAt, now, compact = false }: { endsAt: string; now: number; compact?: boolean }) {
+function Countdown({ endsAt, now, compact = false, minimal = false }: { endsAt: string; now: number; compact?: boolean; minimal?: boolean }) {
   const remaining = Math.max(0, Date.parse(endsAt) - now);
   if (!Number.isFinite(remaining) || remaining <= 0) return null;
   const totalSeconds = Math.floor(remaining / 1000);
-  const units = [
+  const units = minimal ? [
+    { label: "Days", value: Math.floor(totalSeconds / 86400) },
+    { label: "Hours", value: Math.floor((totalSeconds % 86400) / 3600) },
+    { label: "Mins", value: Math.floor((totalSeconds % 3600) / 60) },
+  ] : [
     { label: "Days", value: Math.floor(totalSeconds / 86400) },
     { label: "Hours", value: Math.floor((totalSeconds % 86400) / 3600) },
     { label: "Mins", value: Math.floor((totalSeconds % 3600) / 60) },
     { label: "Secs", value: totalSeconds % 60 },
   ];
   return (
-    <div className={cn("mt-5 rounded-lg border p-3", compact ? "border-white/15 bg-white/10" : "border-cyan-200 bg-cyan-50")}>
-      <p className={cn("mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em]", compact ? "text-cyan-100" : "text-cyan-800")}>
-        <Timer className="size-4" /> Offer ends in
-      </p>
-      <div className="grid grid-cols-4 gap-2">
-        {units.map((unit) => (
-          <span key={unit.label} className={cn("rounded-lg px-2 py-2 text-center", compact ? "bg-white/10" : "bg-white")}>
-            <span className={cn("block text-lg font-black tabular-nums", compact ? "text-white" : "text-[#102033]")}>{String(unit.value).padStart(2, "0")}</span>
-            <span className={cn("block text-[0.62rem] font-bold uppercase", compact ? "text-slate-300" : "text-slate-500")}>{unit.label}</span>
+    <div className={cn("mt-4 text-center sm:mt-6", !minimal && "border-2 border-[#08111f] p-3", compact ? "text-[#f3c316]" : "bg-white text-[#08111f]")}>
+      <div className="mx-auto inline-grid grid-cols-[1fr_auto_1fr_auto_1fr] items-end gap-x-2">
+        {units.map((unit, index) => (
+          <span key={unit.label} className="contents">
+            {index > 0 ? <span className="pb-4 text-2xl font-black leading-none text-[#f3c316]">:</span> : null}
+            <span className="text-center">
+              <span className="block text-2xl font-black leading-none tabular-nums text-[#f3c316] sm:text-3xl">{String(unit.value).padStart(2, "0")}</span>
+              <span className="mt-1 block text-[0.6rem] font-black text-[#f3c316]">{unit.label}</span>
+            </span>
           </span>
         ))}
       </div>
@@ -476,24 +437,39 @@ function Countdown({ endsAt, now, compact = false }: { endsAt: string; now: numb
   );
 }
 
-function FunnelBand({ title, children, cta, tone = "soft" }: { title: string; children: React.ReactNode; cta: () => void; tone?: "soft" | "white" }) {
+function SalesCtaButton({ children, className, onClick, subtitle }: { children: React.ReactNode; className?: string; onClick: () => void; subtitle?: string }) {
   return (
-    <section className={cn("px-4 py-14 sm:px-6", tone === "white" ? "bg-white" : "bg-[#f6f8fb]")}>
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="max-w-3xl text-3xl font-black leading-tight text-[#102033] sm:text-4xl">{title}</h2>
-          <Button onClick={cta} className="min-h-12 shrink-0"><ShoppingCart className="size-5" /> Get the guide</Button>
-        </div>
-        {children}
-      </div>
-    </section>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex min-h-[3.55rem] max-w-full flex-col items-center justify-center bg-[#ff3d00] px-6 py-3 text-center text-lg font-black uppercase leading-none text-white shadow-[0_10px_0_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:bg-[#e63600] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3c316] active:translate-y-0 sm:text-xl",
+        className,
+      )}
+    >
+      <span className="whitespace-nowrap">{children}</span>
+      {subtitle ? <span className="mt-1 text-xs font-bold normal-case leading-none text-white/90">({subtitle})</span> : null}
+    </button>
   );
 }
 
-function ValueChip({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
+function CurvedArrow({ side }: { side: "left" | "right" }) {
   return (
-    <div className={cn("rounded-lg border px-4 py-3 text-sm font-black", dark ? "border-white/10 bg-white/10 text-slate-100" : "border-slate-200 bg-white text-slate-700 shadow-sm")}>
-      <FileText className={cn("mb-2 size-5", dark ? "text-cyan-200" : "text-cyan-700")} /> {children}
+    <span
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute top-[-3.1rem] hidden h-24 w-16 border-b-[6px] border-[#f3c316] sm:block",
+        side === "left" ? "-left-24 rotate-[-24deg] rounded-bl-[4rem] border-l-[6px]" : "-right-24 rotate-[24deg] rounded-br-[4rem] border-r-[6px]",
+      )}
+    />
+  );
+}
+
+function SalesBullet({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 text-sm font-black leading-6 text-[#101010]">
+      <ArrowRight className="mt-1 size-4 shrink-0 text-[#ff3d00]" />
+      <span>{children}</span>
     </div>
   );
 }
@@ -504,18 +480,30 @@ function EditionCard({ format, currency, onClick, compact = false }: { format: R
     <button
       type="button"
       onClick={onClick}
-      className={cn("rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-cyan-400 hover:shadow-md", compact && "p-4")}
+      className={cn("border-[3px] border-[#08111f] bg-white p-5 text-left shadow-[8px_8px_0_#0b6b43] transition hover:-translate-y-0.5 hover:shadow-[10px_10px_0_#f4c430]", compact && "p-4")}
     >
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-700">{label}</p>
-      <p className="mt-2 text-3xl font-black text-[#102033]">
-        {format.normalPrice && format.normalPrice > format.activePrice ? <span className="mr-2 text-base text-slate-400 line-through">{currency} {format.normalPrice.toFixed(2)}</span> : null}
-        {currency} {format.activePrice.toFixed(2)}
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff4d14]">{label}</p>
+      <p className="mt-2">
+        {format.normalPrice && format.normalPrice > format.activePrice ? <span className="block text-base font-black text-slate-400 line-through">{currency} {format.normalPrice.toFixed(2)}</span> : null}
+        <span className="block whitespace-nowrap text-3xl font-black text-[#08111f] sm:text-4xl">{currency} {format.activePrice.toFixed(2)}</span>
       </p>
-      {format.savings ? <p className="mt-1 text-sm font-bold text-emerald-700">Save {currency} {format.savings.toFixed(2)}</p> : null}
-      <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#102033]">
+      {format.savings ? <p className="mt-1 inline-flex bg-[#f4c430] px-2 py-1 text-sm font-black text-[#08111f]">Save {currency} {format.savings.toFixed(2)}</p> : null}
+      <span className="mt-4 inline-flex items-center gap-2 bg-[#08111f] px-3 py-2 text-sm font-black uppercase text-white">
         Get {format.type === "PRINTED_BOOK" ? "printed" : "digital"} <ArrowRight className="size-4" />
       </span>
     </button>
+  );
+}
+
+function FunnelLogo() {
+  return (
+    <div className="inline-flex items-center gap-3">
+      <span className="grid size-10 place-items-center border-2 border-white bg-white text-lg font-black text-[#0b6b43]">HL</span>
+      <span>
+        <span className="block text-sm font-black uppercase tracking-[0.18em] text-white">HouseLink</span>
+        <span className="block text-[0.68rem] font-black uppercase tracking-[0.22em] text-yellow-300">Library funnel</span>
+      </span>
+    </div>
   );
 }
 

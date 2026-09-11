@@ -382,38 +382,38 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
         status: "PUBLISHED",
         version: 1,
         label: "Property Development in Zimbabwe",
-        headline: "Before you buy land, build or develop - know what you're getting into.",
+        headline: "Quick: get the Zimbabwe property guide before your project gets expensive.",
         subheadline:
-          "A practical Zimbabwe-focused guide covering property development, land due diligence, approvals, construction, compliance, subdivisions and property law.",
-        primaryCta: "Get the book now",
-        secondaryCta: "Read a free sample",
+          "A focused property development and property law guide for buyers, builders, investors, and developers who want fewer costly surprises before they move.",
+        primaryCta: "Yes, I want this offer now",
+        secondaryCta: "Preview the sample",
         whatsappUrl: "https://wa.me/263",
         heroImageUrl: "",
-        problemTitle: "Property development involves more than buying land and starting to build.",
-        problemPoints: ["Land", "Due diligence", "Planning", "Approvals", "Construction", "Compliance", "Subdivision", "Property law"],
-        audienceTitle: "This guide is for you if...",
+        problemTitle: "One missed check can cost more than the guide.",
+        problemPoints: ["Buying land without checks", "Missing council approvals", "Underestimating compliance", "Poor subdivision planning", "Unclear professional roles", "Weak contractor decisions", "Legal blind spots", "Costly project delays"],
+        audienceTitle: "Get this before you move from interest to action.",
         audience: [
-          "You want to buy land for development",
-          "You want to build property",
-          "You are planning a development project",
-          "You are considering subdivision",
-          "You want to invest in property",
-          "You work in real estate",
-          "You work in construction",
-          "You want to understand property law",
+          "You want to buy land and need to know what to check first",
+          "You want to build and avoid approval or compliance surprises",
+          "You are planning a small development project",
+          "You are considering subdivision or land development",
+          "You want to invest in property with more confidence",
+          "You work in real estate or construction and need a clearer roadmap",
+          "You want property law explained in practical language",
+          "You want one guide you can return to before each major decision",
         ],
-        learningTitle: "What you will learn",
+        learningTitle: "Here is what you get when you order now",
         learning: [
-          { title: "Property Development", description: "From concept to completion." },
-          { title: "Land & Due Diligence", description: "What to investigate before committing." },
-          { title: "Council Approvals", description: "Planning, building plans and approvals." },
-          { title: "Construction", description: "Key construction and inspection considerations." },
-          { title: "Compliance", description: "Building compliance and occupancy." },
-          { title: "Subdivision", description: "Land development and subdivision considerations." },
+          { title: "Development roadmap", description: "How a project moves from idea, land, approvals, construction, compliance, and completion." },
+          { title: "Land due diligence", description: "What to investigate before you commit to land or development money." },
+          { title: "Approvals and council processes", description: "Planning, building plans, permissions, and the approvals that can affect your timeline." },
+          { title: "Construction decisions", description: "Key professional, contractor, inspection, and site-management considerations." },
+          { title: "Compliance and occupancy", description: "Why compliance matters before occupation, resale, renting, or further development." },
+          { title: "Subdivision and legal issues", description: "Practical considerations around subdivision, land development, ownership, and property law." },
         ],
-        delayTitle: "Before you put serious money into property development...",
-        delayPoints: ["Land", "Planning", "Approvals", "Construction", "Professionals", "Compliance", "Legal considerations", "Capital", "Time"],
-        trust: ["HouseLink Library", "Secure checkout", "Invoice or receipt provided", "Digital access after successful payment", "Printed edition availability", "Customer support"],
+        delayTitle: "Do not wait until the mistake is already expensive.",
+        delayPoints: ["Land checks", "Approval risk", "Professional team", "Construction control", "Compliance", "Legal position", "Budget pressure", "Timeline delays", "Exit options"],
+        trust: ["Zimbabwe-focused property guide", "HouseLink Library checkout", "Secure payment flow", "Invoice or receipt provided", "Digital access after successful payment", "Printed edition availability"],
         faq: [
           { question: "Is there a digital version?", answer: "Yes. Choose the digital edition for Library account access after payment is confirmed." },
           { question: "Is there a printed version?", answer: "Yes. Choose the printed edition if stock and fulfilment are available in the existing Library checkout." },
@@ -423,17 +423,17 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
         ],
         disclaimer:
           "This guide is educational information. It does not replace current advice from qualified lawyers, planners, architects, engineers, valuers, or other specialists.",
-        finalTitle: "Before you make your next property move, be prepared.",
+        finalTitle: "Make the next property move with a clearer roadmap.",
         offer: {
           id: "pilot-launch-offer",
           status: "ACTIVE",
-          title: "Special offer",
-          description: "Get the guide at the current promotional price before the configured deadline.",
+          title: "Launch offer",
+          description: "Get the guide at the promotional launch price before the configured deadline.",
           startsAt: "2026-09-10T00:00:00+02:00",
           endsAt: "2026-12-31T23:59:59+02:00",
           timezone: "Africa/Harare",
           countdown: true,
-          urgencyMessage: "The promotional price ends at the configured deadline, then the normal price appears.",
+          urgencyMessage: "The promotional price ends at the configured deadline, then normal Library pricing applies.",
           formatPrices: [
             { formatType: "PDF", normalPrice: 20, offerPrice: 15 },
             { formatType: "DIGITAL_BOOK", normalPrice: 20, offerPrice: 15 },
@@ -456,6 +456,18 @@ function str(value: unknown, fallback: string) {
 /** Map previously shipped merchandising defaults to the current Library hero copy. */
 function upgradeLegacyHeroCopy(value: string, legacyValue: string, nextDefault: string) {
   return value.trim() === legacyValue ? nextDefault : value;
+}
+
+function upgradeLegacyFunnelCopy(value: string, legacyValue: string, nextDefault: string) {
+  return value.trim() === legacyValue ? nextDefault : value;
+}
+
+function sameStringList(left: string[], right: string[]) {
+  return left.length === right.length && left.every((item, index) => item === right[index]);
+}
+
+function sameLearningList(left: LibrarySalesFunnelConfig["learning"], right: LibrarySalesFunnelConfig["learning"]) {
+  return left.length === right.length && left.every((item, index) => item.title === right[index]?.title && item.description === right[index]?.description);
 }
 
 function bool(value: unknown, fallback: boolean) {
@@ -571,6 +583,44 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
   const fallbackOffer = fallback.offer;
   const status = str(row.status, fallback.status).toUpperCase();
   const template = str(row.template, fallback.template).toUpperCase();
+  const legacyHeadline = "Before you buy land, build or develop - know what you're getting into.";
+  const legacySubheadline = "A practical Zimbabwe-focused guide covering property development, land due diligence, approvals, construction, compliance, subdivisions and property law.";
+  const legacyPrimaryCta = "Get the book now";
+  const legacySecondaryCta = "Read a free sample";
+  const legacyProblemTitle = "Property development involves more than buying land and starting to build.";
+  const legacyAudienceTitle = "This guide is for you if...";
+  const legacyLearningTitle = "What you will learn";
+  const legacyDelayTitle = "Before you put serious money into property development...";
+  const legacyFinalTitle = "Before you make your next property move, be prepared.";
+  const legacyOfferTitle = "Special offer";
+  const legacyOfferDescription = "Get the guide at the current promotional price before the configured deadline.";
+  const legacyUrgencyMessage = "The promotional price ends at the configured deadline, then the normal price appears.";
+  const problemPoints = stringList(row.problemPoints);
+  const audience = stringList(row.audience);
+  const delayPoints = stringList(row.delayPoints);
+  const trust = stringList(row.trust);
+  const learning = mergeLearningList(row.learning, fallback.learning);
+  const legacyProblemPoints = ["Land", "Due diligence", "Planning", "Approvals", "Construction", "Compliance", "Subdivision", "Property law"];
+  const legacyAudience = [
+    "You want to buy land for development",
+    "You want to build property",
+    "You are planning a development project",
+    "You are considering subdivision",
+    "You want to invest in property",
+    "You work in real estate",
+    "You work in construction",
+    "You want to understand property law",
+  ];
+  const legacyDelayPoints = ["Land", "Planning", "Approvals", "Construction", "Professionals", "Compliance", "Legal considerations", "Capital", "Time"];
+  const legacyTrust = ["HouseLink Library", "Secure checkout", "Invoice or receipt provided", "Digital access after successful payment", "Printed edition availability", "Customer support"];
+  const legacyLearning = [
+    { title: "Property Development", description: "From concept to completion." },
+    { title: "Land & Due Diligence", description: "What to investigate before committing." },
+    { title: "Council Approvals", description: "Planning, building plans and approvals." },
+    { title: "Construction", description: "Key construction and inspection considerations." },
+    { title: "Compliance", description: "Building compliance and occupancy." },
+    { title: "Subdivision", description: "Land development and subdivision considerations." },
+  ];
   return {
     id,
     slug,
@@ -579,36 +629,36 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
     status: (["DRAFT", "PUBLISHED", "PAUSED"].includes(status) ? status : fallback.status) as LibrarySalesFunnelConfig["status"],
     version: Math.max(1, Math.round(num(row.version, fallback.version))),
     label: str(row.label, fallback.label),
-    headline: str(row.headline, fallback.headline),
-    subheadline: str(row.subheadline, fallback.subheadline),
-    primaryCta: str(row.primaryCta, fallback.primaryCta),
-    secondaryCta: str(row.secondaryCta, fallback.secondaryCta),
+    headline: upgradeLegacyFunnelCopy(str(row.headline, fallback.headline), legacyHeadline, fallback.headline),
+    subheadline: upgradeLegacyFunnelCopy(str(row.subheadline, fallback.subheadline), legacySubheadline, fallback.subheadline),
+    primaryCta: upgradeLegacyFunnelCopy(str(row.primaryCta, fallback.primaryCta), legacyPrimaryCta, fallback.primaryCta),
+    secondaryCta: upgradeLegacyFunnelCopy(str(row.secondaryCta, fallback.secondaryCta), legacySecondaryCta, fallback.secondaryCta),
     whatsappUrl: str(row.whatsappUrl, fallback.whatsappUrl),
     heroImageUrl: str(row.heroImageUrl, fallback.heroImageUrl),
-    problemTitle: str(row.problemTitle, fallback.problemTitle),
-    problemPoints: stringList(row.problemPoints).length ? stringList(row.problemPoints) : fallback.problemPoints,
-    audienceTitle: str(row.audienceTitle, fallback.audienceTitle),
-    audience: stringList(row.audience).length ? stringList(row.audience) : fallback.audience,
-    learningTitle: str(row.learningTitle, fallback.learningTitle),
-    learning: mergeLearningList(row.learning, fallback.learning),
-    delayTitle: str(row.delayTitle, fallback.delayTitle),
-    delayPoints: stringList(row.delayPoints).length ? stringList(row.delayPoints) : fallback.delayPoints,
-    trust: stringList(row.trust).length ? stringList(row.trust) : fallback.trust,
+    problemTitle: upgradeLegacyFunnelCopy(str(row.problemTitle, fallback.problemTitle), legacyProblemTitle, fallback.problemTitle),
+    problemPoints: problemPoints.length ? (sameStringList(problemPoints, legacyProblemPoints) ? fallback.problemPoints : problemPoints) : fallback.problemPoints,
+    audienceTitle: upgradeLegacyFunnelCopy(str(row.audienceTitle, fallback.audienceTitle), legacyAudienceTitle, fallback.audienceTitle),
+    audience: audience.length ? (sameStringList(audience, legacyAudience) ? fallback.audience : audience) : fallback.audience,
+    learningTitle: upgradeLegacyFunnelCopy(str(row.learningTitle, fallback.learningTitle), legacyLearningTitle, fallback.learningTitle),
+    learning: sameLearningList(learning, legacyLearning) ? fallback.learning : learning,
+    delayTitle: upgradeLegacyFunnelCopy(str(row.delayTitle, fallback.delayTitle), legacyDelayTitle, fallback.delayTitle),
+    delayPoints: delayPoints.length ? (sameStringList(delayPoints, legacyDelayPoints) ? fallback.delayPoints : delayPoints) : fallback.delayPoints,
+    trust: trust.length ? (sameStringList(trust, legacyTrust) ? fallback.trust : trust) : fallback.trust,
     faq: mergeFaqList(row.faq, fallback.faq),
     disclaimer: str(row.disclaimer, fallback.disclaimer),
-    finalTitle: str(row.finalTitle, fallback.finalTitle),
+    finalTitle: upgradeLegacyFunnelCopy(str(row.finalTitle, fallback.finalTitle), legacyFinalTitle, fallback.finalTitle),
     offer: {
       id: str(offer.id, fallbackOffer.id),
       status: (["DRAFT", "SCHEDULED", "ACTIVE", "PAUSED", "EXPIRED"].includes(str(offer.status, fallbackOffer.status).toUpperCase())
         ? str(offer.status, fallbackOffer.status).toUpperCase()
         : fallbackOffer.status) as LibrarySalesFunnelOffer["status"],
-      title: str(offer.title, fallbackOffer.title),
-      description: str(offer.description, fallbackOffer.description),
+      title: upgradeLegacyFunnelCopy(str(offer.title, fallbackOffer.title), legacyOfferTitle, fallbackOffer.title),
+      description: upgradeLegacyFunnelCopy(str(offer.description, fallbackOffer.description), legacyOfferDescription, fallbackOffer.description),
       startsAt: str(offer.startsAt, fallbackOffer.startsAt),
       endsAt: str(offer.endsAt, fallbackOffer.endsAt),
       timezone: str(offer.timezone, fallbackOffer.timezone),
       countdown: bool(offer.countdown, fallbackOffer.countdown),
-      urgencyMessage: str(offer.urgencyMessage, fallbackOffer.urgencyMessage),
+      urgencyMessage: upgradeLegacyFunnelCopy(str(offer.urgencyMessage, fallbackOffer.urgencyMessage), legacyUrgencyMessage, fallbackOffer.urgencyMessage),
       formatPrices: mergeOfferPrices(offer.formatPrices, fallbackOffer.formatPrices),
     },
     abTest: mergeAbTest(row.abTest),
