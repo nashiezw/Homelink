@@ -228,8 +228,10 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
                   Know what to check before you buy, build, subdivide, appoint contractors, or commit serious money.
                 </p>
               </div>
-              <div className="relative flex items-center justify-center bg-[#0b8f54] p-5">
-                <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="w-full max-w-[13rem] shadow-[12px_12px_0_rgba(0,0,0,0.25)] sm:max-w-[15rem]" />
+              <div className="relative flex items-center justify-center bg-[#f4f8f6] p-4 sm:p-5 md:bg-[#0b8f54]">
+                <div className="grid w-full max-w-[18rem] place-items-center bg-[#0b8f54] p-4 shadow-[10px_10px_0_rgba(7,17,31,0.18)] sm:max-w-[20rem] md:bg-transparent md:p-0 md:shadow-none">
+                  <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="w-full max-w-[15.5rem] shadow-[10px_10px_0_rgba(0,0,0,0.22)] sm:max-w-[17rem] md:max-w-[15rem] md:shadow-[12px_12px_0_rgba(0,0,0,0.25)]" />
+                </div>
               </div>
             </div>
           </div>
@@ -256,7 +258,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
 
           <div className="mt-10 overflow-hidden border border-[#d8d1c3] bg-white shadow-[0_28px_70px_rgba(16,24,40,0.12)]">
             <div className="grid lg:grid-cols-[0.78fr_1fr]">
-              <div className="flex min-h-[24rem] flex-col justify-between bg-[#07111f] p-6 text-white sm:p-8 lg:min-h-0">
+              <div className="flex flex-col justify-between bg-[#07111f] p-6 text-white sm:p-8 lg:min-h-[26rem]">
                 <div>
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#20c36b]">Avoid these expensive mistakes</p>
                   <div className="mt-6 grid gap-3">
@@ -350,7 +352,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
         </div>
       </section>
 
-      <section className="bg-[#07111f] px-4 py-12 text-center text-white sm:px-6">
+      <section className="bg-[#07111f] px-4 pb-40 pt-12 text-center text-white sm:px-6 md:py-12">
         <div className="mx-auto max-w-4xl">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">Do not leave this until after the mistake</p>
           <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">{funnel.finalTitle}</h2>
