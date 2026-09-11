@@ -151,6 +151,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
   const [quoting, setQuoting] = useState(false);
   const [config, setConfig] = useState<PublicPaymentConfig | null>(null);
   const [error, setError] = useState("");
+  const [checkoutAttempted, setCheckoutAttempted] = useState(false);
   const [couponMessage, setCouponMessage] = useState("");
   const [shipping, setShipping] = useState<ShippingForm>(emptyShipping);
   const [storeSettings, setStoreSettings] = useState<LibraryPublicSettings | null>(null);
@@ -162,6 +163,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const buyerDetailsRef = useRef<HTMLElement | null>(null);
+  const deliveryDetailsRef = useRef<HTMLElement | null>(null);
   const funnelAttribution = useMemo(() => readFunnelCheckoutAttribution(searchParams), [searchParams]);
   const isFunnelCheckout = variant === "funnel" && Boolean(resolvedFunnel);
   const funnelPath = resolvedFunnel ? `/funnel/${resolvedFunnel.funnel.slug}` : "/library";
@@ -435,8 +437,15 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
     buyerDetailsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  function promptDeliveryDetails(message: string) {
+    setBusy(false);
+    setError(message);
+    deliveryDetailsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   async function checkout() {
     if (busy) return;
+    setCheckoutAttempted(true);
     setBusy(true);
     setError("");
     if (storeSettings?.store.enabled === false) {
@@ -469,8 +478,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
       return;
     }
     if (!shippingReady()) {
-      setBusy(false);
-      setError(shippingMethod === "PICKUP" ? "Local pickup is not available for this address/zone." : "Enter delivery name, phone, address, and city for printed books.");
+      promptDeliveryDetails(shippingMethod === "PICKUP" ? "Local pickup is not available for this address/zone." : "Please complete the highlighted delivery fields.");
       return;
     }
     const result = await apiFetch<{
@@ -634,6 +642,19 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
   const payable = useMemo(() => quote?.total ?? total, [quote, total]);
   const allowPickup = Boolean(quote?.allowLocalPickup || storeSettings?.delivery.allowLocalPickup);
   const recoveryProduct = cart[0];
+  const missingShipping = {
+    name: needsShipping && shippingMethod === "SHIPPING" && !shipping.name.trim(),
+    phone: needsShipping && shippingMethod === "SHIPPING" && !shipping.phone.trim(),
+    line1: needsShipping && shippingMethod === "SHIPPING" && !shipping.line1.trim(),
+    city: needsShipping && shippingMethod === "SHIPPING" && !shipping.city.trim(),
+  };
+  const showDeliveryErrors = checkoutAttempted && needsShipping && !shippingReady();
+  const requiredInputClass = (missing: boolean) => cn(
+    "mt-2 h-11 w-full rounded-lg border px-3 dark:bg-slate-900",
+    checkoutAttempted && missing
+      ? "border-red-500 bg-red-50/60 outline-none ring-2 ring-red-100 dark:border-red-400 dark:bg-red-950/20 dark:ring-red-950"
+      : "border-slate-200 dark:border-slate-700",
+  );
 
   const checkoutContent = (
     <>
@@ -847,11 +868,18 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
           )}
 
           {needsShipping && (
-            <section className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+            <section ref={deliveryDetailsRef} className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-ink dark:text-white">
                 <MapPin className="size-5 text-emerald-600" /> Delivery
               </h2>
               <p className="mt-1 text-sm text-slate-500">Shipping zones and rates are calculated from your address.</p>
+              {showDeliveryErrors && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+                  {shippingMethod === "PICKUP"
+                    ? "Local pickup is not available for this address. Choose courier delivery or update your location."
+                    : "Please complete the highlighted delivery fields to continue."}
+                </div>
+              )}
               {(allowPickup || storeSettings?.delivery.allowLocalPickup) && (
                 <div className="mt-4 flex flex-wrap gap-3 text-sm">
                   <label className="inline-flex items-center gap-2">
@@ -903,15 +931,18 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <label className="block text-sm font-medium sm:col-span-1">
                     Full name
-                    <input value={shipping.name} onChange={(e) => setShipping({ ...shipping, name: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
+                    <input value={shipping.name} onChange={(e) => setShipping({ ...shipping, name: e.target.value })} className={requiredInputClass(missingShipping.name)} required aria-invalid={checkoutAttempted && missingShipping.name ? true : undefined} />
+                    {checkoutAttempted && missingShipping.name && <p className="mt-1 text-xs font-semibold text-red-600">Full name is required.</p>}
                   </label>
                   <label className="block text-sm font-medium">
                     Phone
-                    <input value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
+                    <input value={shipping.phone} onChange={(e) => setShipping({ ...shipping, phone: e.target.value })} className={requiredInputClass(missingShipping.phone)} required aria-invalid={checkoutAttempted && missingShipping.phone ? true : undefined} />
+                    {checkoutAttempted && missingShipping.phone && <p className="mt-1 text-xs font-semibold text-red-600">Phone number is required.</p>}
                   </label>
                   <label className="block text-sm font-medium sm:col-span-2">
                     Street address
-                    <input value={shipping.line1} onChange={(e) => setShipping({ ...shipping, line1: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
+                    <input value={shipping.line1} onChange={(e) => setShipping({ ...shipping, line1: e.target.value })} className={requiredInputClass(missingShipping.line1)} required aria-invalid={checkoutAttempted && missingShipping.line1 ? true : undefined} />
+                    {checkoutAttempted && missingShipping.line1 && <p className="mt-1 text-xs font-semibold text-red-600">Street address is required.</p>}
                   </label>
                   <label className="block text-sm font-medium sm:col-span-2">
                     Apartment / landmark (optional)
@@ -919,7 +950,8 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
                   </label>
                   <label className="block text-sm font-medium">
                     City
-                    <input value={shipping.city} onChange={(e) => setShipping({ ...shipping, city: e.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-900" required />
+                    <input value={shipping.city} onChange={(e) => setShipping({ ...shipping, city: e.target.value })} className={requiredInputClass(missingShipping.city)} required aria-invalid={checkoutAttempted && missingShipping.city ? true : undefined} />
+                    {checkoutAttempted && missingShipping.city && <p className="mt-1 text-xs font-semibold text-red-600">City is required.</p>}
                   </label>
                   <label className="block text-sm font-medium">
                     Province
@@ -1020,6 +1052,11 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
                   </span>
                 </label>
               )}
+              {checkoutAttempted && storeSettings?.checkout.requireTerms && !termsAccepted && (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+                  Please accept the terms to complete your order.
+                </p>
+              )}
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span>{quote?.currency ?? "USD"} {payable.toFixed(2)}{quoting ? "…" : ""}</span>
@@ -1032,8 +1069,6 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
                   !cart.length ||
                   authLoading ||
                   (!user && !guestCheckoutEnabled) ||
-                  !shippingReady() ||
-                  Boolean(storeSettings?.checkout.requireTerms && !termsAccepted) ||
                   storeSettings?.store.enabled === false
                 }
                 onClick={() => void checkout()}
