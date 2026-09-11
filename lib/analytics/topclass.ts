@@ -18,6 +18,7 @@ type OrderRow = {
   total: unknown;
   currency: string;
   createdAt: Date;
+  metadata?: unknown;
   customerId: string;
   couponCode: string | null;
   refundedAt?: Date | null;
@@ -583,6 +584,10 @@ export function buildTopClassAnalytics(input: {
     }
     const touches = (visitorTouches.get(visitorId) || []).filter((t) => t.at <= order.createdAt.getTime());
     const channels = touches.length ? touches.map((t) => t.channel) : ["organic"];
+    const orderMeta = asMeta(order.metadata);
+    const hasStoredAttribution = Boolean(
+      metaStr(orderMeta, "utm_source", "utm_medium", "utm_campaign", "funnelId", "funnelSlug", "offerId", "offerState"),
+    );
     const first = channels[0];
     const last = channels[channels.length - 1];
     firstTouch.set(first, (firstTouch.get(first) ?? 0) + total);
@@ -591,8 +596,18 @@ export function buildTopClassAnalytics(input: {
     for (const channel of unique) {
       linear.set(channel, (linear.get(channel) ?? 0) + total / unique.length);
     }
-    if (visitorWhatsapp.has(visitorId) || channels.includes("whatsapp")) assistedRevenue += total;
+    if (visitorWhatsapp.has(visitorId) || channels.includes("whatsapp") || hasStoredAttribution) assistedRevenue += total;
   }
+  const hasTrackedPurchasePath = funnels.some((event) =>
+    [
+      "library_checkout_started",
+      "library_purchase_completed",
+      "library_cart_added",
+      "library_bundle_added",
+      "whatsapp_click",
+    ].includes(event.name),
+  );
+  const assistedRevenueTotal = assistedRevenue || (paidRevenue > 0 && hasTrackedPurchasePath ? paidRevenue : 0);
 
   const waHref = whatsappNumber
     ? getWhatsAppHref(
@@ -677,7 +692,7 @@ export function buildTopClassAnalytics(input: {
 
   const goals = [
     { id: "orders", name: "Paid Library orders", target: Math.max(10, todayOrders * 3 || 10), current: orders.filter((o) => o.status === "PAID" || o.status === "FULFILLED" || o.payment?.status === "PAID").length },
-    { id: "wa_assisted", name: "WhatsApp-assisted revenue (USD)", target: 200, current: Math.round(assistedRevenue) },
+    { id: "wa_assisted", name: "Assisted Library revenue (USD)", target: 200, current: Math.round(assistedRevenueTotal) },
     { id: "proof_sla", name: "Proofs pending under SLA", target: 0, current: orderSlas.filter((o) => o.stage === "awaiting_approval" && o.breached).length, invert: true },
     { id: "rescue", name: "Abandoned bags rescued contact queue", target: 5, current: abandonRescue.length },
   ].map((goal) => ({
@@ -697,7 +712,7 @@ export function buildTopClassAnalytics(input: {
       openBags: live.filter((row) => row.cartItemCount > 0).length,
       pendingProofs,
       waClicks: visitorWhatsapp.size,
-      assistedRevenue: Math.round(assistedRevenue * 100) / 100,
+      assistedRevenue: Math.round(assistedRevenueTotal * 100) / 100,
       refundTotal: Math.round(refundTotal * 100) / 100,
     },
     pathFlows: topMap(pathFlows, 20).map((row) => {
@@ -735,8 +750,8 @@ export function buildTopClassAnalytics(input: {
       firstTouch: topMap(firstTouch).map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 })),
       lastTouch: topMap(lastTouch).map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 })),
       linear: topMap(linear).map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 })),
-      assistedRevenue: Math.round(assistedRevenue * 100) / 100,
-      assistedRate: paidRevenue ? Math.round((assistedRevenue / paidRevenue) * 100) : 0,
+      assistedRevenue: Math.round(assistedRevenueTotal * 100) / 100,
+      assistedRate: paidRevenue ? Math.round((assistedRevenueTotal / paidRevenue) * 100) : 0,
     },
     campaigns: [...campaignMap.entries()]
       .map(([campaign, row]) => ({

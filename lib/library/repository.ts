@@ -236,6 +236,7 @@ export type LibraryDownloadAccessAdmin = {
   status: string;
   downloadCount: number;
   downloadLimit?: number | null;
+  createdAt?: string | null;
   expiresAt?: string | null;
   lastDownloadAt?: string | null;
   licenseKey?: string | null;
@@ -584,8 +585,9 @@ export async function getLibraryCustomerJourney(days: number = 30): Promise<Libr
     // Calculate funnel stages using real data
     const totalVisitors = products.reduce((sum, p) => sum + p.viewCount, 0);
     const pendingOrders = orders.filter(o => o.status === "PENDING").length;
-    const paidOrders = orders.filter(o => o.status === "PAID" || o.status === "FULFILLED").length;
-    const cartAddCount = Math.max(cartAdds.length, abandonedCarts.length, pendingOrders + paidOrders);
+    const paidOrderRows = orders.filter(o => o.status === "PAID" || o.status === "FULFILLED");
+    const paidOrderCount = paidOrderRows.length;
+    const cartAddCount = Math.max(cartAdds.length, abandonedCarts.length, pendingOrders + paidOrderCount);
     const downloadCount = downloads.length;
     const abandonedCount = abandonedCarts.filter((cart) => !cart.recoveredAt).length;
 
@@ -606,16 +608,16 @@ export async function getLibraryCustomerJourney(days: number = 30): Promise<Libr
       },
       {
         stage: "Purchase",
-        count: paidOrders,
-        percentage: cartAddCount > 0 ? (paidOrders / cartAddCount) * 100 : 0,
-        dropOffRate: cartAddCount > 0 ? (Math.max(cartAddCount - paidOrders, 0) / cartAddCount) * 100 : 0,
+        count: paidOrderCount,
+        percentage: cartAddCount > 0 ? (paidOrderCount / cartAddCount) * 100 : 0,
+        dropOffRate: cartAddCount > 0 ? (Math.max(cartAddCount - paidOrderCount, 0) / cartAddCount) * 100 : 0,
         averageTimeInStage: 0,
       },
       {
         stage: "Download",
         count: downloadCount,
-        percentage: paidOrders > 0 ? (downloadCount / paidOrders) * 100 : 0,
-        dropOffRate: paidOrders > 0 ? ((paidOrders - downloadCount) / paidOrders) * 100 : 0,
+        percentage: paidOrderCount > 0 ? (downloadCount / paidOrderCount) * 100 : 0,
+        dropOffRate: paidOrderCount > 0 ? ((paidOrderCount - downloadCount) / paidOrderCount) * 100 : 0,
         averageTimeInStage: 0,
       },
     ];
@@ -625,18 +627,33 @@ export async function getLibraryCustomerJourney(days: number = 30): Promise<Libr
       .filter(stage => stage.dropOffRate > 0)
       .map(stage => ({
         stage: stage.stage,
-        count: stage.stage === "Purchase" ? Math.max(cartAddCount - paidOrders, 0) : stage.stage === "Download" ? Math.max(paidOrders - downloadCount, 0) : Math.round((stage.dropOffRate / 100) * totalVisitors),
+        count: stage.stage === "Purchase" ? Math.max(cartAddCount - paidOrderCount, 0) : stage.stage === "Download" ? Math.max(paidOrderCount - downloadCount, 0) : Math.round((stage.dropOffRate / 100) * totalVisitors),
         percentage: stage.dropOffRate,
         reason: stage.stage === "Purchase" && abandonedCount > 0 ? `${abandonedCount} unrecovered abandoned cart${abandonedCount === 1 ? "" : "s"}` : undefined,
       }))
       .sort((a, b) => b.percentage - a.percentage)
       .slice(0, 3);
 
-    // Average journey time - not available without session tracking
-    const averageJourneyTime = 0;
+    const journeyDurations = paidOrderRows
+      .map((order) => {
+        const orderCreatedAt = order.createdAt.getTime();
+        const matchingCartAdds = cartAdds
+          .filter((event) => event.actorId && event.actorId === order.customerId && event.createdAt.getTime() <= orderCreatedAt)
+          .map((event) => orderCreatedAt - event.createdAt.getTime())
+          .filter((duration) => duration >= 0);
+        if (matchingCartAdds.length) return Math.min(...matchingCartAdds);
+        const firstDownload = downloads
+          .filter((access) => access.userId === order.customerId && access.createdAt.getTime() >= orderCreatedAt)
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
+        return firstDownload ? firstDownload.createdAt.getTime() - orderCreatedAt : 0;
+      })
+      .filter((duration) => duration >= 0);
+    const averageJourneyTime = journeyDurations.length
+      ? Math.round(journeyDurations.reduce((sum, duration) => sum + duration, 0) / journeyDurations.length / 60000)
+      : 0;
 
     // Conversion rate
-    const conversionRate = totalVisitors > 0 ? (paidOrders / totalVisitors) * 100 : 0;
+    const conversionRate = totalVisitors > 0 ? (paidOrderCount / totalVisitors) * 100 : 0;
 
     // Return visitor rate - not available without visitor tracking
     const returnVisitorRate = 0;
@@ -666,14 +683,22 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
   try {
     await seedLibraryIfEmpty();
     const prisma = getMainPrisma();
-    const [orders, products, downloadAccess, reviews] = await Promise.all([
+    const [orders, products, downloadAccess, reviews, libraryPageViews] = await Promise.all([
       prisma.libraryOrder.findMany({ include: { items: true, customer: true } }),
       prisma.libraryProduct.findMany({ where: { status: "PUBLISHED" }, include: { category: true } }),
       prisma.libraryDownloadAccess.findMany({
         where: { status: { not: LibraryDownloadStatus.REVOKED } },
         select: { productId: true, downloadCount: true },
       }),
-      prisma.libraryReview.findMany()
+      prisma.libraryReview.findMany(),
+      prisma.sitePageView.count({
+        where: {
+          OR: [
+            { path: { startsWith: "/library" } },
+            { path: { contains: "houselink.co.zw/library" } },
+          ],
+        },
+      }).catch(() => 0),
     ]);
   const paidOrders = orders.filter((order) => order.status === "PAID" || order.status === "FULFILLED");
   const revenue = paidOrders.reduce((sum, order) => sum + Number(order.total), 0);
@@ -692,7 +717,7 @@ export async function getLibraryAnalytics(): Promise<LibraryAnalytics> {
   const weekAgo = Date.now() - 7 * 86400000;
   const monthAgo = Date.now() - 30 * 86400000;
   const revenueSince = (time: number) => paidOrders.filter((order) => order.createdAt.getTime() >= time).reduce((sum, order) => sum + Number(order.total), 0);
-  const visitors = products.reduce((sum, product) => sum + product.viewCount, 0);
+  const visitors = Math.max(products.reduce((sum, product) => sum + product.viewCount, 0), libraryPageViews);
   const categories = new Map<string, number>();
   products.forEach((product) => categories.set(product.category?.name ?? "Uncategorised", (categories.get(product.category?.name ?? "Uncategorised") ?? 0) + 1));
   
@@ -2661,6 +2686,7 @@ function buildLibraryAdminReports(input: {
   }>;
   products: Array<{
     id: string;
+    slug?: string;
     title: string;
     status?: string;
     stock?: number | null;
@@ -2680,7 +2706,7 @@ function buildLibraryAdminReports(input: {
     downloads?: unknown[];
   }>;
   coupons: Array<{ id: string; code: string; discountType: string; discountValue: unknown; usedCount: number; active: boolean; startsAt?: Date | string | null; expiresAt?: Date | string | null }>;
-  downloadAccess: Array<{ id: string; status: string; downloadCount: number; downloadLimit: number | null; expiresAt: Date | string | null; lastDownloadAt: Date | string | null; user?: { name: string | null; email: string } | null; product?: { title: string } | null; file?: { fileName: string } | null }>;
+  downloadAccess: Array<{ id: string; status: string; downloadCount: number; downloadLimit: number | null; createdAt?: Date | string | null; expiresAt: Date | string | null; lastDownloadAt: Date | string | null; user?: { name: string | null; email: string } | null; product?: { title: string } | null; file?: { fileName: string } | null }>;
   reviews: Array<{ status: string; rating: number }>;
   taxSettings: Array<{ id: string; name: string; country: string; rate: unknown; active: boolean }>;
   inventoryMovements: Array<{ id: string; type: string; quantity: number; note?: string | null; createdAt: Date | string; product?: { title: string } | null }>;
@@ -2707,6 +2733,15 @@ function buildLibraryAdminReports(input: {
     input.productTitles instanceof Map
       ? input.productTitles
       : new Map(Object.entries(input.productTitles ?? {}));
+  for (const product of input.products) {
+    titleMap.set(product.id, product.title);
+    if (product.slug) titleMap.set(product.slug.toLowerCase(), product.title);
+  }
+  const bundleTitle = (id: string, index: number) => {
+    const key = id.trim();
+    const title = titleMap.get(key) ?? titleMap.get(key.toLowerCase());
+    return title?.trim() || `Library product ${index + 1}`;
+  };
   const pairCounts = new Map<string, { label: string; value: number; digitalLines: number; printLines: number }>();
   let digitalLineCount = 0;
   let printLineCount = 0;
@@ -2726,7 +2761,7 @@ function buildLibraryAdminReports(input: {
     }
     if (memberIds.length >= 2) {
       const key = memberIds.join("+");
-      const label = memberIds.map((id) => titleMap.get(id) || id.slice(0, 8)).join(" + ");
+      const label = memberIds.map(bundleTitle).join(" + ");
       const current = pairCounts.get(key) ?? { label, value: 0, digitalLines: 0, printLines: 0 };
       current.value += 1;
       for (const line of lines) {
@@ -2838,7 +2873,7 @@ function buildLibraryAdminReports(input: {
       file: access.file?.fileName ?? "Product access",
       status: access.status,
       usage: `${access.downloadCount}${access.downloadLimit == null ? "" : `/${access.downloadLimit}`}`,
-      lastDownloadAt: access.lastDownloadAt ? toIso(access.lastDownloadAt) : null,
+      lastDownloadAt: access.lastDownloadAt ? toIso(access.lastDownloadAt) : access.createdAt ? toIso(access.createdAt) : null,
       expiresAt: access.expiresAt ? toIso(access.expiresAt) : null,
     })),
     stockAlerts: lowStock.map((product) => ({
@@ -4545,6 +4580,7 @@ function toLibraryDownloadAccessAdmin(row: {
   status: string;
   downloadCount: number;
   downloadLimit: number | null;
+  createdAt?: Date | null;
   expiresAt: Date | null;
   lastDownloadAt: Date | null;
   licenseKey: string | null;
@@ -4565,6 +4601,7 @@ function toLibraryDownloadAccessAdmin(row: {
     status: row.status,
     downloadCount: row.downloadCount,
     downloadLimit: row.downloadLimit,
+    createdAt: row.createdAt?.toISOString() ?? null,
     expiresAt: row.expiresAt?.toISOString().slice(0, 10) ?? null,
     lastDownloadAt: row.lastDownloadAt?.toISOString() ?? null,
     licenseKey: row.licenseKey,

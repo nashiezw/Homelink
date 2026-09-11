@@ -222,6 +222,7 @@ type LibraryDownloadAccessAdmin = {
   status: string;
   downloadCount: number;
   downloadLimit?: number | null;
+  createdAt?: string | null;
   expiresAt?: string | null;
   lastDownloadAt?: string | null;
   licenseKey?: string | null;
@@ -4380,7 +4381,7 @@ function LibraryTabManagement({
                 <AdminStatPill label="Visitors" value={customerJourney.totalVisitors} />
                 <AdminStatPill label="Conversion" value={`${customerJourney.conversionRate.toFixed(1)}%`} tone={customerJourney.conversionRate > 0 ? "success" : "default"} />
                 <AdminStatPill label="Return Visitors" value={`${customerJourney.returnVisitorRate.toFixed(1)}%`} />
-                <AdminStatPill label="Journey Time" value={customerJourney.averageJourneyTime ? `${customerJourney.averageJourneyTime}m` : "N/A"} />
+                <AdminStatPill label="Journey Time" value={`${Math.max(0, Math.round(customerJourney.averageJourneyTime))}m`} />
               </AdminMetricGrid>
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
                 <div className="min-w-0 overflow-x-auto rounded-xl border border-white/10 bg-slate-950/60 p-3">
@@ -4510,7 +4511,7 @@ function LibraryTabManagement({
                     <tr key={log.id} className="border-b border-white/5 last:border-0">
                       <td className="py-2 px-3 text-white truncate max-w-[150px]">{log.product}</td>
                       <td className="py-2 px-3 text-slate-400 truncate max-w-[120px]">{log.customer}</td>
-                      <td className="py-2 px-3 text-slate-500 whitespace-nowrap">{log.lastDownloadAt ? new Date(log.lastDownloadAt).toLocaleDateString() : 'N/A'}</td>
+                      <td className="py-2 px-3 text-slate-500 whitespace-nowrap">{log.lastDownloadAt ? new Date(log.lastDownloadAt).toLocaleDateString() : "No date"}</td>
                     </tr>
                   ))}
                 </tbody>

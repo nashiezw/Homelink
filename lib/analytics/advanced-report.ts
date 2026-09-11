@@ -864,6 +864,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
               currency: true,
               createdAt: true,
               refundedAt: true,
+              metadata: true,
               customerId: true,
               couponCode: true,
               items: { select: { productId: true, title: true, quantity: true, total: true, productType: true } },
@@ -1306,6 +1307,19 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
     });
     const libraryShoppers = liveVisitors.filter((row) => row.path.startsWith("/library") || row.path.startsWith("/dashboard/my-library"));
     const onCheckout = liveVisitors.filter((row) => row.path.includes("/library/checkout"));
+    const recentLibraryShoppers = new Set([
+      ...productPageViews.map((row) => row.visitorId).filter(Boolean),
+      ...publicFunnels
+        .filter((event) => cleanUrlPath(event.path || event.target || "").startsWith("/library"))
+        .map((event) => event.visitorId)
+        .filter(Boolean),
+    ]);
+    const recentCheckoutVisitors = new Set(
+      publicFunnels
+        .filter((event) => event.name === "library_checkout_started" || cleanUrlPath(event.path || event.target || "").includes("/library/checkout"))
+        .map((event) => event.visitorId)
+        .filter(Boolean),
+    );
     const openBags = liveVisitors.filter((row) => row.cartItemCount > 0);
     const bagValue = openBags.reduce((sum, row) => sum + row.cartValue, 0);
     const liveAlerts: string[] = [];
@@ -1378,8 +1392,8 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       ...base,
       live: {
         online: liveVisitors.length,
-        libraryShoppers: libraryShoppers.length,
-        onCheckout: onCheckout.length,
+        libraryShoppers: libraryShoppers.length || recentLibraryShoppers.size,
+        onCheckout: onCheckout.length || recentCheckoutVisitors.size || todayOrders.length,
         openBags: openBags.length,
         bagValue: Math.round(bagValue * 100) / 100,
         visitors: liveVisitors.slice(0, 60),
