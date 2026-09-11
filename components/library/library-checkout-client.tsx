@@ -1063,18 +1063,18 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
     return (
       <main className="min-h-screen bg-[#07111f] text-white">
         <section className="border-b border-white/10 bg-[#07111f]">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-center lg:py-12">
+          <div className="mx-auto grid max-w-6xl gap-7 px-4 pb-7 pt-5 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-center lg:py-12">
             <div>
               <HouseLinkBrand className="rounded-xl bg-white px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" />
-              <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">Secure HouseLink checkout</p>
-              <h1 className="mt-3 max-w-3xl text-4xl font-black uppercase leading-[0.98] tracking-normal sm:text-6xl">
+              <p className="mt-7 text-xs font-black uppercase tracking-[0.18em] text-[#20c36b] sm:mt-8">Secure HouseLink checkout</p>
+              <h1 className="mt-3 max-w-3xl text-3xl font-black uppercase leading-[0.98] tracking-normal sm:text-5xl lg:text-6xl">
                 Complete your order before the launch offer ends.
               </h1>
-              <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-200">
+              <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-200 sm:mt-5 sm:text-base sm:leading-7">
                 You are buying {resolvedFunnel.product.title}. Choose payment, place the order, and keep your reference for access and invoice follow-up.
               </p>
             </div>
-            <div className="mx-auto w-full max-w-xs border-[6px] border-white bg-white p-2 shadow-[18px_18px_0_rgba(11,143,84,0.55)]">
+            <div className="mx-auto w-full max-w-[15rem] border-[6px] border-white bg-white p-2 shadow-[12px_12px_0_rgba(11,143,84,0.55)] sm:max-w-xs sm:shadow-[18px_18px_0_rgba(11,143,84,0.55)]">
               <BookCover product={resolvedFunnel.product} imageUrl={funnelImage} interactive={false} className="w-full" />
               <div className="bg-[#0b8f54] px-4 py-3 text-center text-sm font-black text-white">
                 From {resolvedFunnel.product.currency} {resolvedFunnel.minPrice.toFixed(2)}
@@ -1082,7 +1082,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
             </div>
           </div>
         </section>
-        <section className="bg-[#f4f2ec] px-4 py-8 text-[#07111f] sm:px-6 sm:py-10">
+        <section className="bg-[#f4f2ec] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-7 text-[#07111f] sm:px-6 sm:py-10">
           <div className="mx-auto max-w-6xl [&_.surface-panel]:border-[#d8d3c8] [&_.surface-panel]:bg-white [&_.surface-panel]:shadow-[9px_9px_0_rgba(11,143,84,0.18)]">
             {checkoutContent}
           </div>
