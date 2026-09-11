@@ -3,7 +3,6 @@
 import {
   ArrowRight,
   CreditCard,
-  FileText,
   HelpCircle,
   Lock,
   ReceiptText,
@@ -13,7 +12,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BookCover } from "@/components/library/book-cover";
-import { PdfSampleViewer } from "@/components/library/pdf-sample-viewer";
 import { trackEvent } from "@/lib/analytics/client";
 import { getOrCreateSessionId, getOrCreateVisitorId, readUtmParams } from "@/lib/analytics/visitor-client";
 import {
@@ -38,11 +36,10 @@ declare global {
   }
 }
 
-export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
+export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
   const { funnel, product, formats, offerExpired, minPrice } = resolved;
   const { setCart } = useLibraryCart();
   const [selectorOpen, setSelectorOpen] = useState(false);
-  const [sampleOpen, setSampleOpen] = useState(false);
   const [stickyVisible, setStickyVisible] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
@@ -157,13 +154,6 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
     setSelectorOpen(true);
   }
 
-  function openSample(ctaId: string) {
-    if (!sampleUrl) return;
-    trackEvent("library_sample_opened", product.id, funnelMeta({ ctaId }));
-    trackFunnel("sample_opened", { ctaId });
-    setSampleOpen(true);
-  }
-
   function checkout(format: (typeof formats)[number]) {
     const line = repriceLibraryCartLine({
       productId: product.id,
@@ -209,8 +199,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
 
   return (
     <main className="min-h-screen bg-[#e9e9e4] text-[#101010]">
-      <section className="relative overflow-hidden bg-[#0b0d12] text-white">
-        <div className="absolute inset-0 opacity-[0.17] [background-image:linear-gradient(30deg,#ffffff_12%,transparent_12.5%,transparent_87%,#ffffff_87.5%,#ffffff),linear-gradient(150deg,#ffffff_12%,transparent_12.5%,transparent_87%,#ffffff_87.5%,#ffffff),linear-gradient(30deg,#ffffff_12%,transparent_12.5%,transparent_87%,#ffffff_87.5%,#ffffff),linear-gradient(150deg,#ffffff_12%,transparent_12.5%,transparent_87%,#ffffff_87.5%,#ffffff)] [background-position:0_0,0_0,22px_38px,22px_38px] [background-size:44px_76px]" />
+      <section className="relative overflow-hidden bg-[#080b10] text-white">
         <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center px-4 pb-0 pt-5 text-center sm:px-6 sm:pt-8">
           <div className="w-full max-w-4xl">
             <FunnelLogo />
@@ -256,69 +245,89 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-12 sm:px-6">
-        <div className="mx-auto grid max-w-6xl gap-7 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] lg:items-center">
-          <div className="border-[5px] border-[#101010] bg-[#f8f8f0] p-5 shadow-[12px_12px_0_#f3c316]">
-            <p className="text-sm font-black uppercase tracking-[0.18em] text-[#ff3d00]">Wait, your order is not complete</p>
-            <h2 className="mt-3 text-3xl font-black uppercase leading-[1.02] sm:text-5xl">Upgrade your decision before you spend thousands.</h2>
-            <div className="mt-5 grid gap-2">
-              {fastRisks.map((point) => (
-                <SalesBullet key={point}>{point}</SalesBullet>
-              ))}
-            </div>
+      <section className="bg-[#f7f3ea] px-4 py-16 sm:px-6">
+        <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.26em] text-[#d64000]">Wait, your order is not complete</p>
+            <h2 className="mt-3 text-[2rem] font-black uppercase leading-[0.96] text-[#0d1422] sm:text-[3rem]">
+              Upgrade your decision before you spend thousands.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-700">
+              Add the practical property development and law guide before you commit to land, approvals, contractors, or costly site decisions.
+            </p>
           </div>
-          <div>
-            <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-slate-500 lg:text-left">Here is everything you are getting when you order now</p>
-            <div className="mt-4 grid gap-3">
-              {coreInclusions.map((item) => (
-                <div key={item.title} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 border-2 border-[#101010] bg-white p-4 shadow-[7px_7px_0_#0b6b43]">
-                  <span className="grid size-8 place-items-center bg-[#f3c316] text-sm font-black text-[#101010]"><FileText className="size-4" /></span>
-                  <span>
-                    <span className="block text-base font-black uppercase leading-tight">{item.title}</span>
-                    <span className="mt-1 block text-sm font-semibold leading-6 text-slate-700">{item.description}</span>
-                  </span>
+
+          <div className="mt-10 overflow-hidden border border-[#d8d1c3] bg-white shadow-[0_28px_70px_rgba(16,24,40,0.12)]">
+            <div className="grid lg:grid-cols-[0.78fr_1fr]">
+              <div className="bg-[#0b0d12] p-6 text-white sm:p-8">
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#f0b90b]">Avoid these expensive mistakes</p>
+                <div className="mt-6 grid gap-3">
+                  {fastRisks.map((point) => (
+                    <SalesBullet key={point} inverse>{point}</SalesBullet>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              <div className="p-6 sm:p-8">
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#64748b]">Here is everything you get when you order now</p>
+                <div className="mt-5 grid gap-px overflow-hidden border border-[#d8d1c3] bg-[#d8d1c3]">
+                  {coreInclusions.map((item, index) => (
+                    <div key={item.title} className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 bg-white p-4 sm:p-5">
+                      <span className="grid size-9 place-items-center bg-[#f0b90b] text-sm font-black text-[#0d1422]">{String(index + 1).padStart(2, "0")}</span>
+                      <span>
+                        <span className="block text-sm font-black uppercase leading-tight text-[#0d1422]">{item.title}</span>
+                        <span className="mt-1.5 block text-sm font-semibold leading-6 text-slate-700">{item.description}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-6 w-full" subtitle="Choose digital or printed">
-              Yes, add this to my order
-            </SalesCtaButton>
+
+            <div className="border-t border-[#d8d1c3] bg-[#fffaf0] p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+              <p className="text-sm font-black uppercase leading-6 text-[#0d1422]">
+                Get the guide now at the launch offer price before the deadline changes.
+              </p>
+              <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-4 min-h-[3.35rem] w-full px-5 text-base shadow-[0_8px_0_rgba(11,13,18,0.22)] sm:mt-0 sm:w-auto sm:min-w-[18rem]" subtitle="Choose digital or printed">
+                Yes, add this to my order
+              </SalesCtaButton>
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="funnel-offer" className="bg-[#f3c316] px-4 py-12 sm:px-6">
-        <div className="mx-auto max-w-6xl border-[6px] border-[#101010] bg-white p-5 shadow-[14px_14px_0_rgba(0,0,0,0.22)] sm:p-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff3d00]">Yes. I want this offer now.</p>
-            <h2 className="mt-3 text-4xl font-black uppercase leading-tight text-[#101010] sm:text-5xl">{funnel.offer.title}</h2>
-            <p className="mt-3 text-base font-bold leading-8 text-slate-700">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
+      <section id="funnel-offer" className="bg-[#f0b90b] px-4 py-14 sm:px-6">
+        <div className="mx-auto max-w-5xl border border-[#b98900] bg-white p-5 shadow-[0_24px_60px_rgba(16,24,40,0.18)] sm:p-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#d64000]">Yes, I want this offer now</p>
+            <h2 className="mt-2 text-4xl font-black uppercase leading-none text-[#0d1422] sm:text-[3.25rem]">{funnel.offer.title}</h2>
+            <p className="mt-2 text-sm font-bold leading-6 text-slate-700">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
           </div>
-          <div className="mt-7 grid gap-4 md:grid-cols-2">
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             {formatChoices.map((format) => (
               <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} />
             ))}
           </div>
-          <div className="mt-5 grid gap-2 text-sm font-black text-[#101010] sm:grid-cols-3">
-            <span className="inline-flex items-center justify-center gap-2 border-2 border-[#101010] bg-[#f8f8f0] p-3"><Lock className="size-4" /> Secure checkout</span>
-            <span className="inline-flex items-center justify-center gap-2 border-2 border-[#101010] bg-[#f8f8f0] p-3"><ReceiptText className="size-4" /> Invoice provided</span>
-            <span className="inline-flex items-center justify-center gap-2 border-2 border-[#101010] bg-[#f8f8f0] p-3"><ShieldCheck className="size-4" /> HouseLink Library</span>
+          <div className="mt-5 grid gap-2 text-[0.72rem] font-black text-[#0d1422] sm:grid-cols-3">
+            <span className="inline-flex items-center justify-center gap-2 border border-[#d8d1c3] bg-[#f7f3ea] p-2.5"><Lock className="size-3.5" /> Secure checkout</span>
+            <span className="inline-flex items-center justify-center gap-2 border border-[#d8d1c3] bg-[#f7f3ea] p-2.5"><ReceiptText className="size-3.5" /> Invoice provided</span>
+            <span className="inline-flex items-center justify-center gap-2 border border-[#d8d1c3] bg-[#f7f3ea] p-2.5"><ShieldCheck className="size-3.5" /> HouseLink Library</span>
           </div>
         </div>
       </section>
 
-      <section className="bg-white px-4 py-12 sm:px-6">
-        <div className="mx-auto grid max-w-6xl gap-7 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)]">
+      <section className="bg-[#f7f3ea] px-4 py-14 sm:px-6">
+        <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[0.72fr_1fr] lg:items-start">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ff3d00]">Last checks before buying</p>
-            <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">Questions before you order</h2>
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#d64000]">Last checks before buying</p>
+            <h2 className="mt-2 text-[2rem] font-black uppercase leading-[0.96] text-[#0d1422] sm:text-[2.65rem]">Questions before you order</h2>
             <p className="mt-4 text-sm font-semibold leading-7 text-slate-700">{funnel.disclaimer}</p>
           </div>
           <div className="grid gap-3">
             {shortFaq.map((faq) => (
               <details
                 key={faq.question}
-                className="border-2 border-[#101010] bg-[#f8f8f0] p-4"
+                className="border border-[#d8d1c3] bg-white p-4 shadow-[0_10px_24px_rgba(16,24,40,0.05)]"
                 onToggle={(event) => {
                   if (event.currentTarget.open) {
                     trackEvent("library_faq_opened", product.id, funnelMeta({ question: faq.question }));
@@ -326,10 +335,10 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
                   }
                 }}
               >
-                <summary className="flex cursor-pointer list-none items-center gap-3 text-base font-black text-[#101010]">
-                  <HelpCircle className="size-5 text-[#ff3d00]" /> {faq.question}
+                <summary className="flex cursor-pointer list-none items-center gap-3 text-sm font-black text-[#0d1422]">
+                  <HelpCircle className="size-4 text-[#d64000]" /> {faq.question}
                 </summary>
-                <p className="mt-3 text-sm font-semibold leading-7 text-slate-700">{faq.answer}</p>
+                <p className="mt-2 pl-7 text-sm font-semibold leading-7 text-slate-700">{faq.answer}</p>
               </details>
             ))}
           </div>
@@ -384,24 +393,6 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
         </div>
       ) : null}
 
-      {sampleOpen && sampleUrl ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-4" onClick={() => setSampleOpen(false)}>
-          <div className="flex h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <p className="truncate font-bold text-[#102033]">Sample - {product.title}</p>
-              <button type="button" onClick={() => setSampleOpen(false)} className="rounded-lg px-3 py-1 text-sm font-bold text-slate-600 hover:bg-slate-100">Close</button>
-            </div>
-            <div className="min-h-0 flex-1">
-              <PdfSampleViewer url={sampleUrl} title={product.title} onViewed={() => trackEvent("library_sample_viewed", product.id, funnelMeta())} />
-            </div>
-            <div className="border-t border-slate-200 p-3 text-right">
-              <SalesCtaButton onClick={() => { setSampleOpen(false); openEditionSelector("SAMPLE_MODAL_BUY"); }} className="min-h-11 px-4 text-sm">
-                <ShoppingCart className="size-5" /> Get the complete guide
-              </SalesCtaButton>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </main>
   );
 }
@@ -465,10 +456,10 @@ function CurvedArrow({ side }: { side: "left" | "right" }) {
   );
 }
 
-function SalesBullet({ children }: { children: React.ReactNode }) {
+function SalesBullet({ children, inverse = false }: { children: React.ReactNode; inverse?: boolean }) {
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 text-sm font-black leading-6 text-[#101010]">
-      <ArrowRight className="mt-1 size-4 shrink-0 text-[#ff3d00]" />
+    <div className={cn("grid grid-cols-[auto_minmax(0,1fr)] gap-3 text-sm font-bold leading-6", inverse ? "text-white" : "text-[#172033]")}>
+      <ArrowRight className={cn("mt-1 size-4 shrink-0", inverse ? "text-[#f0b90b]" : "text-[#d64000]")} />
       <span>{children}</span>
     </div>
   );
@@ -480,15 +471,15 @@ function EditionCard({ format, currency, onClick, compact = false }: { format: R
     <button
       type="button"
       onClick={onClick}
-      className={cn("border-[3px] border-[#08111f] bg-white p-5 text-left shadow-[8px_8px_0_#0b6b43] transition hover:-translate-y-0.5 hover:shadow-[10px_10px_0_#f4c430]", compact && "p-4")}
+      className={cn("border border-[#d8d1c3] bg-white p-5 text-left shadow-[0_14px_30px_rgba(16,24,40,0.08)] transition hover:-translate-y-0.5 hover:border-[#0b6b43] hover:shadow-[0_18px_38px_rgba(16,24,40,0.12)]", compact && "p-4")}
     >
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ff4d14]">{label}</p>
-      <p className="mt-2">
-        {format.normalPrice && format.normalPrice > format.activePrice ? <span className="block text-base font-black text-slate-400 line-through">{currency} {format.normalPrice.toFixed(2)}</span> : null}
-        <span className="block whitespace-nowrap text-3xl font-black text-[#08111f] sm:text-4xl">{currency} {format.activePrice.toFixed(2)}</span>
+      <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-[#d64000]">{label}</p>
+      <p className="mt-1.5">
+        {format.normalPrice && format.normalPrice > format.activePrice ? <span className="block text-sm font-black text-slate-400 line-through">{currency} {format.normalPrice.toFixed(2)}</span> : null}
+        <span className="block whitespace-nowrap text-3xl font-black text-[#0d1422]">{currency} {format.activePrice.toFixed(2)}</span>
       </p>
-      {format.savings ? <p className="mt-1 inline-flex bg-[#f4c430] px-2 py-1 text-sm font-black text-[#08111f]">Save {currency} {format.savings.toFixed(2)}</p> : null}
-      <span className="mt-4 inline-flex items-center gap-2 bg-[#08111f] px-3 py-2 text-sm font-black uppercase text-white">
+      {format.savings ? <p className="mt-3 inline-flex bg-[#f0b90b] px-2 py-1 text-xs font-black text-[#0d1422]">Save {currency} {format.savings.toFixed(2)}</p> : null}
+      <span className="ml-2 mt-3 inline-flex items-center gap-2 bg-[#0d1422] px-3 py-2 text-xs font-black uppercase text-white">
         Get {format.type === "PRINTED_BOOK" ? "printed" : "digital"} <ArrowRight className="size-4" />
       </span>
     </button>
