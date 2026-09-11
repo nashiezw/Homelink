@@ -497,11 +497,10 @@ function EditionCard({ format, currency, onClick, compact = false }: { format: R
 
 function FunnelLogo() {
   return (
-    <div className="inline-flex flex-col items-center gap-2">
+    <div className="inline-flex items-center">
       <span className="inline-flex rounded-2xl bg-white px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
         <HouseLinkBrand variant="nav" />
       </span>
-      <span className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#20c36b]">Library funnel</span>
     </div>
   );
 }
