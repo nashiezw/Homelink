@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CreditCard, Gift, Lock, MapPin, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { LibraryExitIntentCapture } from "@/components/library/library-exit-intent-capture";
 import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
+import { BookCover } from "@/components/library/book-cover";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { trackEvent } from "@/lib/analytics/client";
@@ -23,6 +25,7 @@ import {
   useLibraryCart,
 } from "@/lib/library/cart-client";
 import type { LibraryDigitalUpsellPack } from "@/lib/library/catalog";
+import type { ResolvedLibrarySalesFunnel } from "@/lib/library/funnels";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 
 type LibraryQuote = {
@@ -129,7 +132,12 @@ const emptyShipping: ShippingForm = {
   giftNote: "",
 };
 
-export function LibraryCheckoutClient() {
+type LibraryCheckoutClientProps = {
+  variant?: "library" | "funnel";
+  resolvedFunnel?: ResolvedLibrarySalesFunnel;
+};
+
+export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: LibraryCheckoutClientProps = {}) {
   const searchParams = useSearchParams();
   const { showToast, user, refreshUser, loading: authLoading } = useApp();
   const { cart, setCart, total } = useLibraryCart();
@@ -154,6 +162,15 @@ export function LibraryCheckoutClient() {
   const [guestPhone, setGuestPhone] = useState("");
   const buyerDetailsRef = useRef<HTMLElement | null>(null);
   const funnelAttribution = useMemo(() => readFunnelCheckoutAttribution(searchParams), [searchParams]);
+  const isFunnelCheckout = variant === "funnel" && Boolean(resolvedFunnel);
+  const funnelPath = resolvedFunnel ? `/funnel/${resolvedFunnel.funnel.slug}` : "/library";
+  const checkoutPath = resolvedFunnel ? `/funnel/${resolvedFunnel.funnel.slug}/checkout` : "/library/checkout";
+  const funnelImage =
+    resolvedFunnel?.funnel.heroImageUrl ||
+    resolvedFunnel?.product.gallery.find((item) => item.kind === "mockup")?.url ||
+    resolvedFunnel?.product.gallery.find((item) => item.kind === "cover")?.url ||
+    resolvedFunnel?.product.seoImageUrl ||
+    "";
 
   // Autofill shipping form with user data when available
   useEffect(() => {
@@ -518,7 +535,7 @@ export function LibraryCheckoutClient() {
           : "Order created. Complete payment with the bank details on the next page.",
         "success",
       );
-      window.location.href = result.data.redirectUrl;
+      window.location.href = resolveCheckoutRedirect(result.data.redirectUrl, resolvedFunnel?.funnel.slug);
       return;
     }
     setBusy(false);
@@ -617,20 +634,14 @@ export function LibraryCheckoutClient() {
   const allowPickup = Boolean(quote?.allowLocalPickup || storeSettings?.delivery.allowLocalPickup);
   const recoveryProduct = cart[0];
 
-  return (
-    <PageShell
-      eyebrow="Library checkout"
-      title="Review your order and choose payment"
-      description="One-page checkout for HouseLink Library digital products, printed books, toolkits, forms, and future courses."
-      compactHero
-      actions={<Link href="/library" className="border border-white/20 bg-white/10 text-white hover:bg-white/15">Continue shopping</Link>}
-    >
+  const checkoutContent = (
+    <>
       <LibraryExitIntentCapture
         productId={recoveryProduct?.productId}
         productTitle={recoveryProduct?.title || "your HouseLink Library order"}
         surface="checkout"
         highIntent={cart.length > 0}
-        disabled={!cart.length}
+        disabled={!cart.length || isFunnelCheckout}
       />
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <div className="min-w-0 space-y-6">
@@ -675,20 +686,24 @@ export function LibraryCheckoutClient() {
               }) : (
                 <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
                   <ShoppingCart className="mx-auto mb-3 size-8 text-slate-400" />
-                  <p className="font-semibold">Your Library cart is empty</p>
-                  <Link href="/library" className="mt-3 inline-flex text-sm font-semibold text-emerald-700 dark:text-emerald-300">Browse products</Link>
+                  <p className="font-semibold">Your order is empty</p>
+                  <Link href={funnelPath} className="mt-3 inline-flex text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                    {isFunnelCheckout ? "Return to the offer" : "Browse products"}
+                  </Link>
                 </div>
               )}
             </div>
           </section>
 
-          <LibraryUpsellRail
-            title="Complete your set"
-            description="Digital soft-copy only. One pack, one tap — unlock the soft-copy bundle promo when the full set is in your bag."
-            pack={upsellPack}
-            busy={upsellBusy}
-            onAddSet={addDigitalUpsellSet}
-          />
+          {!isFunnelCheckout && (
+            <LibraryUpsellRail
+              title="Complete your set"
+              description="Digital soft-copy only. One pack, one tap — unlock the soft-copy bundle promo when the full set is in your bag."
+              pack={upsellPack}
+              busy={upsellBusy}
+              onAddSet={addDigitalUpsellSet}
+            />
+          )}
 
           {needsContinueEmail ? (
             <section ref={buyerDetailsRef} className="surface-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
@@ -740,7 +755,7 @@ export function LibraryCheckoutClient() {
               </div>
               <p className="mt-3 text-sm text-slate-500">
                 Already have an account?{" "}
-                <Link href="/auth?mode=login&next=/library/checkout" className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                <Link href={`/auth?mode=login&next=${encodeURIComponent(checkoutPath)}`} className="font-semibold text-emerald-700 underline dark:text-emerald-300">
                   Sign in
                 </Link>
               </p>
@@ -750,7 +765,7 @@ export function LibraryCheckoutClient() {
               <h2 className="text-lg font-semibold text-ink dark:text-white">Sign in to checkout</h2>
               <p className="mt-1 text-sm text-slate-500">Guest checkout is currently off. Sign in to place your Library order.</p>
               <Link
-                href="/auth?mode=login&next=/library/checkout"
+                href={`/auth?mode=login&next=${encodeURIComponent(checkoutPath)}`}
                 className="mt-4 inline-flex h-11 items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-600"
               >
                 Sign in to continue
@@ -1020,12 +1035,57 @@ export function LibraryCheckoutClient() {
           </section>
         </aside>
       </div>
+    </>
+  );
+
+  if (isFunnelCheckout && resolvedFunnel) {
+    return (
+      <main className="min-h-screen bg-[#07111f] text-white">
+        <section className="border-b border-white/10 bg-[#07111f]">
+          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-center lg:py-12">
+            <div>
+              <HouseLinkBrand className="rounded-xl bg-white px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" />
+              <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">Secure HouseLink checkout</p>
+              <h1 className="mt-3 max-w-3xl text-4xl font-black uppercase leading-[0.98] tracking-normal sm:text-6xl">
+                Complete your order before the launch offer ends.
+              </h1>
+              <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-200">
+                You are buying {resolvedFunnel.product.title}. Choose payment, place the order, and keep your reference for access and invoice follow-up.
+              </p>
+            </div>
+            <div className="mx-auto w-full max-w-xs border-[6px] border-white bg-white p-2 shadow-[18px_18px_0_rgba(11,143,84,0.55)]">
+              <BookCover product={resolvedFunnel.product} imageUrl={funnelImage} interactive={false} className="w-full" />
+              <div className="bg-[#0b8f54] px-4 py-3 text-center text-sm font-black text-white">
+                From {resolvedFunnel.product.currency} {resolvedFunnel.minPrice.toFixed(2)}
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="bg-[#f4f2ec] px-4 py-8 text-[#07111f] sm:px-6 sm:py-10">
+          <div className="mx-auto max-w-6xl [&_.surface-panel]:border-[#d8d3c8] [&_.surface-panel]:bg-white [&_.surface-panel]:shadow-[9px_9px_0_rgba(11,143,84,0.18)]">
+            {checkoutContent}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <PageShell
+      eyebrow="Library checkout"
+      title="Review your order and choose payment"
+      description="One-page checkout for HouseLink Library digital products, printed books, toolkits, forms, and future courses."
+      compactHero
+      actions={<Link href="/library" className="border border-white/20 bg-white/10 text-white hover:bg-white/15">Continue shopping</Link>}
+    >
+      {checkoutContent}
     </PageShell>
   );
 }
 
 type CheckoutFunnelAttribution = Record<string, unknown> & {
   funnelId?: string;
+  funnelSlug?: string;
   offerId?: string;
   selectedFormatId?: string;
 };
@@ -1047,4 +1107,14 @@ function readFunnelCheckoutAttribution(searchParams: ReturnType<typeof useSearch
 
 function stringMeta(value: unknown) {
   return typeof value === "string" ? value : undefined;
+}
+
+function resolveCheckoutRedirect(redirectUrl: string, funnelSlug?: string) {
+  if (!funnelSlug || typeof window === "undefined") return redirectUrl;
+  try {
+    const parsed = new URL(redirectUrl, window.location.origin);
+    return `/funnel/${encodeURIComponent(funnelSlug)}/thank-you${parsed.search}`;
+  } catch {
+    return `/funnel/${encodeURIComponent(funnelSlug)}/thank-you`;
+  }
 }

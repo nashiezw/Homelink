@@ -195,7 +195,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
     trackFunnel("checkout_started", { formatId: format.id, formatType: format.type });
     emitCommercePixel("InitiateCheckout", { content_name: product.title, content_ids: [product.id], value: format.activePrice, currency: product.currency });
     notifyLibraryCartAdded(product.title);
-    window.location.href = `/library/checkout?funnelId=${encodeURIComponent(funnel.id)}&offerId=${encodeURIComponent(funnel.offer.id)}`;
+    window.location.href = `/funnel/${encodeURIComponent(funnel.slug)}/checkout?funnelId=${encodeURIComponent(funnel.id)}&offerId=${encodeURIComponent(funnel.offer.id)}`;
   }
 
   return (

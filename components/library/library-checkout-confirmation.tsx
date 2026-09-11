@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Banknote, CheckCircle2, Clock, Copy, CreditCard, FileText, Landmark, LibraryBig, MessageCircle, ReceiptText, RefreshCw, Smartphone, Upload, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { PageShell } from "@/components/layout/page-shell";
 import { WhatsAppHelpLink } from "@/components/layout/whatsapp-help-link";
 import { LibraryUpsellRail } from "@/components/library/library-upsell-rail";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import type { LibraryDigitalUpsellSuggestion } from "@/lib/library/catalog";
+import type { ResolvedLibrarySalesFunnel } from "@/lib/library/funnels";
 import { libraryOrderStageCopy, libraryOrderStatusLabel } from "@/lib/library/order-stage";
 import { formatBankDetailLabel, type PublicPaymentConfig } from "@/lib/payments/public-payment-config";
 import { cn } from "@/lib/utils";
@@ -49,11 +51,15 @@ export function LibraryCheckoutConfirmation({
   paymentId,
   status,
   nextBooks = [],
+  variant = "library",
+  resolvedFunnel,
 }: {
   order: ConfirmationOrder;
   paymentId?: string;
   status?: string;
   nextBooks?: LibraryDigitalUpsellSuggestion[];
+  variant?: "library" | "funnel";
+  resolvedFunnel?: ResolvedLibrarySalesFunnel;
 }) {
   const { showToast } = useApp();
   const [order, setOrder] = useState(initialOrder);
@@ -64,6 +70,8 @@ export function LibraryCheckoutConfirmation({
   const resolvedPaymentId = paymentId || order.payment?.id || undefined;
   const stage = useMemo(() => libraryOrderStageCopy(order), [order]);
   const paid = stage.stage === "paid" || stage.stage === "fulfilled" || status === "success";
+  const isFunnelConfirmation = variant === "funnel" && Boolean(resolvedFunnel);
+  const funnelPath = resolvedFunnel ? `/funnel/${resolvedFunnel.funnel.slug}` : "/library";
 
   const refreshOrder = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
@@ -151,14 +159,8 @@ export function LibraryCheckoutConfirmation({
     void refreshOrder(true);
   }
 
-  return (
-    <PageShell
-      eyebrow="Library checkout"
-      title={stage.title}
-      description={stage.description}
-      compactHero
-      actions={<Link href="/dashboard/my-library" className="bg-emerald-600 text-white hover:bg-emerald-500">Open My Library</Link>}
-    >
+  const confirmationContent = (
+    <>
       <div className={cn(
         "mb-4 break-words rounded-xl border px-4 py-3 text-sm font-semibold",
         stage.tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100",
@@ -458,12 +460,14 @@ export function LibraryCheckoutConfirmation({
           )}
         </section>
 
-        <LibraryUpsellRail
-          title="Buy the next book"
-          description="Soft-copy companions for what you just ordered — open a title to add it."
-          suggestions={nextBooks}
-          mode="link"
-        />
+        {!isFunnelConfirmation && (
+          <LibraryUpsellRail
+            title="Buy the next book"
+            description="Soft-copy companions for what you just ordered — open a title to add it."
+            suggestions={nextBooks}
+            mode="link"
+          />
+        )}
         </div>
 
         <aside className="min-w-0 space-y-3 lg:sticky lg:top-24 lg:self-start">
@@ -485,11 +489,47 @@ export function LibraryCheckoutConfirmation({
             <MessageCircle className="size-4" />
             WhatsApp order help
           </WhatsAppHelpLink>
-          <Link href="/library" className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-200">
-            Continue shopping
+          <Link href={funnelPath} className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-200">
+            {isFunnelConfirmation ? "View offer page" : "Continue shopping"}
           </Link>
         </aside>
       </div>
+    </>
+  );
+
+  if (isFunnelConfirmation && resolvedFunnel) {
+    return (
+      <main className="min-h-screen bg-[#07111f] text-white">
+        <section className="border-b border-white/10 bg-[#07111f]">
+          <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
+            <HouseLinkBrand className="rounded-xl bg-white px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" />
+            <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">Order received</p>
+            <h1 className="mt-3 max-w-4xl text-4xl font-black uppercase leading-[0.98] tracking-normal sm:text-6xl">
+              {stage.title}
+            </h1>
+            <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-200">
+              {stage.description}
+            </p>
+          </div>
+        </section>
+        <section className="bg-[#f4f2ec] px-4 py-8 text-[#07111f] sm:px-6 sm:py-10">
+          <div className="mx-auto max-w-6xl [&_.surface-panel]:border-[#d8d3c8] [&_.surface-panel]:bg-white [&_.surface-panel]:shadow-[9px_9px_0_rgba(11,143,84,0.18)]">
+            {confirmationContent}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <PageShell
+      eyebrow="Library checkout"
+      title={stage.title}
+      description={stage.description}
+      compactHero
+      actions={<Link href="/dashboard/my-library" className="bg-emerald-600 text-white hover:bg-emerald-500">Open My Library</Link>}
+    >
+      {confirmationContent}
     </PageShell>
   );
 }

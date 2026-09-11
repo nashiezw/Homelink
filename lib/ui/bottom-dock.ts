@@ -32,3 +32,7 @@ export function isLibraryProductPath(pathname?: string | null) {
   if (pathname.startsWith("/library/claim")) return false;
   return true;
 }
+
+export function isFunnelPath(pathname?: string | null) {
+  return Boolean(pathname?.startsWith("/funnel/") || pathname === "/property-development-guide");
+}

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { LibraryBagDrawer } from "@/components/library/library-bag-drawer";
 import { useLibraryCart } from "@/lib/library/cart-client";
 import { setLibraryBagFloatingOpen, useLiveChatFloatingOpen } from "@/lib/live-chat/floating-state";
-import { isLibraryProductPath, useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
+import { isFunnelPath, isLibraryProductPath, useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
 /** Mobile / tablet Library bag FAB (right). Hidden at lg+ — desktop uses header bag. */
@@ -34,12 +34,12 @@ export function LibraryCartFab({ className }: { className?: string }) {
   }, [open]);
 
   useEffect(() => {
-    if (count && !pathname?.startsWith("/library/checkout")) return;
+    if (count && !pathname?.startsWith("/library/checkout") && !isFunnelPath(pathname)) return;
     if (open) setOpen(false);
     setLibraryBagFloatingOpen(false);
   }, [count, open, pathname]);
 
-  if (!count || liveChatOpen || pathname?.startsWith("/library/checkout")) return null;
+  if (!count || liveChatOpen || pathname?.startsWith("/library/checkout") || isFunnelPath(pathname)) return null;
 
   return (
     <div

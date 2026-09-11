@@ -5,6 +5,7 @@ import { ShoppingBag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LibraryBagDrawer } from "@/components/library/library-bag-drawer";
 import { useLibraryCart } from "@/lib/library/cart-client";
+import { isFunnelPath } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
 const iconButtonClass =
@@ -16,7 +17,7 @@ export function LibraryHeaderBag({ className }: { className?: string }) {
   const { count } = useLibraryCart();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const onCheckout = pathname?.startsWith("/library/checkout");
+  const onCheckout = pathname?.startsWith("/library/checkout") || isFunnelPath(pathname);
 
   useEffect(() => {
     if (!open) return;

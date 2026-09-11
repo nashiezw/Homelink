@@ -10,7 +10,7 @@ import {
   resolveWhatsAppLane,
   stickyWhatsAppVisible,
 } from "@/lib/settings/contact";
-import { isLibraryProductPath, useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
+import { isFunnelPath, isLibraryProductPath, useHouseLinkBottomDock } from "@/lib/ui/bottom-dock";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,7 +29,8 @@ export function WhatsAppStickyFab({ className }: { className?: string }) {
   const onLibraryProductPage = isLibraryProductPath(pathname);
   if (
     pathname?.startsWith("/dashboard/admin") ||
-    pathname?.startsWith("/library/checkout")
+    pathname?.startsWith("/library/checkout") ||
+    isFunnelPath(pathname)
   ) {
     return null;
   }
