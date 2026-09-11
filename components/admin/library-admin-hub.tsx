@@ -475,6 +475,21 @@ function MiniMetricGrid({ rows }: { rows: Array<{ label: string; value: string |
   );
 }
 
+function EmptyPanelText({ children }: { children: React.ReactNode }) {
+  return <p className="rounded-lg border border-dashed border-white/10 p-4 text-sm text-slate-500">{children}</p>;
+}
+
+function categoryMetricsFromProducts(products: LibraryProduct[]) {
+  const counts = new Map<string, number>();
+  for (const product of products) {
+    const label = product.category?.trim() || "Uncategorised";
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+}
+
 export function LibraryAdminHub() {
   const searchParams = useSearchParams();
   const [view, setView] = useState("Dashboard");
@@ -642,6 +657,41 @@ export function LibraryAdminHub() {
       authors: byKind("author"),
     };
   }, [operations.taxonomy, productsSource]);
+  const dashboardTopCategories = useMemo(
+    () => analytics.topCategories.length ? analytics.topCategories : categoryMetricsFromProducts(source),
+    [analytics.topCategories, source],
+  );
+  const dashboardBestSellers = useMemo(
+    () =>
+      analytics.bestSellers.length
+        ? analytics.bestSellers
+        : operations.reports.productPerformance
+            .filter((row) => row.units > 0)
+            .map((row) => ({ label: row.title, value: row.units }))
+            .slice(0, 5),
+    [analytics.bestSellers, operations.reports.productPerformance],
+  );
+  const dashboardMostViewed = useMemo(
+    () =>
+      analytics.mostViewed.length
+        ? analytics.mostViewed
+        : operations.reports.productPerformance
+            .filter((row) => row.views > 0)
+            .sort((a, b) => b.views - a.views)
+            .map((row) => ({ label: row.title, value: row.views }))
+            .slice(0, 5),
+    [analytics.mostViewed, operations.reports.productPerformance],
+  );
+  const dashboardStockLevels = useMemo(
+    () =>
+      analytics.stockLevels.length
+        ? analytics.stockLevels
+        : source
+            .filter((product) => product.stock != null)
+            .map((product) => ({ label: product.title, value: product.stock ?? 0 }))
+            .sort((a, b) => a.value - b.value || a.label.localeCompare(b.label)),
+    [analytics.stockLevels, source],
+  );
 
   useEffect(() => {
     const requested = searchParams?.get("libraryView");
@@ -1853,13 +1903,13 @@ export function LibraryAdminHub() {
               <DonutChart data={operations.reports.paymentGateways} />
             </AdminPanel>
             <AdminPanel title="Top categories">
-              <DonutChart data={analytics.topCategories} />
+              <DonutChart data={dashboardTopCategories} />
             </AdminPanel>
             <AdminPanel title="Best sellers">
-              {analytics.bestSellers.map((item) => <MetricRow key={item.label} label={item.label} value={item.value} delta="downloads" />)}
+              {dashboardBestSellers.length ? dashboardBestSellers.map((item) => <MetricRow key={item.label} label={item.label} value={item.value} delta="units" />) : <EmptyPanelText>No paid product sales yet.</EmptyPanelText>}
             </AdminPanel>
             <AdminPanel title="Most viewed">
-              {analytics.mostViewed.map((item) => <MetricRow key={item.label} label={item.label} value={item.value} delta="views" />)}
+              {dashboardMostViewed.length ? dashboardMostViewed.map((item) => <MetricRow key={item.label} label={item.label} value={item.value} delta="views" />) : <EmptyPanelText>No product views recorded yet.</EmptyPanelText>}
             </AdminPanel>
           </div>
           <div className="grid gap-4 xl:grid-cols-3">
@@ -1867,7 +1917,7 @@ export function LibraryAdminHub() {
               <OrdersTable orders={orders} />
             </AdminPanel>
             <AdminPanel title="Stock levels">
-              {analytics.stockLevels.map((item) => <MetricRow key={item.label} label={item.label} value={item.value} delta={item.value <= 10 ? "low stock" : "available"} />)}
+              {dashboardStockLevels.length ? dashboardStockLevels.map((item) => <MetricRow key={item.label} label={item.label} value={item.value} delta={item.value <= 10 ? "low stock" : "available"} />) : <EmptyPanelText>No stock-managed products yet.</EmptyPanelText>}
             </AdminPanel>
           </div>
         </>
@@ -4279,16 +4329,31 @@ function LibraryTabManagement({
     const stockAlerts = operations.reports.stockAlerts ?? [];
     const downloadLogs = operations.reports.downloadLogs ?? [];
     const customerSegments = operations.reports.customerSegments ?? [];
+    const revenueCard = operations.reports.scorecards.find((row) => row.label === "Revenue");
+    const averageOrderCard = operations.reports.scorecards.find((row) => row.label === "Average order");
+    const topCategories = analytics.topCategories.length ? analytics.topCategories : categoryMetricsFromProducts(products);
+    const mostDownloaded = analytics.mostDownloaded.length
+      ? analytics.mostDownloaded
+      : operations.reports.productPerformance
+          .filter((row) => row.downloads > 0)
+          .sort((a, b) => b.downloads - a.downloads)
+          .map((row) => ({ label: row.title, value: row.downloads }));
+    const mostViewed = analytics.mostViewed.length
+      ? analytics.mostViewed
+      : operations.reports.productPerformance
+          .filter((row) => row.views > 0)
+          .sort((a, b) => b.views - a.views)
+          .map((row) => ({ label: row.title, value: row.views }));
     
     return (
       <div className="grid gap-5">
         <SiteAnalyticsPanel />
         <MiniMetricGrid rows={[
-          { label: "Revenue", value: `USD ${analytics.revenue.toFixed(2)}`, detail: `${analytics.orders} orders` },
+          { label: "Revenue", value: `USD ${(analytics.revenue || Number(revenueCard?.value ?? 0)).toFixed(2)}`, detail: `${analytics.orders || (operations.reports.funnel.find((row) => row.label === "Orders")?.value ?? 0)} orders` },
           { label: "Visitors", value: analytics.visitors, detail: `${analytics.conversionRate}% conversion` },
           { label: "Bundle adds", value: formatMix.reduce((sum, row) => sum + row.value, 0) ? bundlePairs.reduce((sum, row) => sum + row.value, 0) : (operations.reports.scorecards.find((row) => row.label === "Bundle cart adds")?.value ?? 0), detail: "FBT cart events" },
-          { label: "Avg Order Value", value: `USD ${analytics.averageOrderValue.toFixed(2)}`, detail: "Per order" },
-          { label: "Active Customers", value: analytics.activeCustomers, detail: "Last 30 days" },
+          { label: "Avg Order Value", value: `USD ${(analytics.averageOrderValue || Number(averageOrderCard?.value ?? 0)).toFixed(2)}`, detail: "Per order" },
+          { label: "Active Customers", value: analytics.activeCustomers || customerSegments.length, detail: "Library buyers" },
           { label: "Avg Rating", value: `${analytics.averageRating.toFixed(1)}/5`, detail: "Customer satisfaction" },
         ]} />
         <AdminPanel
@@ -4374,12 +4439,12 @@ function LibraryTabManagement({
         <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Top Categories</h3>
           <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {analytics.topCategories.slice(0, 6).map((cat) => (
+            {topCategories.length ? topCategories.slice(0, 6).map((cat) => (
               <div key={cat.label} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 gap-2">
                 <span className="text-sm font-medium text-white truncate flex-1">{cat.label}</span>
                 <span className="text-sm text-slate-400 shrink-0">{cat.value} products</span>
               </div>
-            ))}
+            )) : <EmptyPanelText>No categories found.</EmptyPanelText>}
           </div>
         </div>
         
@@ -4387,12 +4452,12 @@ function LibraryTabManagement({
         <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Most Downloaded Products</h3>
           <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {analytics.mostDownloaded.slice(0, 6).map((product) => (
+            {mostDownloaded.length ? mostDownloaded.slice(0, 6).map((product) => (
               <div key={product.label} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 gap-2">
                 <span className="text-sm font-medium text-white truncate flex-1">{product.label}</span>
                 <span className="text-sm text-slate-400 shrink-0">{product.value} downloads</span>
               </div>
-            ))}
+            )) : <EmptyPanelText>No download events yet.</EmptyPanelText>}
           </div>
         </div>
         
@@ -4400,12 +4465,12 @@ function LibraryTabManagement({
         <div className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Most Viewed Products</h3>
           <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {analytics.mostViewed.slice(0, 6).map((product) => (
+            {mostViewed.length ? mostViewed.slice(0, 6).map((product) => (
               <div key={product.label} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border border-white/10 bg-slate-900/60 p-3 gap-2">
                 <span className="text-sm font-medium text-white truncate flex-1">{product.label}</span>
                 <span className="text-sm text-slate-400 shrink-0">{product.value} views</span>
               </div>
-            ))}
+            )) : <EmptyPanelText>No product views recorded yet.</EmptyPanelText>}
           </div>
         </div>
         

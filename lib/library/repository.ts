@@ -469,9 +469,11 @@ export async function getAdminLibraryData() {
   const operations = await getLibraryOperationsSummary();
   const orders = await listLibraryOrders();
   const analytics = await getLibraryAnalytics();
-  const recoveredReports = shouldRecoverLibraryAdminReports(operations.reports, orders)
+  const needsReportRecovery = shouldRecoverLibraryAdminReports(operations.reports, orders);
+  const reportOrders = needsReportRecovery ? await listLibraryReportOrdersFallback() : [];
+  const recoveredReports = needsReportRecovery
     ? buildLibraryAdminReports({
-        orders,
+        orders: reportOrders.length ? reportOrders : orders,
         products,
         coupons: operations.coupons ?? [],
         downloadAccess: (operations.downloadAccess ?? []).map((access) => ({
@@ -505,6 +507,20 @@ function shouldRecoverLibraryAdminReports(reports: LibraryAdminReports, orders: 
   const reportedPaid = reports.funnel.find((row) => row.label === "Paid")?.value ?? 0;
   const actualPaid = orders.filter((order) => order.status === "PAID" || order.status === "FULFILLED").length;
   return reportedOrders === 0 && (orders.length > 0 || actualPaid > reportedPaid);
+}
+
+async function listLibraryReportOrdersFallback(): Promise<Parameters<typeof buildLibraryAdminReports>[0]["orders"]> {
+  if (!shouldUsePostgresLibrary()) return localLibraryOrders;
+  return getMainPrisma().libraryOrder.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 500,
+    include: {
+      customer: { select: { id: true, name: true, email: true } },
+      items: { include: { product: { select: { title: true, viewCount: true, downloadCount: true } } } },
+      payment: { select: { provider: true, status: true } },
+      downloads: true,
+    },
+  }).catch(() => []);
 }
 
 export type LibraryFunnelAnalytics = {
@@ -2508,28 +2524,29 @@ export async function getLibraryOperationsSummary() {
   }
   const prisma = getMainPrisma();
   try {
+    const safe = <T>(promise: Promise<T>, fallback: T) => promise.catch(() => fallback);
     const [fulfilments, invoices, activities, exports, taxSettings, storeSettings, coupons, categories, collections, authors, downloadAccess, reviews, guestClaims, academyEntitlements, recommendations, orders, products, inventoryMovements, cartAddGroups, bundleEvents, quoteRequests, quoteRequestCount] = await Promise.all([
-      prisma.libraryFulfilment.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true, total: true, currency: true } } } }),
-      prisma.libraryInvoice.findMany({ orderBy: { issuedAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
-      prisma.libraryActivity.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
-      prisma.libraryExportJob.findMany({ orderBy: { createdAt: "desc" }, take: 12 }),
-      prisma.libraryTaxSetting.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+      safe(prisma.libraryFulfilment.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true, total: true, currency: true } } } }), []),
+      safe(prisma.libraryInvoice.findMany({ orderBy: { issuedAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }), []),
+      safe(prisma.libraryActivity.findMany({ orderBy: { createdAt: "desc" }, take: 30 }), []),
+      safe(prisma.libraryExportJob.findMany({ orderBy: { createdAt: "desc" }, take: 12 }), []),
+      safe(prisma.libraryTaxSetting.findMany({ orderBy: { createdAt: "desc" }, take: 10 }), []),
       getLibraryStoreSettings(),
-      prisma.libraryCoupon.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
-      prisma.libraryCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } }),
-      prisma.libraryCollection.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } }),
-      prisma.libraryAuthor.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { products: true } } } }),
-      prisma.libraryDownloadAccess.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: { select: { name: true, email: true } }, product: { select: { title: true } }, order: { select: { orderNumber: true } }, file: { select: { fileName: true } } } }),
-      prisma.libraryReview.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { product: { select: { title: true } }, user: { select: { name: true, email: true } } } }),
-      prisma.libraryGuestClaim.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }),
-      prisma.libraryAcademyEntitlement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
-      prisma.libraryRecommendation.findMany({
+      safe(prisma.libraryCoupon.findMany({ orderBy: { createdAt: "desc" }, take: 100 }), []),
+      safe(prisma.libraryCategory.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } }), []),
+      safe(prisma.libraryCollection.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { _count: { select: { products: true } } } }), []),
+      safe(prisma.libraryAuthor.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { products: true } } } }), []),
+      safe(prisma.libraryDownloadAccess.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: { select: { name: true, email: true } }, product: { select: { title: true } }, order: { select: { orderNumber: true } }, file: { select: { fileName: true } } } }), []),
+      safe(prisma.libraryReview.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { product: { select: { title: true } }, user: { select: { name: true, email: true } } } }), []),
+      safe(prisma.libraryGuestClaim.findMany({ orderBy: { createdAt: "desc" }, take: 20, include: { order: { select: { orderNumber: true } } } }), []),
+      safe(prisma.libraryAcademyEntitlement.findMany({ orderBy: { createdAt: "desc" }, take: 20 }), []),
+      safe(prisma.libraryRecommendation.findMany({
         where: { active: true },
         orderBy: [{ weight: "desc" }, { createdAt: "desc" }],
         take: 20,
         include: { sourceProduct: { select: { title: true } }, targetProduct: { select: { title: true } } },
-      }),
-      prisma.libraryOrder.findMany({
+      }), []),
+      safe(prisma.libraryOrder.findMany({
         orderBy: { createdAt: "desc" },
         take: 500,
         include: {
@@ -2538,17 +2555,17 @@ export async function getLibraryOperationsSummary() {
           payment: { select: { provider: true, status: true } },
           downloads: true,
         },
-      }),
-      prisma.libraryProduct.findMany({
+      }), []),
+      safe(prisma.libraryProduct.findMany({
         where: { deletedAt: null },
         include: { category: true, files: true, reviews: true, orderItems: true, downloads: true },
         take: 500,
-      }),
-      prisma.libraryInventoryMovement.findMany({
+      }), []),
+      safe(prisma.libraryInventoryMovement.findMany({
         orderBy: { createdAt: "desc" },
         take: 50,
         include: { product: { select: { title: true } } },
-      }),
+      }), []),
       prisma.libraryActivity.groupBy({
         by: ["action"],
         where: { action: { in: ["CART_ADD_SINGLE", "CART_ADD_BUNDLE"] } },
@@ -2560,7 +2577,7 @@ export async function getLibraryOperationsSummary() {
         take: 500,
         select: { metadata: true, targetId: true },
       }).catch(() => [] as Array<{ metadata: unknown; targetId: string | null }>),
-      listLibraryQuoteRequests(80),
+      safe(listLibraryQuoteRequests(80), [] as LibraryQuoteRequestAdmin[]),
       prisma.libraryQuoteRequest.count().catch(() => 0),
     ]);
     const cartAddCounts = {
@@ -2635,6 +2652,8 @@ function buildLibraryAdminReports(input: {
     currency?: string;
     createdAt: Date | string;
     metadata?: unknown;
+    customerName?: string | null;
+    customerEmail?: string | null;
     customer?: { id: string; name: string | null; email: string } | null;
     items?: Array<{ productId: string; title: string; quantity: number; total: unknown; product?: { title: string; viewCount: number; downloadCount: number } | null }>;
     payment?: { provider?: string | null; status?: string | null } | null;
@@ -2753,9 +2772,9 @@ function buildLibraryAdminReports(input: {
   });
   const customers = new Map<string, { id: string; userId: string; name: string; email: string; orders: number; spend: number; downloads: number; lastOrderAt: string; segment: string }>();
   paidOrders.forEach((order) => {
-    const email = order.customer?.email ?? "unknown@houselink.local";
+    const email = order.customer?.email ?? order.customerEmail ?? "unknown@houselink.local";
     const userId = order.customer?.id ?? "";
-    const current = customers.get(userId || email) ?? { id: userId || email, userId, name: order.customer?.name ?? "Library customer", email, orders: 0, spend: 0, downloads: 0, lastOrderAt: "", segment: "New" };
+    const current = customers.get(userId || email) ?? { id: userId || email, userId, name: order.customer?.name ?? order.customerName ?? "Library customer", email, orders: 0, spend: 0, downloads: 0, lastOrderAt: "", segment: "New" };
     current.orders += 1;
     current.spend += Number(order.total ?? 0);
     current.downloads += order.downloads?.length ?? 0;
