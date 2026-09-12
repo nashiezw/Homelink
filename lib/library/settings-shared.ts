@@ -385,7 +385,7 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
         headline: "Before you buy land or start building in Zimbabwe, read this.",
         subheadline:
           "A practical property development and property law guide designed to help buyers, builders, investors, and developers understand important processes before committing money.",
-        primaryCta: "Get the guide",
+        primaryCta: "Get the digital guide - $15",
         secondaryCta: "See what's inside",
         whatsappUrl: "https://wa.me/263",
         heroImageUrl: "",
@@ -423,6 +423,7 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
         faq: [
           { question: "Is this guide specifically for Zimbabwe?", answer: "Yes. It is focused on property development, council processes, approvals, subdivision, compliance, and property law considerations in Zimbabwe." },
           { question: "Who is the guide for?", answer: "It is for land buyers, builders, developers, investors, people considering subdivision, and anyone preparing for a property development project." },
+          { question: "Why should I buy before starting?", answer: "The guide helps you understand key checks, approvals, council processes, subdivision, compliance, and professional advice points before money is already committed." },
           { question: "What does the digital version include?", answer: "Choose the digital edition for HouseLink Library access after payment is confirmed." },
           { question: "Is the printed version available?", answer: "Yes. Choose the printed edition when stock and fulfilment are available in checkout." },
           { question: "Does this replace professional legal advice?", answer: "No. It is an educational guide and does not replace advice from a lawyer, planner, architect, engineer, council, surveyor, or other qualified professional." },
@@ -600,6 +601,7 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
   const previousDefaultSubheadline = "A focused property development and property law guide for buyers, builders, investors, and developers who want fewer costly surprises before they move.";
   const legacyPrimaryCta = "Get the book now";
   const previousDefaultPrimaryCta = "Yes, I want this offer now";
+  const previousConversionPrimaryCta = "Get the guide";
   const legacySecondaryCta = "Read a free sample";
   const previousDefaultSecondaryCta = "Preview the sample";
   const legacyProblemTitle = "Property development involves more than buying land and starting to build.";
@@ -682,7 +684,7 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
     label: str(row.label, fallback.label),
     headline: upgradeLegacyFunnelCopy(str(row.headline, fallback.headline), [legacyHeadline, previousDefaultHeadline], fallback.headline),
     subheadline: upgradeLegacyFunnelCopy(str(row.subheadline, fallback.subheadline), [legacySubheadline, previousDefaultSubheadline], fallback.subheadline),
-    primaryCta: upgradeLegacyFunnelCopy(str(row.primaryCta, fallback.primaryCta), [legacyPrimaryCta, previousDefaultPrimaryCta], fallback.primaryCta),
+    primaryCta: upgradeLegacyFunnelCopy(str(row.primaryCta, fallback.primaryCta), [legacyPrimaryCta, previousDefaultPrimaryCta, previousConversionPrimaryCta], fallback.primaryCta),
     secondaryCta: upgradeLegacyFunnelCopy(str(row.secondaryCta, fallback.secondaryCta), [legacySecondaryCta, previousDefaultSecondaryCta], fallback.secondaryCta),
     whatsappUrl: str(row.whatsappUrl, fallback.whatsappUrl),
     heroImageUrl: str(row.heroImageUrl, fallback.heroImageUrl),

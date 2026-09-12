@@ -496,6 +496,9 @@ function SalesBullet({ children, inverse = false }: { children: React.ReactNode;
 
 function EditionCard({ format, currency, onClick, compact = false }: { format: ResolvedLibrarySalesFunnel["formats"][number]; currency: string; onClick: () => void; compact?: boolean }) {
   const label = format.type === "PRINTED_BOOK" ? "Printed edition" : "Digital edition";
+  const description = format.type === "PRINTED_BOOK"
+    ? "Physical copy, with delivery or pickup details confirmed in checkout."
+    : "Library access after payment confirmation, so you can start with the guide faster.";
   return (
     <button
       type="button"
@@ -507,6 +510,7 @@ function EditionCard({ format, currency, onClick, compact = false }: { format: R
         {format.normalPrice && format.normalPrice > format.activePrice ? <span className="block text-sm font-black text-slate-400 line-through">{currency} {format.normalPrice.toFixed(2)}</span> : null}
         <span className="block whitespace-nowrap text-3xl font-black text-[#0d1422]">{currency} {format.activePrice.toFixed(2)}</span>
       </p>
+      <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{description}</p>
       {format.savings ? <p className="mt-3 inline-flex bg-[#dff8ea] px-2 py-1 text-xs font-black text-[#075f3b]">Save {currency} {format.savings.toFixed(2)}</p> : null}
       <span className="ml-2 mt-3 inline-flex items-center gap-2 bg-[#0d1422] px-3 py-2 text-xs font-black uppercase text-white">
         Get {format.type === "PRINTED_BOOK" ? "printed" : "digital"} <ArrowRight className="size-4" />
