@@ -317,7 +317,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
                 For first-time land buyers, builders, investors, developers, subdivision plans, and anyone preparing for a Zimbabwe property project.
               </p>
               <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-4 min-h-[3.75rem] w-full px-7 text-base shadow-[0_8px_0_rgba(11,13,18,0.22)] sm:mt-0 sm:w-auto sm:min-w-[21rem] sm:flex-none" subtitle="Choose digital or printed">
-                Yes, add this to my order
+                Get the guide now
               </SalesCtaButton>
             </div>
           </div>

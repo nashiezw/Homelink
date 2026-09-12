@@ -434,12 +434,12 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
           id: "pilot-launch-offer",
           status: "ACTIVE",
           title: "Launch offer",
-          description: "Get the guide at the promotional launch price before the configured deadline.",
+          description: "Choose the digital or printed guide while the launch price is still available.",
           startsAt: "2026-09-10T00:00:00+02:00",
           endsAt: "2026-12-31T23:59:59+02:00",
           timezone: "Africa/Harare",
           countdown: true,
-          urgencyMessage: "The promotional price ends at the configured deadline, then normal Library pricing applies.",
+          urgencyMessage: "The launch price ends at the offer deadline, then normal Library pricing applies.",
           formatPrices: [
             { formatType: "PDF", normalPrice: 20, offerPrice: 15 },
             { formatType: "DIGITAL_BOOK", normalPrice: 20, offerPrice: 15 },
@@ -615,7 +615,9 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
   const previousDefaultDisclaimer = "This guide is educational information. It does not replace current advice from qualified lawyers, planners, architects, engineers, valuers, or other specialists.";
   const legacyOfferTitle = "Special offer";
   const legacyOfferDescription = "Get the guide at the current promotional price before the configured deadline.";
+  const previousDefaultOfferDescription = "Get the guide at the promotional launch price before the configured deadline.";
   const legacyUrgencyMessage = "The promotional price ends at the configured deadline, then the normal price appears.";
+  const previousDefaultUrgencyMessage = "The promotional price ends at the configured deadline, then normal Library pricing applies.";
   const problemPoints = stringList(row.problemPoints);
   const audience = stringList(row.audience);
   const delayPoints = stringList(row.delayPoints);
@@ -702,12 +704,12 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
         ? str(offer.status, fallbackOffer.status).toUpperCase()
         : fallbackOffer.status) as LibrarySalesFunnelOffer["status"],
       title: upgradeLegacyFunnelCopy(str(offer.title, fallbackOffer.title), legacyOfferTitle, fallbackOffer.title),
-      description: upgradeLegacyFunnelCopy(str(offer.description, fallbackOffer.description), legacyOfferDescription, fallbackOffer.description),
+      description: upgradeLegacyFunnelCopy(str(offer.description, fallbackOffer.description), [legacyOfferDescription, previousDefaultOfferDescription], fallbackOffer.description),
       startsAt: str(offer.startsAt, fallbackOffer.startsAt),
       endsAt: str(offer.endsAt, fallbackOffer.endsAt),
       timezone: str(offer.timezone, fallbackOffer.timezone),
       countdown: bool(offer.countdown, fallbackOffer.countdown),
-      urgencyMessage: upgradeLegacyFunnelCopy(str(offer.urgencyMessage, fallbackOffer.urgencyMessage), legacyUrgencyMessage, fallbackOffer.urgencyMessage),
+      urgencyMessage: upgradeLegacyFunnelCopy(str(offer.urgencyMessage, fallbackOffer.urgencyMessage), [legacyUrgencyMessage, previousDefaultUrgencyMessage], fallbackOffer.urgencyMessage),
       formatPrices: mergeOfferPrices(offer.formatPrices, fallbackOffer.formatPrices),
     },
     abTest: mergeAbTest(row.abTest),

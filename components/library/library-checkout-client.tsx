@@ -713,7 +713,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
               }) : (
                 <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
                   <ShoppingCart className="mx-auto mb-3 size-8 text-slate-400" />
-                  <p className="font-semibold">Your order is empty</p>
+                  <p className="font-semibold">{isFunnelCheckout ? "Choose your guide edition first" : "Your order is empty"}</p>
                   <Link href={funnelPath} className="mt-3 inline-flex text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                     {isFunnelCheckout ? "Return to the offer" : "Browse products"}
                   </Link>
@@ -1106,7 +1106,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
                 Complete your order before the launch offer ends.
               </h1>
               <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-200 sm:mt-5 sm:text-base sm:leading-7">
-                You are buying {resolvedFunnel.product.title}. Choose payment, place the order, and keep your reference for access and invoice follow-up.
+                You are getting {resolvedFunnel.product.title}. Choose payment, place the order, and keep your reference for access and invoice follow-up.
               </p>
             </div>
             <div className="mx-auto w-full max-w-[15rem] border-[6px] border-white bg-white p-2 shadow-[12px_12px_0_rgba(11,143,84,0.55)] sm:max-w-xs sm:shadow-[18px_18px_0_rgba(11,143,84,0.55)]">
