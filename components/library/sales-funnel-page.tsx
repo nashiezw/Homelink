@@ -37,7 +37,7 @@ declare global {
   }
 }
 
-export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
+export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
   const { funnel, product, formats, offerExpired, minPrice } = resolved;
   const { setCart } = useLibraryCart();
   const [selectorOpen, setSelectorOpen] = useState(false);
@@ -47,10 +47,12 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
   const heroImage = funnel.heroImageUrl || product.gallery.find((item) => item.kind === "mockup")?.url || product.gallery.find((item) => item.kind === "cover")?.url || product.seoImageUrl || "";
   const digitalFormats = formats.filter((format) => format.type !== "PRINTED_BOOK");
   const printedFormats = formats.filter((format) => format.type === "PRINTED_BOOK");
+  const digitalPrice = digitalFormats[0]?.activePrice ?? minPrice;
+  const printedPrice = printedFormats[0]?.activePrice ?? null;
   const formatChoices = [...digitalFormats, ...printedFormats];
   const coreInclusions = funnel.learning.slice(0, 4);
   const fastRisks = funnel.problemPoints.slice(0, 6);
-  const shortFaq = funnel.faq.slice(0, 3);
+  const shortFaq = funnel.faq.slice(0, 5);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -155,6 +157,13 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
     setSelectorOpen(true);
   }
 
+  function openSamplePreview() {
+    if (!sampleUrl) return;
+    trackEvent("library_sample_opened", product.id, funnelMeta({ ctaId: "sample_preview", surface: "sales_funnel" }));
+    trackEvent("library_cta_clicked", product.id, funnelMeta({ cta: "preview_sample", surface: "sales_funnel" }));
+    trackFunnel("sample_opened", { surface: "sales_funnel" });
+  }
+
   function checkout(format: (typeof formats)[number]) {
     const line = repriceLibraryCartLine({
       productId: product.id,
@@ -205,10 +214,10 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
           <div className="w-full max-w-4xl">
             <FunnelLogo />
             <p className="mt-5 text-[0.68rem] font-black uppercase tracking-[0.14em] text-white sm:mt-9 sm:text-base sm:tracking-normal">
-              Time is running out to get the offer for <span className="text-[#20c36b]">Zimbabwe property developers</span>
+              Before you commit property money in <span className="text-[#20c36b]">Zimbabwe</span>
             </p>
             <h1 className="mx-auto mt-2 max-w-4xl text-[2rem] font-black uppercase leading-[0.94] tracking-normal sm:mt-4 sm:text-6xl lg:text-[4.6rem]">
-              <span className="text-[#20c36b]">Quick!</span> Your property guide offer ends soon.
+              <span className="text-[#20c36b]">Before you buy land</span> or start building, read this.
             </h1>
             {funnel.offer.countdown && !offerExpired ? <Countdown endsAt={funnel.offer.endsAt} now={now} compact minimal /> : null}
             <div className="relative mx-auto mt-5 flex max-w-[25rem] flex-col items-stretch sm:mt-7">
@@ -226,8 +235,19 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b8f54]">Inside the complete guide</p>
                 <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">Land. Plans. Approvals. Law.</h2>
                 <p className="mt-4 max-w-xl text-sm font-bold leading-7 text-slate-700 sm:text-base">
-                  Know what to check before you buy, build, subdivide, appoint contractors, or commit serious money.
+                  A practical Zimbabwe property development and property law guide for land buyers, builders, developers, investors, and anyone preparing for approvals, contractors, subdivision, or council processes.
                 </p>
+                {sampleUrl ? (
+                  <a
+                    href={sampleUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={openSamplePreview}
+                    className="mt-5 inline-flex w-fit items-center gap-2 border border-[#0b8f54] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#0b8f54] transition hover:bg-[#e8f8ef]"
+                  >
+                    See what's inside before you buy <ArrowRight className="size-4" />
+                  </a>
+                ) : null}
               </div>
               <div className="relative flex items-center justify-center bg-[#f4f8f6] p-4 sm:p-5 md:bg-[#0b8f54]">
                 <div className="grid w-full max-w-[18rem] place-items-center bg-[#0b8f54] p-4 shadow-[10px_10px_0_rgba(7,17,31,0.18)] sm:max-w-[20rem] md:bg-transparent md:p-0 md:shadow-none">
@@ -239,7 +259,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
 
           <div className="w-full max-w-4xl bg-[#0b8f54] px-4 py-4 text-center text-white">
             <p className="text-sm font-black leading-6">
-              Launch price starts at <span className="text-xl uppercase">{product.currency} {minPrice.toFixed(2)}</span>. Secure checkout, invoice provided, digital access after payment.
+              Digital guide: <span className="text-xl uppercase">{product.currency} {digitalPrice.toFixed(2)}</span>. {printedPrice ? <>Printed guide: {product.currency} {printedPrice.toFixed(2)}. </> : null}Secure checkout, invoice provided, digital access after payment.
             </p>
           </div>
         </div>
@@ -250,10 +270,10 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-[0.68rem] font-black uppercase tracking-[0.26em] text-[#0b8f54]">Wait, your order is not complete</p>
             <h2 className="mt-3 text-[2rem] font-black uppercase leading-[0.96] text-[#0d1422] sm:text-[3rem]">
-              Upgrade your decision before you spend thousands.
+              Understand the process before you commit serious money.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-700">
-              Add the practical property development and law guide before you commit to land, approvals, contractors, or costly site decisions.
+              Property decisions become harder to fix after land, plans, approvals, contractors, or site costs are already in motion.
             </p>
           </div>
 
@@ -271,13 +291,13 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
                 <div className="mt-8 border border-white/15 bg-white/[0.06] p-4">
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#20c36b]">Why this matters</p>
                   <p className="mt-2 text-sm font-bold leading-6 text-white/85">
-                    One missed document, approval, or contractor decision can cost far more than the guide.
+                    A {product.currency} {minPrice.toFixed(2)} guide is a small first step before a major property decision. Use it to prepare, ask better questions, and identify areas where professional advice is needed.
                   </p>
                 </div>
               </div>
 
               <div className="p-6 sm:p-8">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#64748b]">Here is everything you get when you order now</p>
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-[#64748b]">{funnel.learningTitle}</p>
                 <div className="mt-5 grid gap-px overflow-hidden border border-[#d8d1c3] bg-[#d8d1c3]">
                   {coreInclusions.map((item, index) => (
                     <div key={item.title} className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 bg-white p-4 sm:p-5">
@@ -294,7 +314,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
 
             <div className="border-t border-[#d8d1c3] bg-[#f4f8f6] p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
               <p className="text-sm font-black uppercase leading-6 text-[#0d1422]">
-                Get the guide now at the launch offer price before the deadline changes.
+                For first-time land buyers, builders, investors, developers, subdivision plans, and anyone preparing for a Zimbabwe property project.
               </p>
               <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-4 min-h-[3.35rem] w-full px-5 text-base shadow-[0_8px_0_rgba(11,13,18,0.22)] sm:mt-0 sm:w-auto sm:min-w-[18rem]" subtitle="Choose digital or printed">
                 Yes, add this to my order
@@ -307,7 +327,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
       <section id="funnel-offer" className="bg-[#0b8f54] px-4 py-14 sm:px-6">
         <div className="mx-auto max-w-5xl border border-[#087044] bg-white p-5 shadow-[0_24px_60px_rgba(16,24,40,0.18)] sm:p-8">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#0b8f54]">Yes, I want this offer now</p>
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#0b8f54]">Choose digital or printed</p>
             <h2 className="mt-2 text-4xl font-black uppercase leading-none text-[#0d1422] sm:text-[3.25rem]">{funnel.offer.title}</h2>
             <p className="mt-2 text-sm font-bold leading-6 text-slate-700">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
           </div>
@@ -355,7 +375,7 @@ export function SalesFunnelPage({ resolved }: SalesFunnelPageProps) {
 
       <section className="bg-[#07111f] px-4 pb-40 pt-12 text-center text-white sm:px-6 md:py-12">
         <div className="mx-auto max-w-4xl">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">Do not leave this until after the mistake</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">The launch offer is still active</p>
           <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">{funnel.finalTitle}</h2>
           <SalesCtaButton onClick={() => openEditionSelector("FINAL_BUY")} className="mt-6" subtitle="Hurry - Time is Running Out">
             {funnel.primaryCta}
