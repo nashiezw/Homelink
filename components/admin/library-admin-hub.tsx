@@ -718,11 +718,13 @@ export function LibraryAdminHub() {
     if (view !== "Sales Funnels") return;
     setSalesFunnelLoading(true);
     setSalesFunnelError(null);
-    void apiFetch<LibrarySalesFunnelDashboard>("/api/v1/admin/library?type=sales-funnels&days=30").then((result) => {
-      if (result.data) setSalesFunnelDashboard(result.data);
-      else setSalesFunnelError(result.error?.message ?? "Sales funnel intelligence could not be loaded.");
-      setSalesFunnelLoading(false);
-    });
+    void apiFetch<LibrarySalesFunnelDashboard>("/api/v1/admin/library?type=sales-funnels&days=30")
+      .then((result) => {
+        if (result.data) setSalesFunnelDashboard(result.data);
+        else setSalesFunnelError(result.error?.message ?? "Sales funnel intelligence could not be loaded.");
+      })
+      .catch(() => setSalesFunnelError("Sales funnel intelligence could not be loaded."))
+      .finally(() => setSalesFunnelLoading(false));
   }, [view]);
 
   async function load() {
@@ -4590,7 +4592,7 @@ function SalesFunnelsAdminView({
   const [selectedId, setSelectedId] = useState(configuredFunnels[0]?.id ?? "");
   const selected = configuredFunnels.find((item) => item.id === selectedId) ?? configuredFunnels[0] ?? defaultLibraryStoreSettings.salesFunnels.funnels[0];
   const [draft, setDraft] = useState<LibrarySalesFunnelConfig>(selected);
-  const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState<"draft" | "publish" | "pause" | null>(null);
 
   useEffect(() => {
     const next = configuredFunnels.find((item) => item.id === selectedId) ?? configuredFunnels[0] ?? defaultLibraryStoreSettings.salesFunnels.funnels[0];
@@ -4598,10 +4600,10 @@ function SalesFunnelsAdminView({
     if (next && next.id !== selectedId) setSelectedId(next.id);
   }, [configuredFunnels, selectedId]);
 
-  const selectedProduct = products.find((product) => product.slug === draft.productSlug);
-  const availableFormats = enabledLibraryFormats(selectedProduct ?? products.find((product) => product.slug === draft.productSlug) ?? products[0]).filter((format) =>
-    ["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(format.type),
-  );
+  const selectedProduct = products.find((product) => product.slug === draft.productSlug) ?? products[0] ?? null;
+  const availableFormats = selectedProduct
+    ? enabledLibraryFormats(selectedProduct).filter((format) => ["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(format.type))
+    : [];
   const funnelOptions = configuredFunnels.map((funnel) => ({ value: funnel.id, label: `${funnel.label || funnel.slug} (${funnel.status})` }));
 
   function update<K extends keyof LibrarySalesFunnelConfig>(key: K, value: LibrarySalesFunnelConfig[K]) {
@@ -4623,12 +4625,12 @@ function SalesFunnelsAdminView({
     }));
   }
 
-  async function saveDraft(status?: LibrarySalesFunnelConfig["status"]) {
-    setSaving(true);
+  async function saveDraft(status: LibrarySalesFunnelConfig["status"], action: "draft" | "publish" | "pause") {
+    setSavingAction(action);
     try {
-      await onSave({ ...draft, status: status ?? draft.status, version: Math.max(1, Number(draft.version) || 1) + 1 });
+      await onSave({ ...draft, status, version: Math.max(1, Number(draft.version) || 1) + 1 });
     } finally {
-      setSaving(false);
+      setSavingAction(null);
     }
   }
 
@@ -4779,9 +4781,9 @@ function SalesFunnelsAdminView({
                 <Link href={`/funnel/${draft.slug}`} target="_blank" className="text-sm text-cyan-300 underline">/funnel/{draft.slug}</Link>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button disabled={saving} variant="secondary" onClick={() => void saveDraft("DRAFT")}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Save Draft</Button>
-                <Button disabled={saving} onClick={() => void saveDraft("PUBLISHED")}>{saving ? <Loader2 className="size-4 animate-spin" /> : null} Publish Funnel</Button>
-                <Button disabled={saving} variant="secondary" onClick={() => void saveDraft("PAUSED")}>Pause</Button>
+                <Button disabled={Boolean(savingAction)} variant="secondary" onClick={() => void saveDraft("DRAFT", "draft")}>{savingAction === "draft" ? <Loader2 className="size-4 animate-spin" /> : null} Save Draft</Button>
+                <Button disabled={Boolean(savingAction)} onClick={() => void saveDraft("PUBLISHED", "publish")}>{savingAction === "publish" ? <Loader2 className="size-4 animate-spin" /> : null} Publish Funnel</Button>
+                <Button disabled={Boolean(savingAction)} variant="secondary" onClick={() => void saveDraft("PAUSED", "pause")}>{savingAction === "pause" ? <Loader2 className="size-4 animate-spin" /> : null} Pause</Button>
               </div>
             </div>
           </div>
