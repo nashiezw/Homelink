@@ -385,7 +385,7 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
         headline: "Before you buy land or start building in Zimbabwe, read this.",
         subheadline:
           "A practical property development and property law guide designed to help buyers, builders, investors, and developers understand important processes before committing money.",
-        primaryCta: "Get the digital guide - $15",
+        primaryCta: "Get the property guide",
         secondaryCta: "See what's inside",
         whatsappUrl: "https://wa.me/263",
         heroImageUrl: "",
@@ -430,7 +430,7 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
         ],
         disclaimer:
           "This guide is educational information only. It does not replace advice from a lawyer, planner, architect, engineer, council, surveyor, valuer, or other qualified professional for your specific project.",
-        finalTitle: "Get the guide before the next property decision.",
+        finalTitle: "Your next property decision could involve serious money.",
         offer: {
           id: "pilot-launch-offer",
           status: "ACTIVE",
@@ -620,6 +620,8 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
   const previousDefaultOfferDescription = "Get the guide at the promotional launch price before the configured deadline.";
   const legacyUrgencyMessage = "The promotional price ends at the configured deadline, then the normal price appears.";
   const previousDefaultUrgencyMessage = "The promotional price ends at the configured deadline, then normal Library pricing applies.";
+  const previousPricePrimaryCta = "Get the digital guide - $15";
+  const previousConversionFinalTitle = "Get the guide before the next property decision.";
   const problemPoints = stringList(row.problemPoints);
   const audience = stringList(row.audience);
   const delayPoints = stringList(row.delayPoints);
@@ -684,7 +686,7 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
     label: str(row.label, fallback.label),
     headline: upgradeLegacyFunnelCopy(str(row.headline, fallback.headline), [legacyHeadline, previousDefaultHeadline], fallback.headline),
     subheadline: upgradeLegacyFunnelCopy(str(row.subheadline, fallback.subheadline), [legacySubheadline, previousDefaultSubheadline], fallback.subheadline),
-    primaryCta: upgradeLegacyFunnelCopy(str(row.primaryCta, fallback.primaryCta), [legacyPrimaryCta, previousDefaultPrimaryCta, previousConversionPrimaryCta], fallback.primaryCta),
+    primaryCta: upgradeLegacyFunnelCopy(str(row.primaryCta, fallback.primaryCta), [legacyPrimaryCta, previousDefaultPrimaryCta, previousConversionPrimaryCta, previousPricePrimaryCta], fallback.primaryCta),
     secondaryCta: upgradeLegacyFunnelCopy(str(row.secondaryCta, fallback.secondaryCta), [legacySecondaryCta, previousDefaultSecondaryCta], fallback.secondaryCta),
     whatsappUrl: str(row.whatsappUrl, fallback.whatsappUrl),
     heroImageUrl: str(row.heroImageUrl, fallback.heroImageUrl),
@@ -699,7 +701,7 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
     trust: trust.length ? (sameStringList(trust, legacyTrust) ? fallback.trust : trust) : fallback.trust,
     faq: sameFaqList(faq, previousDefaultFaq) ? fallback.faq : faq,
     disclaimer: upgradeLegacyFunnelCopy(str(row.disclaimer, fallback.disclaimer), previousDefaultDisclaimer, fallback.disclaimer),
-    finalTitle: upgradeLegacyFunnelCopy(str(row.finalTitle, fallback.finalTitle), [legacyFinalTitle, previousDefaultFinalTitle], fallback.finalTitle),
+    finalTitle: upgradeLegacyFunnelCopy(str(row.finalTitle, fallback.finalTitle), [legacyFinalTitle, previousDefaultFinalTitle, previousConversionFinalTitle], fallback.finalTitle),
     offer: {
       id: str(offer.id, fallbackOffer.id),
       status: (["DRAFT", "SCHEDULED", "ACTIVE", "PAUSED", "EXPIRED"].includes(str(offer.status, fallbackOffer.status).toUpperCase())

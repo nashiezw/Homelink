@@ -259,7 +259,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
 
           <div className="w-full max-w-4xl bg-[#0b8f54] px-4 py-4 text-center text-white">
             <p className="text-sm font-black leading-6">
-              Digital guide: <span className="text-xl uppercase">{product.currency} {digitalPrice.toFixed(2)}</span>. {printedPrice ? <>Printed guide: {product.currency} {printedPrice.toFixed(2)}. </> : null}Secure checkout, invoice provided, digital access after payment.
+              Launch offer: digital guide <span className="text-xl uppercase">{product.currency} {digitalPrice.toFixed(2)}</span>{printedPrice ? <> | printed guide {product.currency} {printedPrice.toFixed(2)}</> : null}. Secure checkout, invoice provided, digital access after payment.
             </p>
           </div>
         </div>
@@ -317,7 +317,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
                 For first-time land buyers, builders, investors, developers, subdivision plans, and anyone preparing for a Zimbabwe property project.
               </p>
               <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-4 min-h-[3.75rem] w-full px-7 text-base shadow-[0_8px_0_rgba(11,13,18,0.22)] sm:mt-0 sm:w-auto sm:min-w-[21rem] sm:flex-none" subtitle="Choose digital or printed">
-                Get the guide now
+                Get the property guide
               </SalesCtaButton>
             </div>
           </div>
@@ -375,8 +375,16 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
 
       <section className="bg-[#07111f] px-4 pb-40 pt-12 text-center text-white sm:px-6 md:py-12">
         <div className="mx-auto max-w-4xl">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">The launch offer is still active</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">Limited launch pricing</p>
           <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">{funnel.finalTitle}</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm font-bold leading-7 text-slate-200 sm:text-base">
+            Get the guide for {product.currency} {digitalPrice.toFixed(2)} and understand the process before you commit.
+          </p>
+          {printedPrice ? (
+            <p className="mt-3 text-sm font-black uppercase tracking-[0.1em] text-[#20c36b]">
+              Digital - {product.currency} {digitalPrice.toFixed(2)} | Printed - {product.currency} {printedPrice.toFixed(2)}
+            </p>
+          ) : null}
           <SalesCtaButton onClick={() => openEditionSelector("FINAL_BUY")} className="mt-6" subtitle="Hurry - Time is Running Out">
             {funnel.primaryCta}
           </SalesCtaButton>
@@ -495,7 +503,7 @@ function SalesBullet({ children, inverse = false }: { children: React.ReactNode;
 }
 
 function EditionCard({ format, currency, onClick, compact = false }: { format: ResolvedLibrarySalesFunnel["formats"][number]; currency: string; onClick: () => void; compact?: boolean }) {
-  const label = format.type === "PRINTED_BOOK" ? "Printed edition" : "Digital edition";
+  const label = format.type === "PRINTED_BOOK" ? "Printed guide" : "Digital guide";
   const description = format.type === "PRINTED_BOOK"
     ? "Physical copy, with delivery or pickup details confirmed in checkout."
     : "Library access after payment confirmation, so you can start with the guide faster.";
