@@ -316,7 +316,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
               <p className="text-sm font-black uppercase leading-6 text-[#0d1422]">
                 For first-time land buyers, builders, investors, developers, subdivision plans, and anyone preparing for a Zimbabwe property project.
               </p>
-              <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-4 min-h-[3.35rem] w-full px-5 text-base shadow-[0_8px_0_rgba(11,13,18,0.22)] sm:mt-0 sm:w-auto sm:min-w-[18rem]" subtitle="Choose digital or printed">
+              <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-4 min-h-[3.75rem] w-full px-7 text-base shadow-[0_8px_0_rgba(11,13,18,0.22)] sm:mt-0 sm:w-auto sm:min-w-[21rem] sm:flex-none" subtitle="Choose digital or printed">
                 Yes, add this to my order
               </SalesCtaButton>
             </div>
@@ -462,12 +462,12 @@ function SalesCtaButton({ children, className, onClick, subtitle }: { children: 
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-[3.55rem] max-w-full flex-col items-center justify-center bg-[#0b8f54] px-6 py-3 text-center text-lg font-black uppercase leading-none text-white shadow-[0_10px_0_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:bg-[#087044] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#20c36b] active:translate-y-0 sm:text-xl",
+        "inline-flex min-h-[3.55rem] max-w-full flex-col items-center justify-center gap-1 bg-[#0b8f54] px-7 py-3.5 text-center text-lg font-black uppercase leading-tight text-white shadow-[0_10px_0_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:bg-[#087044] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#20c36b] active:translate-y-0 sm:px-8 sm:text-xl",
         className,
       )}
     >
-      <span className="whitespace-nowrap">{children}</span>
-      {subtitle ? <span className="mt-1 text-xs font-bold normal-case leading-none text-white/90">({subtitle})</span> : null}
+      <span className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 whitespace-normal break-words px-1 leading-tight">{children}</span>
+      {subtitle ? <span className="max-w-full px-1 text-center text-xs font-bold normal-case leading-tight text-white/90">({subtitle})</span> : null}
     </button>
   );
 }
