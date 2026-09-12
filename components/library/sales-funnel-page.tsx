@@ -268,7 +268,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
       <section className="bg-[#f7f3ea] px-4 py-16 sm:px-6">
         <div className="mx-auto max-w-5xl">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-[0.68rem] font-black uppercase tracking-[0.26em] text-[#0b8f54]">Wait, your order is not complete</p>
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.26em] text-[#0b8f54]">Before you make the next property decision</p>
             <h2 className="mt-3 text-[2rem] font-black uppercase leading-[0.96] text-[#0d1422] sm:text-[3rem]">
               Understand the process before you commit serious money.
             </h2>
