@@ -45,7 +45,8 @@ export default async function SalesFunnelRoute({ params }: { params: Promise<{ s
   const resolved = await getCachedSalesFunnelBySlug(slug);
   if (!resolved) notFound();
   const sample = await getCachedLibraryProductSampleFile(resolved.product.slug);
-  const sampleUrl = sample ? `/api/v1/library/products/${encodeURIComponent(resolved.product.slug)}/sample` : null;
+  const sampleVersion = sample ? encodeURIComponent([sample.fileId, sample.fileName].filter(Boolean).join("-")) : "";
+  const sampleUrl = sample ? `/api/v1/library/products/${encodeURIComponent(resolved.product.slug)}/sample?v=${sampleVersion}` : null;
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",

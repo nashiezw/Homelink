@@ -39,7 +39,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     const remote = await fetch(remoteUrl.toString(), {
       headers: { Accept: "application/pdf,application/octet-stream,*/*" },
       redirect: "follow",
-      cache: "force-cache",
+      cache: "no-store",
     });
     if (!remote.ok) {
       const cloudinaryError = remote.headers.get("x-cld-error");
@@ -80,7 +80,7 @@ function sampleHeaders(sample: LibrarySampleFile, disposition: "inline" | "attac
   return {
     "Content-Type": contentType(sample.fileType, sample.fileName),
     "Content-Disposition": `${disposition}; filename="${sample.fileName.replace(/"/g, "")}"`,
-    "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+    "Cache-Control": "no-store, max-age=0",
     "X-HouseLink-Sample": sample.productTitle,
     "X-HouseLink-Sample-Pages": String(maxSamplePages),
     "X-HouseLink-Sample-Watermark": watermarkSamples ? "1" : "0",
