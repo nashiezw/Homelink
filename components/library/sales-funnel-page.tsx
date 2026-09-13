@@ -258,9 +258,13 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
           </div>
 
           <div className="w-full max-w-4xl bg-[#0b8f54] px-4 py-4 text-center text-white">
-            <p className="text-sm font-black leading-6">
-              Launch offer: digital guide <span className="text-xl uppercase">{product.currency} {digitalPrice.toFixed(2)}</span>{printedPrice ? <> | printed guide {product.currency} {printedPrice.toFixed(2)}</> : null}. Secure checkout, invoice provided, digital access after payment.
-            </p>
+            <div className="grid gap-1">
+              <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-white/85">Launch offer</p>
+              <p className="text-base font-black leading-6 sm:text-lg">
+                Digital guide - <span className="uppercase">{product.currency} {digitalPrice.toFixed(2)}</span>{printedPrice ? <> | Printed guide - {product.currency} {printedPrice.toFixed(2)}</> : null}
+              </p>
+              <p className="text-xs font-bold leading-5 text-white/85 sm:text-sm">Secure checkout. Digital access after payment.</p>
+            </div>
           </div>
         </div>
       </section>
