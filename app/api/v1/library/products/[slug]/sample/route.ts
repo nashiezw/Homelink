@@ -12,13 +12,19 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const settings = await getLibraryStoreSettings();
   if (!settings.preview.enabled) return problem(403, "PREVIEW_DISABLED", "Library previews are currently disabled.");
-  if (settings.preview.requireLogin && !getSessionUserIdFromRequest(request)) {
-    return problem(401, "UNAUTHORIZED", "Sign in to preview Library samples.");
-  }
   const { slug } = await context.params;
   const requestUrl = new URL(request.url);
   const disposition = requestUrl.searchParams.get("download") === "1" ? "attachment" : "inline";
   const versioned = Boolean(requestUrl.searchParams.get("v"));
+  const funnelSlug = requestUrl.searchParams.get("funnel");
+  const publicFunnelPreview = Boolean(
+    funnelSlug
+      && settings.salesFunnels.enabled
+      && settings.salesFunnels.funnels.some((funnel) => funnel.status === "PUBLISHED" && (funnel.slug === funnelSlug || funnel.id === funnelSlug) && funnel.productSlug === slug),
+  );
+  if (settings.preview.requireLogin && !publicFunnelPreview && !getSessionUserIdFromRequest(request)) {
+    return problem(401, "UNAUTHORIZED", "Sign in to preview Library samples.");
+  }
   const sample = await getLibraryProductSampleFile(slug);
   if (!sample) {
     const fallback = await preparedSampleResponse(slug, slug, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples, versioned);
