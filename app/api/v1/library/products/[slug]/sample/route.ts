@@ -16,14 +16,16 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     return problem(401, "UNAUTHORIZED", "Sign in to preview Library samples.");
   }
   const { slug } = await context.params;
-  const disposition = new URL(request.url).searchParams.get("download") === "1" ? "attachment" : "inline";
+  const requestUrl = new URL(request.url);
+  const disposition = requestUrl.searchParams.get("download") === "1" ? "attachment" : "inline";
+  const versioned = Boolean(requestUrl.searchParams.get("v"));
   const sample = await getLibraryProductSampleFile(slug);
   if (!sample) {
-    const fallback = await preparedSampleResponse(slug, slug, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples);
+    const fallback = await preparedSampleResponse(slug, slug, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples, versioned);
     if (fallback) return fallback;
     return problem(404, "SAMPLE_NOT_FOUND", "No previewable sample file is available for this product.");
   }
-  const headers = sampleHeaders(sample, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples);
+  const headers = sampleHeaders(sample, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples, versioned);
 
   const publicFilePath = resolvePublicFilePath(sample.fileUrl, request.url);
   if (publicFilePath) {
@@ -44,7 +46,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     if (!remote.ok) {
       const cloudinaryError = remote.headers.get("x-cld-error");
       if (cloudinaryError) {
-        const fallback = await preparedSampleResponse(slug, sample.productTitle, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples);
+        const fallback = await preparedSampleResponse(slug, sample.productTitle, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples, versioned);
         if (fallback) return fallback;
         return problem(
           502,
@@ -52,7 +54,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
           `Cloudinary blocked delivery for this Library sample: ${cloudinaryError}. Enable PDF and ZIP delivery in Cloudinary Security settings or upload the sample to app-served storage.`,
         );
       }
-      const fallback = await preparedSampleResponse(slug, sample.productTitle, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples);
+      const fallback = await preparedSampleResponse(slug, sample.productTitle, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples, versioned);
       if (fallback) return fallback;
       return problem(502, "UPSTREAM_SAMPLE_FAILED", "The sample file could not be fetched from storage.");
     }
@@ -68,7 +70,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       fileUrl: sample.fileUrl,
       error: error instanceof Error ? error.message : String(error),
     });
-    const fallback = await preparedSampleResponse(slug, sample.productTitle, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples);
+    const fallback = await preparedSampleResponse(slug, sample.productTitle, disposition, settings.preview.maxSamplePages, settings.preview.watermarkSamples, versioned);
     if (fallback) return fallback;
     return problem(502, "UPSTREAM_SAMPLE_FAILED", "The sample file could not be fetched from storage.");
   }
@@ -76,11 +78,11 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
 type LibrarySampleFile = NonNullable<Awaited<ReturnType<typeof getLibraryProductSampleFile>>>;
 
-function sampleHeaders(sample: LibrarySampleFile, disposition: "inline" | "attachment", maxSamplePages: number, watermarkSamples: boolean) {
+function sampleHeaders(sample: LibrarySampleFile, disposition: "inline" | "attachment", maxSamplePages: number, watermarkSamples: boolean, versioned = false) {
   return {
     "Content-Type": contentType(sample.fileType, sample.fileName),
     "Content-Disposition": `${disposition}; filename="${sample.fileName.replace(/"/g, "")}"`,
-    "Cache-Control": "no-store, max-age=0",
+    "Cache-Control": versioned ? "public, max-age=31536000, immutable" : "no-store, max-age=0",
     "X-HouseLink-Sample": sample.productTitle,
     "X-HouseLink-Sample-Pages": String(maxSamplePages),
     "X-HouseLink-Sample-Watermark": watermarkSamples ? "1" : "0",
@@ -113,7 +115,7 @@ async function readPublicFile(publicPathname: string) {
   return buffer ? new Uint8Array(buffer) : null;
 }
 
-async function preparedSampleResponse(slug: string, productTitle: string, disposition: "inline" | "attachment", maxSamplePages: number, watermarkSamples: boolean) {
+async function preparedSampleResponse(slug: string, productTitle: string, disposition: "inline" | "attachment", maxSamplePages: number, watermarkSamples: boolean, versioned = false) {
   const prepared = findPreparedLibrarySample({ slug, title: productTitle });
   if (!prepared?.fileUrl) return null;
   const publicFilePath = resolvePublicFilePath(prepared.fileUrl, "https://www.houselink.co.zw");
@@ -130,6 +132,7 @@ async function preparedSampleResponse(slug: string, productTitle: string, dispos
       disposition,
       maxSamplePages,
       watermarkSamples,
+      versioned,
     ),
   });
 }

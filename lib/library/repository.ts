@@ -432,6 +432,10 @@ export async function getLibraryProductBySlug(slug: string) {
 export async function getLibraryProductSampleFile(slug: string) {
   const product = await getLibraryProductBySlug(slug);
   if (!product) return null;
+  return resolveLibraryProductSampleFile(product);
+}
+
+export function resolveLibraryProductSampleFile(product: LibraryProduct) {
   const sample = product.downloads.find(isLibrarySampleCandidate) ?? null;
   if (!sample?.fileUrl) {
     const prepared = findPreparedLibrarySample({ slug: product.slug, title: product.title });

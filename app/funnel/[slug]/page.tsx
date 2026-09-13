@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { SalesFunnelPage } from "@/components/library/sales-funnel-page";
 import { getSalesFunnelBySlug } from "@/lib/library/funnels";
-import { getLibraryProductSampleFile } from "@/lib/library/repository";
+import { getLibraryProductSampleFile, resolveLibraryProductSampleFile } from "@/lib/library/repository";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
 
 export const dynamic = "force-dynamic";
@@ -44,9 +44,9 @@ export default async function SalesFunnelRoute({ params }: { params: Promise<{ s
   const { slug } = await params;
   const resolved = await getCachedSalesFunnelBySlug(slug);
   if (!resolved) notFound();
-  const sample = await getCachedLibraryProductSampleFile(resolved.product.slug);
+  const sample = await getCachedLibraryProductSampleFile(resolved.product.slug) ?? resolveLibraryProductSampleFile(resolved.product);
   const sampleVersion = sample ? encodeURIComponent([sample.fileId, sample.fileName].filter(Boolean).join("-")) : "";
-  const sampleUrl = sample ? `/api/v1/library/products/${encodeURIComponent(resolved.product.slug)}/sample?v=${sampleVersion}` : null;
+  const sampleUrl = sample ? `/funnel/${encodeURIComponent(resolved.funnel.slug)}/sample?v=${sampleVersion}` : null;
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
