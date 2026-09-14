@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Boxes, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, ImagePlus, Link2, Loader2, MessageCircle, Plus, Search, Star, Trash2, Upload, X } from "lucide-react";
+import Image from "next/image";
+import { AlertTriangle, Boxes, CalendarClock, CheckCircle2, ChevronDown, Copy, Download, Edit3, ExternalLink, FileArchive, FileText, ImagePlus, Link2, Loader2, MessageCircle, Plus, Search, Star, Trash2, Upload, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -3581,6 +3582,21 @@ function Field({ label, value, onChange, placeholder, type = "text", required = 
   );
 }
 
+function DateTimeField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="grid min-w-0 max-w-full gap-1.5 text-sm">
+      <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300"><CalendarClock className="size-3.5 text-emerald-300" /> {label}</span>
+      <input
+        value={toDatetimeLocalValue(value)}
+        onChange={(event) => onChange(fromDatetimeLocalValue(event.target.value, value))}
+        type="datetime-local"
+        className="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500"
+      />
+      <span className="break-words text-[11px] leading-4 text-slate-500">Pick from the calendar/time control or type the date and time directly.</span>
+    </label>
+  );
+}
+
 function cssBackgroundImage(url: string) {
   return `url("${url.replace(/["\\\n\r]/g, "")}")`;
 }
@@ -4600,10 +4616,14 @@ function SalesFunnelsAdminView({
     if (next && next.id !== selectedId) setSelectedId(next.id);
   }, [configuredFunnels, selectedId]);
 
-  const selectedProduct = products.find((product) => product.slug === draft.productSlug) ?? products[0] ?? null;
+  const selectedProduct = products.find((product) => product.slug === draft.productSlug) ?? null;
   const availableFormats = selectedProduct
     ? enabledLibraryFormats(selectedProduct).filter((format) => ["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(format.type))
     : [];
+  const productOptions = uniqueStrings([draft.productSlug, ...products.map((product) => product.slug)].filter(Boolean));
+  const productLabels = Object.fromEntries(products.map((product) => [product.slug, `${product.title} (${product.status})`]));
+  const readiness = getFunnelProductReadiness(draft, selectedProduct, products);
+  const canPublish = readiness.blockers.length === 0;
   const funnelOptions = configuredFunnels.map((funnel) => ({ value: funnel.id, label: `${funnel.label || funnel.slug} (${funnel.status})` }));
 
   function update<K extends keyof LibrarySalesFunnelConfig>(key: K, value: LibrarySalesFunnelConfig[K]) {
@@ -4625,7 +4645,21 @@ function SalesFunnelsAdminView({
     }));
   }
 
+  function selectProduct(productSlug: string) {
+    const product = products.find((item) => item.slug === productSlug) ?? null;
+    setDraft((current) => ({
+      ...current,
+      productSlug,
+      label: current.label.trim() ? current.label : product?.title ?? current.label,
+      offer: {
+        ...current.offer,
+        formatPrices: product ? offerPricesForProduct(product, current.offer.formatPrices) : current.offer.formatPrices,
+      },
+    }));
+  }
+
   async function saveDraft(status: LibrarySalesFunnelConfig["status"], action: "draft" | "publish" | "pause") {
+    if (status === "PUBLISHED" && !canPublish) return;
     setSavingAction(action);
     try {
       await onSave({ ...draft, status, version: Math.max(1, Number(draft.version) || 1) + 1 });
@@ -4725,7 +4759,14 @@ function SalesFunnelsAdminView({
           <div className="grid gap-4">
             <EditorSection title="Product and route">
               <div className="grid gap-3 lg:grid-cols-3">
-                <SelectField label="Library product" value={draft.productSlug} onChange={(value) => update("productSlug", value)} options={products.map((product) => product.slug)} optionLabels={Object.fromEntries(products.map((product) => [product.slug, product.title]))} />
+                <SelectField
+                  label="Library product"
+                  value={draft.productSlug}
+                  onChange={selectProduct}
+                  options={productOptions}
+                  optionLabels={{ ...productLabels, [draft.productSlug]: productLabels[draft.productSlug] ?? `${draft.productSlug || "Missing product"} (missing)` }}
+                  hint="This product supplies the cover, sample, formats, prices, checkout line, and funnel metadata."
+                />
                 <Field label="Funnel slug" value={draft.slug} onChange={(value) => update("slug", slugifyFunnelId(value))} required />
                 <SelectField label="Status" value={draft.status} onChange={(value) => update("status", value as LibrarySalesFunnelConfig["status"])} options={["DRAFT", "PUBLISHED", "PAUSED"]} />
               </div>
@@ -4734,6 +4775,7 @@ function SalesFunnelsAdminView({
                 <SelectField label="Template" value={draft.template} onChange={(value) => update("template", value as LibrarySalesFunnelConfig["template"])} options={["GUIDE_SALES", "BOOK_SALES", "SIMPLE_OFFER"]} />
                 <Field label="WhatsApp URL" value={draft.whatsappUrl} onChange={(value) => update("whatsappUrl", value)} />
               </div>
+              <ProductReadinessPanel product={selectedProduct} formats={availableFormats} readiness={readiness} />
             </EditorSection>
 
             <EditorSection title="Sales copy">
@@ -4754,8 +4796,8 @@ function SalesFunnelsAdminView({
               <div className="grid gap-3 lg:grid-cols-4">
                 <Field label="Offer title" value={draft.offer.title} onChange={(value) => updateOffer("title", value)} />
                 <SelectField label="Offer status" value={draft.offer.status} onChange={(value) => updateOffer("status", value as LibrarySalesFunnelOffer["status"])} options={["DRAFT", "SCHEDULED", "ACTIVE", "PAUSED", "EXPIRED"]} />
-                <Field label="Starts at" value={draft.offer.startsAt} onChange={(value) => updateOffer("startsAt", value)} />
-                <Field label="Ends at" value={draft.offer.endsAt} onChange={(value) => updateOffer("endsAt", value)} />
+                <DateTimeField label="Starts at" value={draft.offer.startsAt} onChange={(value) => updateOffer("startsAt", value)} />
+                <DateTimeField label="Ends at" value={draft.offer.endsAt} onChange={(value) => updateOffer("endsAt", value)} />
               </div>
               <TextAreaField label="Offer description" value={draft.offer.description} onChange={(value) => updateOffer("description", value)} />
               <div className="mt-3 grid gap-3 md:grid-cols-3">
@@ -4782,7 +4824,7 @@ function SalesFunnelsAdminView({
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button disabled={Boolean(savingAction)} variant="secondary" onClick={() => void saveDraft("DRAFT", "draft")}>{savingAction === "draft" ? <Loader2 className="size-4 animate-spin" /> : null} Save Draft</Button>
-                <Button disabled={Boolean(savingAction)} onClick={() => void saveDraft("PUBLISHED", "publish")}>{savingAction === "publish" ? <Loader2 className="size-4 animate-spin" /> : null} Publish Funnel</Button>
+                <Button disabled={Boolean(savingAction) || !canPublish} onClick={() => void saveDraft("PUBLISHED", "publish")}>{savingAction === "publish" ? <Loader2 className="size-4 animate-spin" /> : null} Publish Funnel</Button>
                 <Button disabled={Boolean(savingAction)} variant="secondary" onClick={() => void saveDraft("PAUSED", "pause")}>{savingAction === "pause" ? <Loader2 className="size-4 animate-spin" /> : null} Pause</Button>
               </div>
             </div>
@@ -4884,6 +4926,199 @@ function SalesFunnelsAdminView({
 
 function textLines(value: string) {
   return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+type FunnelProductReadiness = {
+  blockers: string[];
+  warnings: string[];
+};
+
+function ProductReadinessPanel({
+  product,
+  formats,
+  readiness,
+}: {
+  product: LibraryProduct | null;
+  formats: LibraryProductFormat[];
+  readiness: FunnelProductReadiness;
+}) {
+  const coverUrl = product?.gallery.find((item) => item.kind === "mockup" && item.url)?.url || product?.gallery.find((item) => item.kind === "cover" && item.url)?.url || product?.seoImageUrl || "";
+  const sample = product ? product.downloads.find(isSampleDownload) : null;
+  const hasDigitalFile = product ? product.downloads.some((download) => Boolean(download.fileUrl)) : false;
+
+  return (
+    <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-300">Linked product source</p>
+            <h4 className="mt-2 text-lg font-black text-white">{product?.title ?? "No matching product found"}</h4>
+            <p className="mt-1 break-words text-xs text-slate-500">{product?.slug ?? "Choose an existing Library product before publishing this funnel."}</p>
+          </div>
+          {product ? <AdminStatusBadge status={product.status} variant={product.status === "PUBLISHED" ? "success" : product.status === "ARCHIVED" ? "danger" : "warning"} /> : <AdminStatusBadge status="MISSING" variant="danger" />}
+        </div>
+
+        {product ? (
+          <>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <ProductHealthPill label="Formats" value={formats.length ? formats.map(formatLabel).join(" + ") : "None"} ok={formats.length > 0} />
+              <ProductHealthPill label="Sample" value={sample ? sample.fileName || sample.label : "Missing"} ok={Boolean(sample)} />
+              <ProductHealthPill label="Digital file" value={hasDigitalFile ? "Available" : "Missing"} ok={hasDigitalFile} />
+              <ProductHealthPill label="Stock" value={product.stock == null ? "Not tracked" : String(product.stock)} ok={product.stock == null || product.stock > 0} />
+            </div>
+            <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-400">Product data used by this funnel</p>
+              <p className="mt-2 text-sm text-slate-300">
+                Cover/mockup, sample PDF, enabled formats, currency, checkout product ID, product title, and product metadata are pulled from this selected Library product.
+              </p>
+            </div>
+          </>
+        ) : null}
+
+        {readiness.blockers.length || readiness.warnings.length ? (
+          <div className="mt-4 grid gap-2">
+            {readiness.blockers.map((message) => (
+              <ReadinessMessage key={message} tone="danger" message={message} />
+            ))}
+            {readiness.warnings.map((message) => (
+              <ReadinessMessage key={message} tone="warning" message={message} />
+            ))}
+          </div>
+        ) : (
+          <ReadinessMessage tone="success" message="This product is ready for a published sales funnel." />
+        )}
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Product preview</p>
+        {coverUrl ? (
+          <div className="mt-3 overflow-hidden rounded-lg border border-white/10 bg-white p-2">
+            <Image src={coverUrl} alt={product?.title ?? "Linked product cover"} width={320} height={400} sizes="18rem" className="aspect-[4/5] w-full object-cover" />
+          </div>
+        ) : (
+          <div className="mt-3 grid aspect-[4/5] place-items-center rounded-lg border border-dashed border-white/15 bg-black/20 text-center text-xs font-semibold text-slate-500">
+            No cover or mockup image
+          </div>
+        )}
+        {product ? (
+          <div className="mt-3 grid gap-2 text-xs text-slate-400">
+            {formats.map((format) => (
+              <div key={format.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2">
+                <span className="font-semibold text-slate-200">{format.label || format.type}</span>
+                <span>{product.currency} {format.price.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ProductHealthPill({ label, value, ok }: { label: string; value: string; ok: boolean }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+      <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</p>
+      <p className={cn("mt-1 truncate text-sm font-bold", ok ? "text-emerald-200" : "text-amber-200")}>{value}</p>
+    </div>
+  );
+}
+
+function ReadinessMessage({ tone, message }: { tone: "success" | "warning" | "danger"; message: string }) {
+  const Icon = tone === "success" ? CheckCircle2 : AlertTriangle;
+  return (
+    <div className={cn(
+      "flex items-start gap-2 rounded-lg border p-3 text-sm font-semibold",
+      tone === "success" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-100",
+      tone === "warning" && "border-amber-500/25 bg-amber-500/10 text-amber-100",
+      tone === "danger" && "border-red-500/25 bg-red-500/10 text-red-100",
+    )}>
+      <Icon className="mt-0.5 size-4 shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+function getFunnelProductReadiness(funnel: LibrarySalesFunnelConfig, product: LibraryProduct | null, products: LibraryProduct[]): FunnelProductReadiness {
+  const blockers: string[] = [];
+  const warnings: string[] = [];
+  if (!funnel.productSlug.trim()) {
+    blockers.push("Select the Library product this funnel will sell.");
+    return { blockers, warnings };
+  }
+  if (!product) {
+    blockers.push(`The selected product slug "${funnel.productSlug}" does not match any loaded Library product.`);
+    if (products.length) warnings.push("Pick an existing product from the dropdown so the funnel can use real product data.");
+    return { blockers, warnings };
+  }
+
+  const formats = enabledLibraryFormats(product).filter((format) => ["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(format.type));
+  const digitalFormats = formats.filter((format) => format.type !== "PRINTED_BOOK");
+  const printedFormats = formats.filter((format) => format.type === "PRINTED_BOOK");
+  const hasDownloadFile = product.downloads.some((download) => Boolean(download.fileUrl));
+  const hasSample = product.downloads.some(isSampleDownload);
+  const hasCover = Boolean(product.gallery.find((item) => ["cover", "mockup"].includes(item.kind) && item.url) || product.seoImageUrl);
+  const offeredTypes = new Set(funnel.offer.formatPrices.map((price) => price.formatType));
+  const productTypes = new Set(formats.map((format) => format.type));
+  const staleOfferTypes = [...offeredTypes].filter((type) => !productTypes.has(type));
+  const missingOfferTypes = [...productTypes].filter((type) => !offeredTypes.has(type));
+
+  if (product.status === "ARCHIVED") blockers.push("Archived products cannot be used for a published funnel.");
+  if (product.status !== "PUBLISHED") blockers.push(`This product is ${product.status.toLowerCase()}. Publish the product before publishing this funnel.`);
+  if (!formats.length) blockers.push("The selected product has no enabled digital or printed formats.");
+  if (digitalFormats.length && !hasDownloadFile) blockers.push("A digital format is enabled, but the product has no download file.");
+  if (printedFormats.length && product.stock !== null && product.stock <= 0) warnings.push("Printed format is enabled, but stock is currently zero.");
+  if (!hasSample) warnings.push("No sample PDF is attached. The sales funnel can still publish, but preview conversion will be weaker.");
+  if (!hasCover) warnings.push("No cover/mockup image is available. Add product media so the funnel can show the book professionally.");
+  if (staleOfferTypes.length) warnings.push(`Offer pricing includes format types not enabled on this product: ${staleOfferTypes.join(", ")}.`);
+  if (missingOfferTypes.length) warnings.push(`Offer pricing is missing product format types: ${missingOfferTypes.join(", ")}.`);
+  funnel.offer.formatPrices.forEach((price) => {
+    if (price.offerPrice <= 0) blockers.push(`${price.formatType} offer price must be greater than zero.`);
+    if (price.normalPrice > 0 && price.offerPrice > price.normalPrice) warnings.push(`${price.formatType} offer price is higher than the normal price.`);
+  });
+
+  return { blockers, warnings };
+}
+
+function offerPricesForProduct(product: LibraryProduct, currentPrices: LibrarySalesFunnelOffer["formatPrices"]) {
+  return enabledLibraryFormats(product)
+    .filter((format) => ["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(format.type))
+    .map((format) => {
+      const formatType = format.type as LibrarySalesFunnelOffer["formatPrices"][number]["formatType"];
+      const existing = currentPrices.find((row) => row.formatType === formatType);
+      return {
+        formatType,
+        normalPrice: existing?.normalPrice ?? libraryFormatCompareAt(format) ?? format.price,
+        offerPrice: existing?.offerPrice ?? format.price,
+      };
+    });
+}
+
+function isSampleDownload(download: LibraryProduct["downloads"][number]) {
+  const text = `${download.label} ${download.fileName ?? ""} ${download.fileType}`.toLowerCase();
+  return Boolean(download.fileUrl) && (download.previewable || text.includes("sample") || text.includes("preview"));
+}
+
+function formatLabel(format: LibraryProductFormat) {
+  return format.type === "PRINTED_BOOK" ? "Print" : "Digital";
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function toDatetimeLocalValue(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function fromDatetimeLocalValue(value: string, fallback: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return fallback;
+  return date.toISOString();
 }
 
 function slugifyFunnelId(value: string) {

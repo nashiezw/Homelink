@@ -19,6 +19,7 @@ import {
   disableLibraryCustomer,
   duplicateLibraryProduct,
   getAdminLibraryData,
+  listLibraryProducts,
   getLibraryCustomerJourney,
   moderateLibraryReview,
   deleteLibraryOrder,
@@ -38,6 +39,7 @@ import {
   type LibraryTaxonomyKind,
 } from "@/lib/library/repository";
 import { getSalesFunnelDashboard, upsertSalesFunnelConfig } from "@/lib/library/funnels";
+import { enabledLibraryFormats, type LibraryProduct } from "@/lib/library/catalog";
 import { revalidatePath } from "next/cache";
 import type { LibrarySalesFunnelConfig } from "@/lib/library/settings-shared";
 
@@ -249,6 +251,14 @@ export async function POST(request: Request) {
       if (!funnel?.id || !funnel.slug || !funnel.productSlug) {
         return problem(400, "INVALID_SALES_FUNNEL", "Funnel id, slug, and product slug are required.");
       }
+      const linkedProduct = (await listLibraryProducts({ includeDrafts: true })).find((product) => product.slug === funnel.productSlug) ?? null;
+      if (!linkedProduct) {
+        return problem(400, "SALES_FUNNEL_PRODUCT_NOT_FOUND", "Choose an existing Library product before saving this sales funnel.");
+      }
+      const publishError = validateSalesFunnelProductReadiness(funnel, linkedProduct);
+      if (publishError) {
+        return problem(400, "SALES_FUNNEL_PRODUCT_NOT_READY", publishError);
+      }
       const saved = await upsertSalesFunnelConfig(funnel, auth.user.id);
       revalidatePath("/funnel/[slug]", "page");
       revalidatePath(`/funnel/${saved.slug}`);
@@ -454,6 +464,24 @@ function optionalNullableString(value: unknown) {
 function optionalBoolean(value: unknown, fallback: boolean) {
   if (value == null) return fallback;
   return Boolean(value);
+}
+
+function validateSalesFunnelProductReadiness(funnel: LibrarySalesFunnelConfig, product: LibraryProduct) {
+  if (funnel.status !== "PUBLISHED") return null;
+  const formats = enabledLibraryFormats(product).filter((format) => ["PDF", "DIGITAL_BOOK", "PRINTED_BOOK"].includes(format.type));
+  if (product.status === "ARCHIVED") return "Archived products cannot be used for a published sales funnel.";
+  if (product.status !== "PUBLISHED") return "Publish the linked Library product before publishing this sales funnel.";
+  if (!formats.length) return "Enable at least one product format before publishing this sales funnel.";
+  const digitalEnabled = formats.some((format) => format.type !== "PRINTED_BOOK");
+  if (digitalEnabled && !product.downloads.some((download) => Boolean(download.fileUrl))) {
+    return "Add a product download file before publishing a sales funnel with a digital format.";
+  }
+  const productTypes = new Set(formats.map((format) => format.type));
+  const missingOfferType = [...productTypes].find((type) => !funnel.offer.formatPrices.some((price) => price.formatType === type));
+  if (missingOfferType) return `Add offer pricing for the ${missingOfferType.replace(/_/g, " ").toLowerCase()} format before publishing.`;
+  const invalidOffer = funnel.offer.formatPrices.find((price) => productTypes.has(price.formatType) && (!Number.isFinite(price.offerPrice) || price.offerPrice <= 0));
+  if (invalidOffer) return `${invalidOffer.formatType.replace(/_/g, " ")} offer price must be greater than zero.`;
+  return null;
 }
 
 function isHttpsUrl(value: string) {
