@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  BookOpen,
   CreditCard,
   HelpCircle,
   Lock,
@@ -276,9 +277,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
                       {funnel.primaryCta}
                     </SalesCtaButton>
                     {sampleUrl ? (
-                      <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="inline-flex min-h-[3.55rem] items-center justify-center gap-2 border border-white/20 px-5 py-3 text-sm font-black uppercase text-white transition hover:bg-white/10">
-                        {funnel.secondaryCta} <ArrowRight className="size-4" />
-                      </a>
+                      <SamplePreviewCta href={sampleUrl} onClick={openSamplePreview} tone="book" label={funnel.secondaryCta || undefined} />
                     ) : null}
                   </div>
                 </div>
@@ -420,9 +419,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
                     {funnel.primaryCta}
                   </SalesCtaButton>
                   {sampleUrl ? (
-                    <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="inline-flex min-h-[3.55rem] items-center justify-center gap-2 border border-slate-300 bg-white px-5 py-3 text-sm font-black uppercase text-[#0f172a] transition hover:border-[#0b8f54]">
-                      Preview first <ArrowRight className="size-4" />
-                    </a>
+                    <SamplePreviewCta href={sampleUrl} onClick={openSamplePreview} tone="light" />
                   ) : null}
                 </div>
                 <div className="mt-10 grid gap-3 sm:grid-cols-2">
@@ -594,9 +591,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
                 <h2 className="mt-3 text-3xl font-black leading-tight text-[#102033] sm:text-5xl">{funnel.offer.title}</h2>
                 <p className="mt-4 text-sm font-semibold leading-7 text-[#4b5f5a]">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
                 {sampleUrl ? (
-                  <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 border border-[#bdd1c9] bg-white px-4 text-xs font-black uppercase text-[#102033] transition hover:border-[#0b8f54]">
-                    Preview sample <ArrowRight className="size-4" />
-                  </a>
+                  <SamplePreviewCta href={sampleUrl} onClick={openSamplePreview} tone="offer" className="mt-5" />
                 ) : null}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
@@ -691,15 +686,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
                     : funnel.subheadline}
                 </p>
                 {sampleUrl ? (
-                  <a
-                    href={sampleUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={openSamplePreview}
-                    className="mt-5 inline-flex w-fit items-center gap-2 border border-[#0b8f54] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#0b8f54] transition hover:bg-[#e8f8ef]"
-                  >
-                    See what's inside before you buy <ArrowRight className="size-4" />
-                  </a>
+                  <SamplePreviewCta href={sampleUrl} onClick={openSamplePreview} tone="property" className="mt-5" />
                 ) : null}
               </div>
               <div className="relative flex items-center justify-center bg-[#f4f8f6] p-4 sm:p-5 md:bg-[#0b8f54]">
@@ -912,6 +899,58 @@ function Countdown({ endsAt, now, compact = false, minimal = false }: { endsAt: 
         ))}
       </div>
     </div>
+  );
+}
+
+function SamplePreviewCta({
+  href,
+  onClick,
+  tone = "light",
+  className,
+  label = "Preview sample before buying",
+}: {
+  href: string;
+  onClick: () => void;
+  tone?: "book" | "light" | "offer" | "property";
+  className?: string;
+  label?: string;
+}) {
+  const dark = tone === "book";
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClick}
+      className={cn(
+        "group relative inline-flex min-h-[4.35rem] w-full max-w-[24rem] items-center gap-3 overflow-hidden border px-4 py-3 text-left shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(15,23,42,0.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto",
+        dark
+          ? "border-[#d8a73f]/70 bg-[#fff8e8] text-[#201a14] focus-visible:outline-[#d8a73f] hover:bg-white"
+          : "border-[#0b8f54] bg-white text-[#0d1422] focus-visible:outline-[#0b8f54] hover:bg-[#f2fbf6]",
+        tone === "offer" && "border-[#0b8f54] shadow-[8px_8px_0_rgba(11,143,84,0.16)]",
+        tone === "property" && "w-fit max-w-full border-[2px] shadow-[8px_8px_0_rgba(11,143,84,0.18)]",
+        className,
+      )}
+    >
+      <span aria-hidden="true" className={cn("absolute inset-y-0 left-0 w-1.5", dark ? "bg-[#d8a73f]" : "bg-[#0b8f54]")} />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute right-3 top-3 size-2.5 rounded-full animate-ping",
+          dark ? "bg-[#d8a73f]" : "bg-[#20c36b]",
+        )}
+      />
+      <span className={cn("grid size-11 shrink-0 place-items-center border", dark ? "border-[#d8a73f] bg-[#201a14] text-[#d8a73f]" : "border-[#0b8f54]/30 bg-[#e8f8ef] text-[#0b8f54]")}>
+        <BookOpen className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-black uppercase leading-tight tracking-normal">{label}</span>
+        <span className={cn("mt-1 block text-xs font-bold leading-5", dark ? "text-[#675747]" : "text-slate-600")}>
+          Check the contents and sample pages before checkout.
+        </span>
+      </span>
+      <ArrowRight className={cn("size-5 shrink-0 transition group-hover:translate-x-1", dark ? "text-[#906512]" : "text-[#0b8f54]")} />
+    </a>
   );
 }
 
