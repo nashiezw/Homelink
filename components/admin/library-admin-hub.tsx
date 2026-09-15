@@ -4809,9 +4809,9 @@ function SalesFunnelsAdminView({
               <div className="mt-3 grid gap-3 lg:grid-cols-4">
                 {[
                   { id: "PROPERTY_DEVELOPMENT_GUIDE", name: "Property Dev Guide", tone: "Original pilot", copy: "The original hard-coded property-development design exactly as launched: land, plans, approvals, law, countdown, and strong guide positioning." },
-                  { id: "GUIDE_SALES", name: "Guide Sales", tone: "Deep education", copy: "Long-form guide funnel with risk framing, learning sections, FAQ, countdown, and repeated CTAs." },
-                  { id: "BOOK_SALES", name: "Book Sales", tone: "Editorial launch", copy: "Book-focused sales page with cover-first presentation, chapter-style benefit blocks, and a warmer publishing feel." },
-                  { id: "SIMPLE_OFFER", name: "Simple Offer", tone: "Fast checkout", copy: "Compact direct-response page for quick offers, bundles, or promotions where the customer needs fewer sections." },
+                  { id: "GUIDE_SALES", name: "Guide Sales", tone: "Professional report", copy: "Strong guide funnel with dark executive hero, buyer-fit proof, risk framing, learning blocks, offer panel, FAQ, and final CTA." },
+                  { id: "BOOK_SALES", name: "Book Sales", tone: "Premium editorial", copy: "High-trust book launch layout with publication-style cover treatment, chapter benefits, objections, offer cards, FAQ, and sticky mobile CTA." },
+                  { id: "SIMPLE_OFFER", name: "Simple Offer", tone: "Clean conversion", copy: "Direct offer page with sharp headline, checkout panel, trust proof, core inclusions, risk handling, final CTA, and visible refund link." },
                 ].map((item) => (
                   <button
                     key={item.id}
