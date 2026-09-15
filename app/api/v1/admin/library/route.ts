@@ -251,15 +251,16 @@ export async function POST(request: Request) {
       if (!funnel?.id || !funnel.slug || !funnel.productSlug) {
         return problem(400, "INVALID_SALES_FUNNEL", "Funnel id, slug, and product slug are required.");
       }
-      const linkedProduct = (await listLibraryProducts({ includeDrafts: true })).find((product) => product.slug === funnel.productSlug) ?? null;
+      const linkedProduct = (await listLibraryProducts({ includeDrafts: true })).find((product) => product.id === funnel.productId || product.slug === funnel.productSlug) ?? null;
       if (!linkedProduct) {
         return problem(400, "SALES_FUNNEL_PRODUCT_NOT_FOUND", "Choose an existing Library product before saving this sales funnel.");
       }
-      const publishError = validateSalesFunnelProductReadiness(funnel, linkedProduct);
+      const normalizedFunnel = { ...funnel, productId: linkedProduct.id, productSlug: linkedProduct.slug };
+      const publishError = validateSalesFunnelProductReadiness(normalizedFunnel, linkedProduct);
       if (publishError) {
         return problem(400, "SALES_FUNNEL_PRODUCT_NOT_READY", publishError);
       }
-      const saved = await upsertSalesFunnelConfig(funnel, auth.user.id);
+      const saved = await upsertSalesFunnelConfig(normalizedFunnel, auth.user.id);
       revalidatePath("/funnel/[slug]", "page");
       revalidatePath(`/funnel/${saved.slug}`);
       if (saved.slug === "property-development-law") revalidatePath("/property-development-guide");

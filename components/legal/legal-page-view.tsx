@@ -92,6 +92,22 @@ function pageTone(page: LegalPage) {
     };
   }
 
+  if (page.id === "returns") {
+    return {
+      eyebrow: "Refunds & digital products",
+      promiseTitle: "Clear purchase terms before customers pay.",
+      promiseCopy:
+        "HouseLink Library customers should be able to review the format, sample, description, delivery method, and refund route before placing an order.",
+      principles: [
+        { label: "Digital clarity", value: "Format, access, sample, and scope are shown before purchase" },
+        { label: "Fair remedies", value: "Defective, inaccessible, incorrect, or misdescribed products are reviewed" },
+        { label: "Consumer rights", value: "The policy does not ask customers to waive statutory rights" },
+      ],
+      primaryHref: "/library",
+      primaryLabel: "Browse Library",
+    };
+  }
+
   return {
     eyebrow: "Terms & trust",
     promiseTitle: "Clear rules for a safer property marketplace.",
@@ -207,6 +223,19 @@ export function LegalPageView({ page, fallbackTitle }: LegalPageViewProps) {
               <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Training and marketplace disclaimer</p>
               <p className="mt-2 text-sm leading-6 text-amber-900/80 dark:text-amber-100/80">
                 HouseLink Academy certificates are private HouseLink-issued training credentials, not statutory licences or regulatory approvals.
+              </p>
+              <Link href="/legal-disclaimer" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-900 hover:underline dark:text-amber-100">
+                Read the legal disclaimer
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </div>
+          )}
+
+          {page.id === "returns" && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Important content note</p>
+              <p className="mt-2 text-sm leading-6 text-amber-900/80 dark:text-amber-100/80">
+                HouseLink Library publications are educational reference materials and do not replace professional advice for a specific transaction, development, dispute, or regulated process.
               </p>
               <Link href="/legal-disclaimer" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-900 hover:underline dark:text-amber-100">
                 Read the legal disclaimer

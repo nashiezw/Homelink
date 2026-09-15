@@ -11,7 +11,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Legal Disclaimer | HouseLink Zimbabwe",
-  description: "Legal disclaimer for HouseLink Zimbabwe marketplace services and HouseLink Zimbabwe Academy training certificates.",
+  description: "Legal disclaimer for HouseLink Zimbabwe marketplace services, HouseLink Library publications, and HouseLink Zimbabwe Academy training certificates.",
   alternates: { canonical: "/legal-disclaimer" },
 };
 
@@ -20,7 +20,7 @@ export default function LegalDisclaimerPage() {
     <PageShell
       eyebrow="Legal"
       title="Legal Disclaimer"
-      description="Important distinctions about HouseLink's marketplace services, Academy training programmes, and third-party regulated professional requirements."
+      description="Important distinctions about HouseLink's marketplace services, Library publications, Academy training programmes, and third-party regulated professional requirements."
       compactHero
     >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -43,12 +43,25 @@ export default function LegalDisclaimerPage() {
             </p>
           </LegalSection>
 
+          <LegalSection title="Library Publications Disclaimer">
+            <p>
+              HouseLink Library books, manuals, templates, PDFs, samples, and digital publications are educational and professional reference materials. They are not legal, financial, planning, engineering, valuation, architectural, tax, accounting, council, regulatory, or other professional advice for a specific matter.
+            </p>
+            <p>
+              A publication title, chapter heading, product description, or sample may refer to property law or compliance topics, but that does not make the publication a legal textbook, legal practitioner manual, or substitute for current legislation, case-law research, or advice from a qualified legal practitioner.
+            </p>
+            <p>
+              Readers remain responsible for confirming current laws, by-laws, permit requirements, ownership records, professional obligations, and project-specific risks before acting on a property transaction, development, dispute, or regulated process.
+            </p>
+          </LegalSection>
+
           <LegalSection title="Relationship With Terms">
             <p>
               This disclaimer forms part of the wider HouseLink website terms and should be read together with the{" "}
               <Link href="/terms" className="font-bold text-emerald-700 underline-offset-2 hover:underline">Terms of Service</Link>{" "}
               and{" "}
-              <Link href="/privacy" className="font-bold text-emerald-700 underline-offset-2 hover:underline">Privacy Policy</Link>.
+              <Link href="/privacy" className="font-bold text-emerald-700 underline-offset-2 hover:underline">Privacy Policy</Link>. For HouseLink Library purchases, also read the{" "}
+              <Link href="/returns" className="font-bold text-emerald-700 underline-offset-2 hover:underline">Returns, Refunds & Digital Products Policy</Link>.
             </p>
           </LegalSection>
         </article>
@@ -60,6 +73,7 @@ export default function LegalDisclaimerPage() {
             <li>They may be shared and verified as evidence of completing HouseLink Academy training.</li>
             <li>They are not statutory licences or regulatory approvals.</li>
             <li>Property transactions may require registered professionals or public authorities.</li>
+            <li>Library publications are educational reference materials, not legal advice.</li>
             <li>Users remain responsible for legal and regulatory compliance.</li>
           </ul>
         </aside>

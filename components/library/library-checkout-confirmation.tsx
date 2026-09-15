@@ -292,7 +292,7 @@ export function LibraryCheckoutConfirmation({
                       </p>
                     )}
                     <Link href="/returns" className="mt-3 inline-flex text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
-                      Returns & reprints policy
+                      Refund policy
                     </Link>
                   </div>
                 ) : null}

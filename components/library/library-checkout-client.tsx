@@ -472,9 +472,9 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
       promptBuyerDetails("Please add your phone number so HouseLink can follow up about payment proof and include it on your invoice.");
       return;
     }
-    if (storeSettings?.checkout.requireTerms && !termsAccepted) {
+    if (!termsAccepted) {
       setBusy(false);
-      setError("Accept the Library terms to continue.");
+      setError("Review and accept the Library terms, privacy policy, and refund policy to continue.");
       return;
     }
     if (!shippingReady()) {
@@ -860,7 +860,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
               <p className="mt-3 text-xs text-slate-500">
                 See our{" "}
                 <Link href={storeSettings?.checkout.returnsUrl || "/returns"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">
-                  returns & reprints policy
+                  refund policy
                 </Link>
                 .
               </p>
@@ -1034,27 +1034,29 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
               )}
               {(quote?.discountTotal ?? 0) > 0 && <div className="flex justify-between text-emerald-700 dark:text-emerald-300"><span>Coupon</span><span>−{(quote?.discountTotal ?? 0).toFixed(2)}</span></div>}
               <Link href={storeSettings?.checkout.returnsUrl || "/returns"} className="block pt-1 text-xs font-semibold text-emerald-700 underline dark:text-emerald-300">
-                Returns & reprints
+                Refund policy
               </Link>
               {storeSettings?.tax.displayTaxBreakdown !== false && (quote?.taxTotal ?? 0) > 0 && (
                 <div className="flex justify-between"><span>{quote?.taxLabel || storeSettings?.tax.taxLabel || "Tax"}</span><span>{(quote?.taxTotal ?? 0).toFixed(2)}</span></div>
               )}
               {(quote?.shippingTotal ?? 0) > 0 && <div className="flex justify-between"><span>Shipping</span><span>{(quote?.shippingTotal ?? 0).toFixed(2)}</span></div>}
               {needsShipping && shippingMethod === "PICKUP" && <div className="flex justify-between"><span>Shipping</span><span>Local pickup</span></div>}
-              {storeSettings?.checkout.requireTerms && (
+              {(
                 <label className="flex items-start gap-2 pt-2 text-xs text-slate-600 dark:text-slate-300">
                   <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5" />
                   <span>
-                    I agree to the{" "}
-                    <Link href={storeSettings.checkout.termsUrl || "/legal/terms"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">Library terms</Link>
-                    {" "}and{" "}
-                    <Link href={storeSettings.checkout.privacyUrl || "/legal/privacy"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">privacy policy</Link>.
+                    I have reviewed my order, selected format, product description, and available sample. I agree to the{" "}
+                    <Link href={storeSettings?.checkout.termsUrl || "/terms"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">Terms of Service</Link>
+                    {", "}
+                    <Link href={storeSettings?.checkout.privacyUrl || "/privacy"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">Privacy Policy</Link>
+                    {", and "}
+                    <Link href={storeSettings?.checkout.returnsUrl || "/returns"} className="font-semibold text-emerald-700 underline dark:text-emerald-300">Refund Policy</Link>.
                   </span>
                 </label>
               )}
-              {checkoutAttempted && storeSettings?.checkout.requireTerms && !termsAccepted && (
+              {checkoutAttempted && !termsAccepted && (
                 <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
-                  Please accept the terms to complete your order.
+                  Please confirm that you reviewed the order and policies before placing your order.
                 </p>
               )}
               <div className="flex justify-between text-lg font-bold">

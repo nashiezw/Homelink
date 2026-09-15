@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ArrowRight,
   CreditCard,
@@ -53,6 +54,9 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
   const coreInclusions = funnel.learning.slice(0, 4);
   const fastRisks = funnel.problemPoints.slice(0, 6);
   const shortFaq = funnel.faq.slice(0, 5);
+  const propertyLawScope =
+    "This is a practical property-development guide, not a property-law textbook or legal practitioner manual. The legal content gives context for development decisions and does not replace advice from a qualified legal practitioner.";
+  const isPropertyDevelopmentTemplate = funnel.template === "PROPERTY_DEVELOPMENT_GUIDE";
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -207,6 +211,152 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
     window.location.href = `/funnel/${encodeURIComponent(funnel.slug)}/checkout?funnelId=${encodeURIComponent(funnel.id)}&offerId=${encodeURIComponent(funnel.offer.id)}`;
   }
 
+  const selectorModal = selectorOpen ? (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => setSelectorOpen(false)}>
+      <div className="w-full border-t-[6px] border-[#0b8f54] bg-white p-4 shadow-2xl sm:mx-auto sm:max-w-2xl sm:border-[6px] sm:border-[#08111f]" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b8f54]">Choose your edition</p>
+            <h2 className="mt-1 text-2xl font-black uppercase text-[#08111f]">{funnel.primaryCta}</h2>
+          </div>
+          <button type="button" onClick={() => setSelectorOpen(false)} className="border-2 border-slate-200 p-2 text-slate-500 hover:bg-slate-100" aria-label="Close edition selector">
+            <X className="size-5" />
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {formatChoices.map((format) => (
+            <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} compact />
+          ))}
+        </div>
+        <div className="mt-4 grid gap-2 text-xs font-semibold text-slate-500 sm:grid-cols-3">
+          <span className="inline-flex items-center gap-1"><Lock className="size-3.5" /> Secure checkout</span>
+          <span className="inline-flex items-center gap-1"><ReceiptText className="size-3.5" /> Invoice provided</span>
+          <span className="inline-flex items-center gap-1"><CreditCard className="size-3.5" /> Platform payments</span>
+        </div>
+        <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
+          Review the edition and sample before checkout. Refund requests follow the{" "}
+          <Link href="/returns" className="font-black text-[#0b8f54] underline underline-offset-2">Refund Policy</Link>.
+        </p>
+      </div>
+    </div>
+  ) : null;
+
+  if (funnel.template === "BOOK_SALES") {
+    return (
+      <main className="min-h-screen bg-[#fffdf7] text-[#17120c]">
+        <section className="bg-[#17120c] px-4 py-6 text-white sm:px-6">
+          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(18rem,0.55fr)] lg:items-center">
+            <div>
+              <FunnelLogo />
+              <p className="mt-10 text-xs font-black uppercase tracking-[0.26em] text-[#f1c85b]">{funnel.label}</p>
+              <h1 className="mt-4 max-w-4xl text-4xl font-black leading-[0.98] tracking-normal sm:text-6xl lg:text-7xl">
+                {funnel.headline}
+              </h1>
+              <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-stone-200">{funnel.subheadline}</p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <SalesCtaButton onClick={() => openEditionSelector("BOOK_HERO_BUY")} subtitle="Choose your format">
+                  {funnel.primaryCta}
+                </SalesCtaButton>
+                {sampleUrl ? (
+                  <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="inline-flex min-h-[3.55rem] items-center justify-center gap-2 border border-white/20 px-5 py-3 text-sm font-black uppercase text-white transition hover:bg-white/10">
+                    {funnel.secondaryCta} <ArrowRight className="size-4" />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+            <div className="mx-auto w-full max-w-[18rem] rotate-[-2deg] border-[10px] border-white bg-white p-3 shadow-[18px_18px_0_rgba(241,200,91,0.32)]">
+              <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="w-full" />
+              <p className="bg-[#f1c85b] px-3 py-3 text-center text-sm font-black uppercase text-[#17120c]">From {product.currency} {minPrice.toFixed(2)}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-14 sm:px-6">
+          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-[#a35b00]">{funnel.learningTitle}</p>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {funnel.learning.slice(0, 6).map((item) => (
+                  <article key={item.title} className="border border-stone-200 bg-white p-5 shadow-[8px_8px_0_rgba(23,18,12,0.06)]">
+                    <h2 className="text-lg font-black text-[#17120c]">{item.title}</h2>
+                    <p className="mt-2 text-sm font-semibold leading-7 text-stone-600">{item.description}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+            <aside className="h-fit border-2 border-[#17120c] bg-[#f8efe0] p-5">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#a35b00]">Buyer's note</p>
+              <p className="mt-3 text-sm font-semibold leading-7 text-[#17120c]">{funnel.disclaimer}</p>
+              <p className="mt-4 text-xs font-semibold leading-5 text-stone-700">
+                Review the selected format, sample, and <Link href="/returns" className="font-black underline">Refund Policy</Link> before checkout.
+              </p>
+              <SalesCtaButton onClick={() => openEditionSelector("BOOK_SIDE_BUY")} className="mt-5 w-full shadow-[0_7px_0_rgba(23,18,12,0.32)]" subtitle="Secure checkout">
+                Buy the book
+              </SalesCtaButton>
+            </aside>
+          </div>
+        </section>
+
+        <section id="funnel-offer" className="bg-[#f8efe0] px-4 py-14 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="text-3xl font-black text-[#17120c] sm:text-5xl">{funnel.offer.title}</h2>
+            <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-stone-700">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
+            <div className="mt-7 grid gap-4 md:grid-cols-2">
+              {formatChoices.map((format) => (
+                <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} />
+              ))}
+            </div>
+          </div>
+        </section>
+        {selectorModal}
+      </main>
+    );
+  }
+
+  if (funnel.template === "SIMPLE_OFFER") {
+    return (
+      <main className="min-h-screen bg-white text-[#0f172a]">
+        <section className="px-4 py-6 sm:px-6">
+          <div className="mx-auto max-w-5xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_20rem]">
+              <div className="p-6 sm:p-10">
+                <HouseLinkBrand variant="nav" />
+                <p className="mt-8 text-xs font-black uppercase tracking-[0.2em] text-[#0b8f54]">{funnel.label}</p>
+                <h1 className="mt-3 text-3xl font-black leading-tight tracking-normal sm:text-5xl">{funnel.headline}</h1>
+                <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">{funnel.subheadline}</p>
+                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  {funnel.trust.slice(0, 3).map((item) => (
+                    <span key={item} className="inline-flex min-h-12 items-center gap-2 border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700">
+                      <ShieldCheck className="size-4 text-[#0b8f54]" /> {item}
+                    </span>
+                  ))}
+                </div>
+                <div id="funnel-offer" className="mt-7 grid gap-3 sm:grid-cols-2">
+                  {formatChoices.map((format) => (
+                    <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} compact />
+                  ))}
+                </div>
+                <p className="mt-5 text-xs font-semibold leading-5 text-slate-500">
+                  Review the product details, sample where available, and <Link href="/returns" className="font-black text-[#0b8f54] underline">Refund Policy</Link> before placing your order.
+                </p>
+              </div>
+              <div className="bg-[#0f172a] p-6 text-white sm:p-8">
+                <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="mx-auto w-full max-w-[14rem]" />
+                <p className="mt-6 text-center text-sm font-black uppercase text-[#20c36b]">From {product.currency} {minPrice.toFixed(2)}</p>
+                {sampleUrl ? (
+                  <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="mt-4 inline-flex w-full min-h-11 items-center justify-center gap-2 border border-white/15 text-xs font-black uppercase text-white hover:bg-white/10">
+                    Preview sample <ArrowRight className="size-4" />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
+        {selectorModal}
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#e9e9e4] text-[#101010]">
       <section className="relative overflow-hidden bg-[#07111f] text-white">
@@ -214,10 +364,18 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
           <div className="w-full max-w-4xl">
             <FunnelLogo />
             <p className="mt-5 text-[0.68rem] font-black uppercase tracking-[0.14em] text-white sm:mt-9 sm:text-base sm:tracking-normal">
-              Before you commit property money in <span className="text-[#20c36b]">Zimbabwe</span>
+              {isPropertyDevelopmentTemplate ? (
+                <>Before you commit property money in <span className="text-[#20c36b]">Zimbabwe</span></>
+              ) : (
+                funnel.label
+              )}
             </p>
             <h1 className="mx-auto mt-2 max-w-4xl text-[2rem] font-black uppercase leading-[0.94] tracking-normal sm:mt-4 sm:text-6xl lg:text-[4.6rem]">
-              <span className="text-[#20c36b]">Before you buy land</span> or start building, read this.
+              {isPropertyDevelopmentTemplate ? (
+                <><span className="text-[#20c36b]">Before you buy land</span> or start building, read this.</>
+              ) : (
+                funnel.headline
+              )}
             </h1>
             {funnel.offer.countdown && !offerExpired ? <Countdown endsAt={funnel.offer.endsAt} now={now} compact minimal /> : null}
             <div className="relative mx-auto mt-5 flex max-w-[25rem] flex-col items-stretch sm:mt-7">
@@ -233,9 +391,13 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
             <div className="relative grid min-h-[15rem] overflow-hidden bg-[#f3f0e8] sm:min-h-[25rem] md:grid-cols-[minmax(0,1fr)_18rem]">
               <div className="flex flex-col justify-center bg-[#f8f6f0] p-5 text-left text-[#101010] sm:p-8">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b8f54]">Inside the complete guide</p>
-                <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">Land. Plans. Approvals. Law.</h2>
+                <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">
+                  {isPropertyDevelopmentTemplate ? "Land. Plans. Approvals. Law." : product.title}
+                </h2>
                 <p className="mt-4 max-w-xl text-sm font-bold leading-7 text-slate-700 sm:text-base">
-                  A practical Zimbabwe property development and property law guide for land buyers, builders, developers, investors, and anyone preparing for approvals, contractors, subdivision, or council processes.
+                  {isPropertyDevelopmentTemplate
+                    ? "A practical Zimbabwe property development and property law guide for land buyers, builders, developers, investors, and anyone preparing for approvals, contractors, subdivision, or council processes."
+                    : funnel.subheadline}
                 </p>
                 {sampleUrl ? (
                   <a
@@ -318,7 +480,9 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
 
             <div className="border-t border-[#d8d1c3] bg-[#f4f8f6] p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
               <p className="text-sm font-black uppercase leading-6 text-[#0d1422]">
-                For first-time land buyers, builders, investors, developers, subdivision plans, and anyone preparing for a Zimbabwe property project.
+                {isPropertyDevelopmentTemplate
+                  ? "For first-time land buyers, builders, investors, developers, subdivision plans, and anyone preparing for a Zimbabwe property project."
+                  : funnel.audienceTitle}
               </p>
               <SalesCtaButton onClick={() => openEditionSelector("ORDER_STACK_BUY")} className="mt-4 min-h-[3.75rem] w-full px-7 text-base shadow-[0_8px_0_rgba(11,13,18,0.22)] sm:mt-0 sm:w-auto sm:min-w-[21rem] sm:flex-none" subtitle="Choose digital or printed">
                 Get the property guide
@@ -345,6 +509,13 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
             <span className="inline-flex items-center justify-center gap-2 border border-[#d8d1c3] bg-[#f7f3ea] p-2.5"><ReceiptText className="size-3.5" /> Invoice provided</span>
             <span className="inline-flex items-center justify-center gap-2 border border-[#d8d1c3] bg-[#f7f3ea] p-2.5"><ShieldCheck className="size-3.5" /> HouseLink Library</span>
           </div>
+          <div className="mt-5 border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-950">
+            <p>
+              Review the selected format, product description, table of contents, and sample where available before buying. Refund and cancellation requests are handled under the{" "}
+              <Link href="/returns" className="font-black underline underline-offset-2">Returns, Refunds & Digital Products Policy</Link>.
+            </p>
+            <p className="mt-2 text-xs leading-5 text-amber-900">{propertyLawScope}</p>
+          </div>
         </div>
       </section>
 
@@ -354,6 +525,13 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
             <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[#0b8f54]">Last checks before buying</p>
             <h2 className="mt-2 text-[2rem] font-black uppercase leading-[0.96] text-[#0d1422] sm:text-[2.65rem]">Questions before you order</h2>
             <p className="mt-4 text-sm font-semibold leading-7 text-slate-700">{funnel.disclaimer}</p>
+            <div className="mt-5 border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-5 text-amber-950">
+              <p>{propertyLawScope}</p>
+              <p className="mt-2">
+                Before placing an order, review the sample where available and confirm whether you are choosing a digital or printed edition. See the{" "}
+                <Link href="/returns" className="font-black underline underline-offset-2">Refund Policy</Link>.
+              </p>
+            </div>
           </div>
           <div className="grid gap-3">
             {shortFaq.map((faq) => (
@@ -382,7 +560,9 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#20c36b]">Limited launch pricing</p>
           <h2 className="mt-3 text-3xl font-black uppercase leading-tight sm:text-5xl">{funnel.finalTitle}</h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm font-bold leading-7 text-slate-200 sm:text-base">
-            Get the guide for {product.currency} {digitalPrice.toFixed(2)} and understand the process before you commit.
+            {isPropertyDevelopmentTemplate
+              ? `Get the guide for ${product.currency} ${digitalPrice.toFixed(2)} and understand the process before you commit.`
+              : funnel.subheadline}
           </p>
           {printedPrice ? (
             <p className="mt-3 text-sm font-black uppercase tracking-[0.1em] text-[#20c36b]">
@@ -407,31 +587,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
         </div>
       ) : null}
 
-      {selectorOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => setSelectorOpen(false)}>
-          <div className="w-full border-t-[6px] border-[#0b8f54] bg-white p-4 shadow-2xl sm:mx-auto sm:max-w-2xl sm:border-[6px] sm:border-[#08111f]" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0b8f54]">Choose your edition</p>
-                <h2 className="mt-1 text-2xl font-black uppercase text-[#08111f]">Yes, I want the guide</h2>
-              </div>
-              <button type="button" onClick={() => setSelectorOpen(false)} className="border-2 border-slate-200 p-2 text-slate-500 hover:bg-slate-100" aria-label="Close edition selector">
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {formatChoices.map((format) => (
-                <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} compact />
-              ))}
-            </div>
-            <div className="mt-4 grid gap-2 text-xs font-semibold text-slate-500 sm:grid-cols-3">
-              <span className="inline-flex items-center gap-1"><Lock className="size-3.5" /> Secure checkout</span>
-              <span className="inline-flex items-center gap-1"><ReceiptText className="size-3.5" /> Invoice provided</span>
-              <span className="inline-flex items-center gap-1"><CreditCard className="size-3.5" /> Platform payments</span>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {selectorModal}
 
     </main>
   );

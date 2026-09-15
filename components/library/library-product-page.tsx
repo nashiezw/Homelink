@@ -270,6 +270,9 @@ export function LibraryProductPage({
   const activeGalleryDisplayUrl = displayImageUrl(activeGalleryImage?.url, { width: 900 });
   const isPrinted = selectedFormat?.type === "PRINTED_BOOK";
   const outOfStock = Boolean(isPrinted && product.stock === 0);
+  const isPropertyLawGuide = /property\s+law|legal|conveyancing|title\s+deed|land\s+tenure/i.test(
+    `${product.title} ${product.subtitle ?? ""} ${product.category} ${product.collection ?? ""}`,
+  );
   const maxPrintQty = maxLibraryPrintQuantity(product);
   const [printQty, setPrintQty] = useState(1);
   useEffect(() => {
@@ -311,6 +314,9 @@ export function LibraryProductPage({
   const accessCopy = isPrinted
     ? printStockLabel
     : "Digital PDF unlocks automatically once payment is confirmed. Your invoice and access stay in your HouseLink account.";
+  const purchaseNotice = isPrinted
+    ? "Printed edition: review the description, format, price, delivery or pickup details, and refund policy before purchasing."
+    : "Digital edition: this is an educational and professional reference publication. Please review the description, contents, and available sample before purchasing.";
   const sampleFile = useMemo(
     () => product.downloads.find(isLibrarySampleFile) ?? preparedSampleToDownload(findPreparedLibrarySample({ slug: product.slug, title: product.title })),
     [product.downloads, product.slug, product.title],
@@ -1287,6 +1293,22 @@ export function LibraryProductPage({
                     </button>
                   ) : null}
                 </div>
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/80 p-3.5 text-sm leading-6 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+                  <p className="flex min-w-0 gap-2 font-semibold">
+                    <ReceiptText className="mt-1 size-4 shrink-0" />
+                    <span className="min-w-0 break-words">{purchaseNotice}</span>
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
+                    Refund and cancellation requests are handled under our{" "}
+                    <Link href="/returns" className="font-bold underline underline-offset-2">Refund Policy</Link>{" "}
+                    and applicable Zimbabwean consumer law. This notice does not limit statutory consumer rights.
+                  </p>
+                  {isPropertyLawGuide ? (
+                    <p className="mt-2 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
+                      About the property-law content: this is a practical property-development guide, not a property-law textbook or legal practitioner manual. The legal sections give a practical overview of issues such as ownership, land tenure, title deeds, conveyancing principles, contracts, leases, servitudes, disputes, legal risk, and regulatory compliance.
+                    </p>
+                  ) : null}
+                </div>
                 <div className="mt-5 grid min-w-0 gap-2.5">
                   <Button disabled={outOfStock} onClick={buyNow} className="min-h-12 w-full">
                     <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{activeBuyLabel}</span>
@@ -1406,6 +1428,18 @@ export function LibraryProductPage({
           ) : null}
 
           <Panel title="Before You Buy" icon={HelpCircle}>
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm leading-6 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+              <p className="font-semibold">{purchaseNotice}</p>
+              <p className="mt-2 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
+                Check the selected format, product description, table of contents, and sample preview where available. Refunds, cancellations, defective files, damaged printed books, and incorrect products are handled under the{" "}
+                <Link href="/returns" className="font-bold underline underline-offset-2">Returns, Refunds & Digital Products Policy</Link>.
+              </p>
+              {isPropertyLawGuide ? (
+                <p className="mt-2 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
+                  This guide gives practical legal context for property development. Readers needing statutory interpretation, case-law analysis, or legal advice should consult current legislation and a qualified legal practitioner.
+                </p>
+              ) : null}
+            </div>
             <div className="space-y-2">
               {buyerFaqs.map((faq) => (
                 <details
@@ -1832,6 +1866,13 @@ export function LibraryProductPage({
                   <FileText className="size-4 shrink-0" /> Preview sample
                 </Button>
               ) : null}
+            </div>
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs leading-5 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+              <p className="font-semibold">{purchaseNotice}</p>
+              <p className="mt-1 text-amber-900/80 dark:text-amber-100/80">
+                Review the sample and selected format before checkout. See the{" "}
+                <Link href="/returns" className="font-bold underline underline-offset-2">Refund Policy</Link>.
+              </p>
             </div>
             <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
               <button type="button" disabled={wishBusy} onClick={() => void toggleWishlist()} className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-bold leading-tight text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Add to wishlist">

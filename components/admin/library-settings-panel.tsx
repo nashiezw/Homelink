@@ -296,10 +296,13 @@ export function LibrarySettingsPanel({
                   <TextField label="Minimum order amount" type="number" value={String(draft.checkout.minimumOrderAmount)} onChange={(value) => setDraft({ ...draft, checkout: { ...draft.checkout, minimumOrderAmount: Number(value) || 0 } })} />
                   <TextField label="Terms URL" value={draft.checkout.termsUrl} onChange={(termsUrl) => setDraft({ ...draft, checkout: { ...draft.checkout, termsUrl } })} />
                   <TextField label="Privacy URL" value={draft.checkout.privacyUrl} onChange={(privacyUrl) => setDraft({ ...draft, checkout: { ...draft.checkout, privacyUrl } })} />
+                  <TextField label="Refund policy URL" value={draft.checkout.returnsUrl} onChange={(returnsUrl) => setDraft({ ...draft, checkout: { ...draft.checkout, returnsUrl } })} />
                   <TextField label="Order note placeholder" value={draft.checkout.notePlaceholder} onChange={(notePlaceholder) => setDraft({ ...draft, checkout: { ...draft.checkout, notePlaceholder } })} className="sm:col-span-2" />
                 </FormGrid>
                 <div className="mt-3 grid gap-2">
-                  <ToggleRow label="Require terms acceptance" checked={draft.checkout.requireTerms} onChange={(requireTerms) => setDraft({ ...draft, checkout: { ...draft.checkout, requireTerms } })} />
+                  <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+                    Terms, privacy, and refund-policy acknowledgement is required for Library checkout.
+                  </div>
                   <ToggleRow label="Allow coupons at checkout" checked={draft.checkout.allowCoupons} onChange={(allowCoupons) => setDraft({ ...draft, checkout: { ...draft.checkout, allowCoupons } })} />
                   <ToggleRow label="Require account for digital products" checked={draft.checkout.requireAccountForDigital} onChange={(requireAccountForDigital) => setDraft({ ...draft, checkout: { ...draft.checkout, requireAccountForDigital } })} />
                   <ToggleRow label="Continue with email at checkout (light account, set password later)" checked={draft.checkout.guestCheckout} onChange={(guestCheckout) => setDraft({ ...draft, checkout: { ...draft.checkout, guestCheckout } })} />

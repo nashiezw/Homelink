@@ -52,6 +52,11 @@ export function FunnelSamplePreviewPage({ resolved, sampleUrl, sampleDownloadUrl
         <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden bg-white shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:border sm:border-white/10">
           <div className="border-b border-slate-200 bg-white px-4 py-3 text-[#0d1422]">
             <p className="truncate text-sm font-black">{product.title}</p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+              Sample preview only. Review the description, table of contents, format, and{" "}
+              <Link href="/returns" className="font-black text-[#0b8f54] underline underline-offset-2">Refund Policy</Link>{" "}
+              before purchasing.
+            </p>
             <div className="mt-2 flex gap-2 sm:hidden">
               <a href={sampleUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-[0.68rem] font-black uppercase text-slate-700">
                 <ExternalLink className="size-4" /> Open PDF

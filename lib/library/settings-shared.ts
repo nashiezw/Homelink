@@ -160,8 +160,9 @@ export type LibrarySalesFunnelOffer = {
 export type LibrarySalesFunnelConfig = {
   id: string;
   slug: string;
+  productId?: string;
   productSlug: string;
-  template: "BOOK_SALES" | "GUIDE_SALES" | "SIMPLE_OFFER";
+  template: "BOOK_SALES" | "GUIDE_SALES" | "SIMPLE_OFFER" | "PROPERTY_DEVELOPMENT_GUIDE";
   status: "DRAFT" | "PUBLISHED" | "PAUSED";
   version: number;
   headline: string;
@@ -259,7 +260,7 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
   checkout: {
     guestCheckout: true,
     requireAccountForDigital: true,
-    requireTerms: false,
+    requireTerms: true,
     termsUrl: "/terms",
     privacyUrl: "/privacy",
     returnsUrl: "/returns",
@@ -377,8 +378,9 @@ export const defaultLibraryStoreSettings: LibraryStoreSettings = {
       {
         id: "property-development-law",
         slug: "property-development-law",
+        productId: "",
         productSlug: "the-complete-guide-to-property-development-and-property-law-in-zimbabwe",
-        template: "GUIDE_SALES",
+        template: "PROPERTY_DEVELOPMENT_GUIDE",
         status: "PUBLISHED",
         version: 1,
         label: "Property Development in Zimbabwe",
@@ -589,6 +591,7 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
   const id = str(row.id, str(row.slug, "")).trim();
   const slug = str(row.slug, id).trim();
   const productSlug = str(row.productSlug, "").trim();
+  const productId = str(row.productId, "").trim();
   if (!id || !slug || !productSlug) return null;
   const fallback = defaultLibraryStoreSettings.salesFunnels.funnels.find((item) => item.id === id || item.slug === slug) ?? defaultLibraryStoreSettings.salesFunnels.funnels[0];
   const offer = asRecord(row.offer);
@@ -679,8 +682,9 @@ function mergeSalesFunnel(value: unknown): LibrarySalesFunnelConfig | null {
   return {
     id,
     slug,
+    productId,
     productSlug,
-    template: (["BOOK_SALES", "GUIDE_SALES", "SIMPLE_OFFER"].includes(template) ? template : fallback.template) as LibrarySalesFunnelConfig["template"],
+    template: (["BOOK_SALES", "GUIDE_SALES", "SIMPLE_OFFER", "PROPERTY_DEVELOPMENT_GUIDE"].includes(template) ? template : fallback.template) as LibrarySalesFunnelConfig["template"],
     status: (["DRAFT", "PUBLISHED", "PAUSED"].includes(status) ? status : fallback.status) as LibrarySalesFunnelConfig["status"],
     version: Math.max(1, Math.round(num(row.version, fallback.version))),
     label: str(row.label, fallback.label),
@@ -809,7 +813,7 @@ export function mergeLibraryStoreSettings(payload?: unknown): LibraryStoreSettin
     checkout: {
       guestCheckout: bool(checkout.guestCheckout, d.checkout.guestCheckout),
       requireAccountForDigital: bool(checkout.requireAccountForDigital, d.checkout.requireAccountForDigital),
-      requireTerms: bool(checkout.requireTerms, d.checkout.requireTerms),
+      requireTerms: true,
       termsUrl: str(checkout.termsUrl, d.checkout.termsUrl),
       privacyUrl: str(checkout.privacyUrl, d.checkout.privacyUrl),
       returnsUrl: str(checkout.returnsUrl, d.checkout.returnsUrl),

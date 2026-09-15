@@ -6,7 +6,7 @@ import {
   type LibraryProduct,
   type LibraryProductFormat,
 } from "@/lib/library/catalog";
-import { getLibraryProductBySlug, listLibraryProducts, logLibraryActivity } from "@/lib/library/repository";
+import { getLibraryProductById, getLibraryProductBySlug, listLibraryProducts, logLibraryActivity } from "@/lib/library/repository";
 import { getLibraryStoreSettings, saveLibraryStoreSettings } from "@/lib/library/settings";
 import type { LibrarySalesFunnelConfig, LibrarySalesFunnelOffer } from "@/lib/library/settings-shared";
 import type { Prisma } from "@prisma/client";
@@ -31,6 +31,7 @@ export type LibrarySalesFunnelDashboard = {
   funnels: Array<{
     id: string;
     slug: string;
+    productId?: string;
     productSlug: string;
     productTitle: string;
     status: string;
@@ -74,7 +75,9 @@ export async function getSalesFunnelBySlug(slug: string, options?: { includePaus
   const funnel = settings.salesFunnels.funnels.find((item) => item.slug === slug || item.id === slug);
   if (!funnel) return null;
   if (!options?.includePaused && funnel.status !== "PUBLISHED") return null;
-  const product = await getLibraryProductBySlug(funnel.productSlug) ?? (process.env.NODE_ENV === "development" ? fallbackFunnelProduct(funnel) : null);
+  const product = (funnel.productId ? await getLibraryProductById(funnel.productId) : null)
+    ?? await getLibraryProductBySlug(funnel.productSlug)
+    ?? (process.env.NODE_ENV === "development" ? fallbackFunnelProduct(funnel) : null);
   if (!product) return null;
   return resolveSalesFunnel(funnel, product);
 }
@@ -226,6 +229,7 @@ function buildDashboard(
   orders: Array<{ total: unknown; metadata: unknown; items: Array<{ productId: string }> }>,
 ): LibrarySalesFunnelDashboard {
   const bySlug = new Map(products.map((product) => [product.slug, product]));
+  const byId = new Map(products.map((product) => [product.id, product]));
   const eventRows = events.map((event) => ({ ...event, meta: safeRecord(event.metadata) }));
 
   function eventsFor(funnel: LibrarySalesFunnelConfig) {
@@ -238,7 +242,7 @@ function buildDashboard(
   }
 
   const funnelRows = funnels.map((funnel) => {
-    const product = bySlug.get(funnel.productSlug);
+    const product = (funnel.productId ? byId.get(funnel.productId) : undefined) ?? bySlug.get(funnel.productSlug);
     const scoped = eventsFor(funnel);
     const orderRows = orders.filter((order) => {
       const meta = safeRecord(order.metadata);
@@ -259,6 +263,7 @@ function buildDashboard(
     return {
       id: funnel.id,
       slug: funnel.slug,
+      productId: product?.id ?? funnel.productId,
       productSlug: funnel.productSlug,
       productTitle: product?.title ?? funnel.productSlug,
       status: funnel.status,

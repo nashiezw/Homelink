@@ -105,8 +105,8 @@ export async function POST(request: Request) {
   const items = Array.isArray(body.items) ? (body.items as CheckoutLine[]) : [];
   if (!items.length) return problem(400, "EMPTY_CART", "Add at least one Library product to checkout.");
 
-  if (librarySettings.checkout.requireTerms && !body.termsAccepted) {
-    return problem(400, "TERMS_REQUIRED", "Accept the Library terms to continue checkout.");
+  if (!body.termsAccepted) {
+    return problem(400, "TERMS_REQUIRED", "Review and accept the Library terms, privacy policy, and refund policy to continue checkout.");
   }
   if (body.couponCode && !librarySettings.checkout.allowCoupons) {
     return problem(400, "COUPONS_DISABLED", "Coupons are currently disabled for Library checkout.");

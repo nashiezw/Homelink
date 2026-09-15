@@ -78,6 +78,7 @@ const groups = [
       ["About", "/about"],
       ["Careers", "/careers"],
       ["Terms", "/terms"],
+      ["Refund policy", "/returns"],
       ["Legal disclaimer", "/legal-disclaimer"],
       ["Privacy", "/privacy"],
     ],

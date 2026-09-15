@@ -429,6 +429,34 @@ export async function getLibraryProductBySlug(slug: string) {
   }
 }
 
+export async function getLibraryProductById(id: string, options?: { includeDrafts?: boolean }) {
+  if (!id) return null;
+  if (!shouldUsePostgresLibrary()) {
+    return localLibraryProducts.find((product) => product.id === id && (options?.includeDrafts || product.status === "PUBLISHED" || product.status === "SCHEDULED")) ?? null;
+  }
+  try {
+    await seedLibraryIfEmpty();
+    await publishDueScheduledLibraryProducts();
+    const product = await getMainPrisma().libraryProduct.findUnique({
+      where: { id },
+      include: productInclude(),
+    });
+    if (!product || product.deletedAt) return null;
+    const now = Date.now();
+    const scheduledFuture = product.status === LibraryProductStatus.SCHEDULED && product.scheduledAt && product.scheduledAt.getTime() > now;
+    if (!options?.includeDrafts && product.status !== LibraryProductStatus.PUBLISHED && product.status !== LibraryProductStatus.SCHEDULED) {
+      return null;
+    }
+    if (!options?.includeDrafts && scheduledFuture) return null;
+    return toLibraryProduct(product as DbProduct);
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return localLibraryProducts.find((product) => product.id === id && (options?.includeDrafts || product.status === "PUBLISHED" || product.status === "SCHEDULED")) ?? null;
+    }
+    throw error;
+  }
+}
+
 export async function getLibraryProductSampleFile(slug: string) {
   const product = await getLibraryProductBySlug(slug);
   if (!product) return null;
