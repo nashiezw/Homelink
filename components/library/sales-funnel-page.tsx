@@ -243,69 +243,90 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
 
   if (funnel.template === "BOOK_SALES") {
     return (
-      <main className="min-h-screen bg-[#fffdf7] text-[#17120c]">
-        <section className="bg-[#17120c] px-4 py-6 text-white sm:px-6">
-          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(18rem,0.55fr)] lg:items-center">
-            <div>
-              <FunnelLogo />
-              <p className="mt-10 text-xs font-black uppercase tracking-[0.26em] text-[#f1c85b]">{funnel.label}</p>
-              <h1 className="mt-4 max-w-4xl text-4xl font-black leading-[0.98] tracking-normal sm:text-6xl lg:text-7xl">
-                {funnel.headline}
-              </h1>
-              <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-stone-200">{funnel.subheadline}</p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <SalesCtaButton onClick={() => openEditionSelector("BOOK_HERO_BUY")} subtitle="Choose your format">
-                  {funnel.primaryCta}
-                </SalesCtaButton>
-                {sampleUrl ? (
-                  <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="inline-flex min-h-[3.55rem] items-center justify-center gap-2 border border-white/20 px-5 py-3 text-sm font-black uppercase text-white transition hover:bg-white/10">
-                    {funnel.secondaryCta} <ArrowRight className="size-4" />
-                  </a>
-                ) : null}
+      <main className="min-h-screen bg-[#f6f1e7] text-[#201a14]">
+        <section className="px-4 py-5 sm:px-6">
+          <div className="mx-auto max-w-7xl overflow-hidden border border-[#ded3c1] bg-[#201a14] text-white shadow-[0_28px_80px_rgba(32,26,20,0.22)]">
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_25rem]">
+              <div className="flex min-h-[42rem] flex-col justify-between p-6 sm:p-10 lg:p-12">
+                <div>
+                  <FunnelLogo />
+                  <p className="mt-12 w-fit border-b border-[#d8a73f] pb-2 text-xs font-black uppercase tracking-[0.26em] text-[#d8a73f]">{funnel.label}</p>
+                  <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[0.95] tracking-normal sm:text-6xl lg:text-7xl">{funnel.headline}</h1>
+                  <p className="mt-6 max-w-2xl text-base font-semibold leading-8 text-[#eadfce]">{funnel.subheadline}</p>
+                  <div className="mt-8 flex flex-wrap gap-3">
+                    <SalesCtaButton onClick={() => openEditionSelector("BOOK_HERO_BUY")} className="bg-[#d8a73f] text-[#201a14] shadow-[0_9px_0_rgba(0,0,0,0.36)] hover:bg-[#c8942c] focus-visible:outline-[#d8a73f]" subtitle="Choose your format">
+                      {funnel.primaryCta}
+                    </SalesCtaButton>
+                    {sampleUrl ? (
+                      <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="inline-flex min-h-[3.55rem] items-center justify-center gap-2 border border-white/20 px-5 py-3 text-sm font-black uppercase text-white transition hover:bg-white/10">
+                        {funnel.secondaryCta} <ArrowRight className="size-4" />
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="mt-10 grid gap-3 border-t border-white/15 pt-5 sm:grid-cols-3">
+                  {funnel.trust.slice(0, 3).map((item) => (
+                    <p key={item} className="text-xs font-bold uppercase leading-5 text-[#eadfce]">
+                      <ShieldCheck className="mb-2 size-5 text-[#d8a73f]" /> {item}
+                    </p>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="mx-auto w-full max-w-[18rem] rotate-[-2deg] border-[10px] border-white bg-white p-3 shadow-[18px_18px_0_rgba(241,200,91,0.32)]">
-              <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="w-full" />
-              <p className="bg-[#f1c85b] px-3 py-3 text-center text-sm font-black uppercase text-[#17120c]">From {product.currency} {minPrice.toFixed(2)}</p>
+              <aside className="bg-[#eee2cf] p-6 text-[#201a14] sm:p-8 lg:p-10">
+                <div className="mx-auto max-w-[18rem]">
+                  <div className="bg-white p-4 shadow-[18px_18px_0_rgba(32,26,20,0.16)]">
+                    <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="w-full" />
+                  </div>
+                  <div className="mt-8 border border-[#c8b89f] bg-[#fbf7ef] p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#906512]">Reader edition</p>
+                    <p className="mt-2 text-4xl font-black leading-none">{product.currency} {minPrice.toFixed(2)}</p>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-[#675747]">Focused publication, secure checkout, invoice, and format selection in one clean flow.</p>
+                  </div>
+                </div>
+              </aside>
             </div>
           </div>
         </section>
 
-        <section className="px-4 py-14 sm:px-6">
-          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-[#a35b00]">{funnel.learningTitle}</p>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                {funnel.learning.slice(0, 6).map((item) => (
-                  <article key={item.title} className="border border-stone-200 bg-white p-5 shadow-[8px_8px_0_rgba(23,18,12,0.06)]">
-                    <h2 className="text-lg font-black text-[#17120c]">{item.title}</h2>
-                    <p className="mt-2 text-sm font-semibold leading-7 text-stone-600">{item.description}</p>
-                  </article>
+        <section className="px-4 py-16 sm:px-6">
+          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.78fr_1fr] lg:items-start">
+            <div className="lg:sticky lg:top-8">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#906512]">{funnel.learningTitle}</p>
+              <h2 className="mt-3 max-w-xl text-3xl font-black leading-tight text-[#201a14] sm:text-5xl">A premium book page that sells the value before the price.</h2>
+              <p className="mt-5 text-sm font-semibold leading-7 text-[#675747]">{funnel.disclaimer}</p>
+              <SalesCtaButton onClick={() => openEditionSelector("BOOK_SIDE_BUY")} className="mt-7 bg-[#201a14] shadow-[0_8px_0_rgba(144,101,18,0.28)] hover:bg-[#3a3026]" subtitle="Secure checkout">
+                Buy the book
+              </SalesCtaButton>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {funnel.learning.slice(0, 6).map((item, index) => (
+                <article key={item.title} className="border border-[#ded3c1] bg-white p-5 shadow-[0_18px_40px_rgba(32,26,20,0.07)]">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#906512]">Chapter {String(index + 1).padStart(2, "0")}</p>
+                  <h3 className="mt-3 text-lg font-black leading-tight text-[#201a14]">{item.title}</h3>
+                  <p className="mt-2 text-sm font-semibold leading-7 text-[#675747]">{item.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="funnel-offer" className="bg-white px-4 py-16 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)] lg:items-end">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#906512]">Choose your copy</p>
+                <h2 className="mt-3 text-3xl font-black leading-tight text-[#201a14] sm:text-5xl">{funnel.offer.title}</h2>
+                <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-[#675747]">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {formatChoices.map((format) => (
+                  <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} />
                 ))}
               </div>
             </div>
-            <aside className="h-fit border-2 border-[#17120c] bg-[#f8efe0] p-5">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#a35b00]">Buyer's note</p>
-              <p className="mt-3 text-sm font-semibold leading-7 text-[#17120c]">{funnel.disclaimer}</p>
-              <p className="mt-4 text-xs font-semibold leading-5 text-stone-700">
-                Review the selected format, sample, and <Link href="/returns" className="font-black underline">Refund Policy</Link> before checkout.
-              </p>
-              <SalesCtaButton onClick={() => openEditionSelector("BOOK_SIDE_BUY")} className="mt-5 w-full shadow-[0_7px_0_rgba(23,18,12,0.32)]" subtitle="Secure checkout">
-                Buy the book
-              </SalesCtaButton>
-            </aside>
-          </div>
-        </section>
-
-        <section id="funnel-offer" className="bg-[#f8efe0] px-4 py-14 sm:px-6">
-          <div className="mx-auto max-w-6xl">
-            <h2 className="text-3xl font-black text-[#17120c] sm:text-5xl">{funnel.offer.title}</h2>
-            <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-stone-700">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
-            <div className="mt-7 grid gap-4 md:grid-cols-2">
-              {formatChoices.map((format) => (
-                <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} />
-              ))}
-            </div>
+            <p className="mt-6 text-xs font-semibold leading-5 text-[#675747]">
+              Review the selected format, sample where available, and <Link href="/returns" className="font-black text-[#201a14] underline underline-offset-2">Refund Policy</Link> before checkout.
+            </p>
           </div>
         </section>
         {selectorModal}
@@ -315,43 +336,150 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
 
   if (funnel.template === "SIMPLE_OFFER") {
     return (
-      <main className="min-h-screen bg-white text-[#0f172a]">
+      <main className="min-h-screen bg-[#f8fafc] text-[#0f172a]">
         <section className="px-4 py-6 sm:px-6">
-          <div className="mx-auto max-w-5xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
-            <div className="grid lg:grid-cols-[minmax(0,1fr)_20rem]">
-              <div className="p-6 sm:p-10">
-                <HouseLinkBrand variant="nav" />
-                <p className="mt-8 text-xs font-black uppercase tracking-[0.2em] text-[#0b8f54]">{funnel.label}</p>
-                <h1 className="mt-3 text-3xl font-black leading-tight tracking-normal sm:text-5xl">{funnel.headline}</h1>
-                <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">{funnel.subheadline}</p>
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  {funnel.trust.slice(0, 3).map((item) => (
-                    <span key={item} className="inline-flex min-h-12 items-center gap-2 border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700">
-                      <ShieldCheck className="size-4 text-[#0b8f54]" /> {item}
-                    </span>
-                  ))}
+          <div className="mx-auto max-w-6xl">
+            <HouseLinkBrand variant="nav" />
+            <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+              <div>
+                <p className="inline-flex border border-[#cbd5e1] bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#334155]">{funnel.label}</p>
+                <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[1.02] tracking-normal text-[#0f172a] sm:text-6xl">{funnel.headline}</h1>
+                <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-[#475569]">{funnel.subheadline}</p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <SalesCtaButton onClick={() => openEditionSelector("SIMPLE_HERO_BUY")} className="shadow-[0_8px_0_rgba(15,23,42,0.18)]" subtitle="Fast secure order">
+                    {funnel.primaryCta}
+                  </SalesCtaButton>
+                  {sampleUrl ? (
+                    <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="inline-flex min-h-[3.55rem] items-center justify-center gap-2 border border-slate-300 bg-white px-5 py-3 text-sm font-black uppercase text-[#0f172a] transition hover:border-[#0b8f54]">
+                      Preview first <ArrowRight className="size-4" />
+                    </a>
+                  ) : null}
                 </div>
-                <div id="funnel-offer" className="mt-7 grid gap-3 sm:grid-cols-2">
+              </div>
+              <aside id="funnel-offer" className="border border-[#cbd5e1] bg-white p-5 shadow-[0_24px_55px_rgba(15,23,42,0.10)]">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#0b8f54]">Current offer</p>
+                <h2 className="mt-2 text-2xl font-black leading-tight">{funnel.offer.title}</h2>
+                <p className="mt-3 text-sm font-semibold leading-6 text-[#64748b]">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
+                <div className="mt-5 grid gap-3">
                   {formatChoices.map((format) => (
                     <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} compact />
                   ))}
                 </div>
-                <p className="mt-5 text-xs font-semibold leading-5 text-slate-500">
-                  Review the product details, sample where available, and <Link href="/returns" className="font-black text-[#0b8f54] underline">Refund Policy</Link> before placing your order.
-                </p>
+              </aside>
+            </div>
+          </div>
+        </section>
+        <section className="px-4 py-12 sm:px-6">
+          <div className="mx-auto grid max-w-6xl gap-px overflow-hidden border border-[#d9e2ec] bg-[#d9e2ec] md:grid-cols-3">
+            {funnel.trust.slice(0, 3).map((item) => (
+              <div key={item} className="bg-white p-5">
+                <ShieldCheck className="size-5 text-[#0b8f54]" />
+                <p className="mt-3 text-sm font-black leading-6 text-[#0f172a]">{item}</p>
               </div>
-              <div className="bg-[#0f172a] p-6 text-white sm:p-8">
-                <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="mx-auto w-full max-w-[14rem]" />
-                <p className="mt-6 text-center text-sm font-black uppercase text-[#20c36b]">From {product.currency} {minPrice.toFixed(2)}</p>
-                {sampleUrl ? (
-                  <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="mt-4 inline-flex w-full min-h-11 items-center justify-center gap-2 border border-white/15 text-xs font-black uppercase text-white hover:bg-white/10">
-                    Preview sample <ArrowRight className="size-4" />
-                  </a>
-                ) : null}
+            ))}
+          </div>
+          <div className="mx-auto mt-8 max-w-6xl border-l-4 border-[#0b8f54] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
+            <p className="text-sm font-semibold leading-7 text-[#475569]">
+              Review product details, edition type, sample where available, and the <Link href="/returns" className="font-black text-[#0b8f54] underline">Refund Policy</Link> before placing your order.
+            </p>
+          </div>
+        </section>
+        {selectorModal}
+      </main>
+    );
+  }
+
+  if (!isPropertyDevelopmentTemplate) {
+    return (
+      <main className="min-h-screen bg-[#eef4f1] text-[#102033]">
+        <section className="px-4 py-5 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <FunnelLogo />
+            <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(22rem,0.7fr)] lg:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#0b6b43]">{funnel.label}</p>
+                <h1 className="mt-4 max-w-4xl text-4xl font-black leading-[1.02] tracking-normal text-[#102033] sm:text-6xl lg:text-7xl">{funnel.headline}</h1>
+                <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-[#4b5f5a]">{funnel.subheadline}</p>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <SalesCtaButton onClick={() => openEditionSelector("GUIDE_HERO_BUY")} subtitle="Choose an edition">
+                    {funnel.primaryCta}
+                  </SalesCtaButton>
+                  {sampleUrl ? (
+                    <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={openSamplePreview} className="inline-flex min-h-[3.55rem] items-center justify-center gap-2 border border-[#bdd1c9] bg-white px-5 py-3 text-sm font-black uppercase text-[#102033] transition hover:border-[#0b8f54]">
+                      {funnel.secondaryCta} <ArrowRight className="size-4" />
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] lg:grid-cols-1">
+                <div className="border border-[#bdd1c9] bg-white p-5 shadow-[0_22px_60px_rgba(16,32,51,0.10)]">
+                  <BookCover product={product} imageUrl={heroImage} priority interactive={false} className="mx-auto w-full max-w-[16rem]" />
+                </div>
+                <div className="border border-[#bdd1c9] bg-[#102033] p-5 text-white shadow-[0_22px_60px_rgba(16,32,51,0.10)]">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#5ce39d]">Guide price</p>
+                  <p className="mt-2 text-4xl font-black">{product.currency} {minPrice.toFixed(2)}</p>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-white/80">{offerExpired ? "Normal Library pricing is now displayed." : funnel.offer.description}</p>
+                </div>
               </div>
             </div>
           </div>
         </section>
+
+        <section className="px-4 py-14 sm:px-6">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+            <aside className="h-fit border border-[#bdd1c9] bg-white p-5">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#0b6b43]">Who this is for</p>
+              <p className="mt-3 text-xl font-black leading-8">{funnel.audienceTitle}</p>
+              <div className="mt-5 grid gap-2 text-sm font-semibold text-[#4b5f5a]">
+                {funnel.trust.slice(0, 3).map((item) => (
+                  <span key={item} className="inline-flex items-start gap-2"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#0b8f54]" /> {item}</span>
+                ))}
+              </div>
+            </aside>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#0b6b43]">{funnel.learningTitle}</p>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                {funnel.learning.slice(0, 6).map((item) => (
+                  <article key={item.title} className="border border-[#bdd1c9] bg-white p-5 shadow-[0_16px_36px_rgba(16,32,51,0.06)]">
+                    <h2 className="text-lg font-black leading-tight text-[#102033]">{item.title}</h2>
+                    <p className="mt-2 text-sm font-semibold leading-7 text-[#4b5f5a]">{item.description}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="funnel-offer" className="bg-white px-4 py-16 sm:px-6">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] lg:items-start">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#0b6b43]">Order options</p>
+              <h2 className="mt-3 text-3xl font-black leading-tight text-[#102033] sm:text-5xl">{funnel.offer.title}</h2>
+              <p className="mt-4 text-sm font-semibold leading-7 text-[#4b5f5a]">{offerExpired ? "This offer has expired. Normal Library pricing is now displayed." : funnel.offer.description}</p>
+              <p className="mt-4 text-xs font-semibold leading-5 text-[#64748b]">
+                Review the selected format, product description, and <Link href="/returns" className="font-black text-[#0b8f54] underline">Refund Policy</Link> before checkout.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {formatChoices.map((format) => (
+                <EditionCard key={format.id} format={format} currency={product.currency} onClick={() => checkout(format)} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {stickyVisible ? (
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+            <div className="mx-auto grid max-w-xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-[#102033]">{shortTitle(product.title)}</p>
+                <p className="text-xs font-bold text-slate-500">From {product.currency} {minPrice.toFixed(2)}</p>
+              </div>
+              <SalesCtaButton onClick={() => openEditionSelector("GUIDE_STICKY_BUY")} className="min-h-11 px-4 text-sm shadow-none"><ShoppingCart className="size-4" /> Buy now</SalesCtaButton>
+            </div>
+          </div>
+        ) : null}
+
         {selectorModal}
       </main>
     );
