@@ -478,6 +478,14 @@ function ActivePaymentPanel({
                 paymentId={payment.id}
                 onUploaded={onProofUploaded}
                 showToast={showToast}
+                analyticsMetadata={payment.plan === "library_order" ? {
+                  source: "library_payments_page",
+                  paymentId: payment.id,
+                  referenceNumber: payment.referenceNumber,
+                  amount: payment.amount,
+                  currency: payment.currency,
+                  status: payment.status,
+                } : undefined}
               />
             </div>
           )}

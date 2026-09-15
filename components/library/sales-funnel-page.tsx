@@ -15,6 +15,8 @@ import { useEffect, useState } from "react";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { BookCover } from "@/components/library/book-cover";
 import { trackEvent } from "@/lib/analytics/client";
+import { trackMetaInitiateCheckout } from "@/lib/analytics/meta-commerce";
+import { trackLibraryFunnelEvent, writeLibraryFunnelAttribution } from "@/lib/analytics/library-funnel-client";
 import { getOrCreateSessionId, getOrCreateVisitorId, readUtmParams } from "@/lib/analytics/visitor-client";
 import {
   notifyLibraryCartAdded,
@@ -87,8 +89,12 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
     trackFunnel("page_view");
     trackEvent("library_funnel_page_view", product.id, funnelMeta());
     emitCommercePixel("ViewContent", { content_name: product.title, content_ids: [product.id], value: minPrice, currency: product.currency });
+    if (offerExpired) {
+      trackEvent("library_funnel_offer_expired", product.id, funnelMeta());
+      trackFunnel("offer_expired");
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [funnel.id, product.id]);
+  }, [funnel.id, product.id, offerExpired]);
 
   useEffect(() => {
     const offer = document.getElementById("funnel-offer");
@@ -186,10 +192,11 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
       const withoutSame = current.filter((item) => !sameLibraryCartLine(item, line));
       return [line, ...withoutSame];
     });
-    window.sessionStorage.setItem("houselink_library_funnel_attribution", JSON.stringify({
+    const attribution = {
       funnelId: funnel.id,
       funnelSlug: funnel.slug,
       funnelVersion: funnel.version,
+      template: funnel.template,
       productId: product.id,
       productSlug: product.slug,
       offerId: funnel.offer.id,
@@ -201,12 +208,23 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
       utm_source: readUtmParams().utmSource,
       utm_medium: readUtmParams().utmMedium,
       utm_campaign: readUtmParams().utmCampaign,
-    }));
+    };
+    writeLibraryFunnelAttribution(attribution);
+    const metaCheckout = trackMetaInitiateCheckout({
+      value: format.activePrice,
+      currency: product.currency,
+      productId: product.id,
+      productTitle: product.title,
+      formatId: format.id,
+      formatLabel: format.label,
+      quantity: 1,
+    });
     trackLibraryCartEvent("CART_ADD_SINGLE", product.id, funnelMeta({ ctaId: "edition_selected", formatId: format.id, formatType: format.type }));
     trackEvent(format.type === "PRINTED_BOOK" ? "library_funnel_printed_selected" : "library_funnel_digital_selected", product.id, funnelMeta({ formatId: format.id }));
-    trackEvent("library_checkout_started", product.id, funnelMeta({ formatId: format.id, formatType: format.type }));
+    trackEvent("library_funnel_checkout_started", product.id, funnelMeta({ formatId: format.id, formatType: format.type, metaEventId: metaCheckout?.eventId }));
+    trackEvent("library_checkout_started", product.id, funnelMeta({ formatId: format.id, formatType: format.type, metaEventId: metaCheckout?.eventId }));
     trackFunnel("checkout_started", { formatId: format.id, formatType: format.type });
-    emitCommercePixel("InitiateCheckout", { content_name: product.title, content_ids: [product.id], value: format.activePrice, currency: product.currency });
+    trackLibraryFunnelEvent("library_funnel_checkout_started", attribution, { formatId: format.id, formatType: format.type, metaEventId: metaCheckout?.eventId });
     notifyLibraryCartAdded(product.title);
     window.location.href = `/funnel/${encodeURIComponent(funnel.slug)}/checkout?funnelId=${encodeURIComponent(funnel.id)}&offerId=${encodeURIComponent(funnel.offer.id)}`;
   }

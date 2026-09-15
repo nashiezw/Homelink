@@ -12,6 +12,11 @@ import { BookCover } from "@/components/library/book-cover";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { trackEvent } from "@/lib/analytics/client";
+import {
+  libraryFunnelAnalyticsMetadata,
+  readLibraryFunnelAttribution,
+  trackLibraryFunnelEvent,
+} from "@/lib/analytics/library-funnel-client";
 import { readStoredMetaInitiateCheckout } from "@/lib/analytics/meta-commerce";
 import { apiFetch } from "@/lib/api/client";
 import {
@@ -164,7 +169,7 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
   const [guestPhone, setGuestPhone] = useState("");
   const buyerDetailsRef = useRef<HTMLElement | null>(null);
   const deliveryDetailsRef = useRef<HTMLElement | null>(null);
-  const funnelAttribution = useMemo(() => readFunnelCheckoutAttribution(searchParams), [searchParams]);
+  const funnelAttribution = useMemo(() => readLibraryFunnelAttribution(searchParams), [searchParams]);
   const isFunnelCheckout = variant === "funnel" && Boolean(resolvedFunnel);
   const funnelPath = resolvedFunnel ? `/funnel/${resolvedFunnel.funnel.slug}` : "/library";
   const checkoutPath = resolvedFunnel ? `/funnel/${resolvedFunnel.funnel.slug}/checkout` : "/library/checkout";
@@ -249,8 +254,16 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
 
   useEffect(() => {
     if (!cart.length) return;
-    trackEvent("library_checkout_started", cart[0]?.productId, { items: cart.length });
-  }, [cart]);
+    const metadata = libraryFunnelAnalyticsMetadata(funnelAttribution, {
+      items: cart.length,
+      surface: isFunnelCheckout ? "sales_funnel_checkout" : "library_checkout",
+    });
+    trackEvent("library_checkout_started", cart[0]?.productId, metadata);
+    if (funnelAttribution?.funnelId) {
+      trackEvent("library_funnel_checkout_viewed", cart[0]?.productId, metadata);
+      trackLibraryFunnelEvent("library_funnel_checkout_viewed", funnelAttribution, { items: cart.length });
+    }
+  }, [cart, funnelAttribution, isFunnelCheckout]);
 
   // Capture continue-with-email for abandoned-cart reminders once a valid email is entered.
   useEffect(() => {
@@ -510,24 +523,32 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
       }),
     });
     if (result.data?.redirectUrl) {
+      const checkoutMetadata = libraryFunnelAnalyticsMetadata(funnelAttribution, {
+        formatId: stringMeta(funnelAttribution?.selectedFormatId),
+        items: cart.length,
+        total: quote?.total,
+        currency: quote?.currency,
+        paymentMethod,
+        orderId: result.data?.order?.id,
+        orderNumber: result.data?.order?.orderNumber,
+        metaEventId: readStoredMetaInitiateCheckout()?.eventId,
+      });
       if (funnelAttribution?.funnelId) {
-        trackEvent("library_funnel_checkout_started", cart[0]?.productId, {
-          funnelId: stringMeta(funnelAttribution.funnelId),
-          offerId: stringMeta(funnelAttribution.offerId),
-          formatId: stringMeta(funnelAttribution.selectedFormatId),
-        });
+        trackEvent("library_funnel_checkout_started", cart[0]?.productId, checkoutMetadata);
+        trackEvent("library_funnel_payment_started", result.data?.order?.id, checkoutMetadata);
+        trackEvent("payment_started", result.data?.order?.id, checkoutMetadata);
+        trackLibraryFunnelEvent("library_funnel_payment_started", funnelAttribution, checkoutMetadata);
       }
       void import("@/lib/analytics/experiments").then(({ peekExperimentVariant }) => {
         const variant = peekExperimentVariant("library_softcopy_badge") || "control";
         trackEvent("library_purchase_completed", result.data?.order?.id, {
+          ...checkoutMetadata,
           items: cart.length,
           total: quote?.total,
           currency: quote?.currency,
           orderNumber: result.data?.order?.orderNumber,
           experiment: "library_softcopy_badge",
           variant,
-          funnelId: stringMeta(funnelAttribution?.funnelId),
-          offerId: stringMeta(funnelAttribution?.offerId),
         });
       });
       void import("@/lib/analytics/identity-client").then(({ stitchAnalyticsIdentity }) => {
@@ -1139,28 +1160,6 @@ export function LibraryCheckoutClient({ variant = "library", resolvedFunnel }: L
       {checkoutContent}
     </PageShell>
   );
-}
-
-type CheckoutFunnelAttribution = Record<string, unknown> & {
-  funnelId?: string;
-  funnelSlug?: string;
-  offerId?: string;
-  selectedFormatId?: string;
-};
-
-function readFunnelCheckoutAttribution(searchParams: ReturnType<typeof useSearchParams>): CheckoutFunnelAttribution | undefined {
-  if (typeof window === "undefined") return undefined;
-  try {
-    const parsed = JSON.parse(window.sessionStorage.getItem("houselink_library_funnel_attribution") || "{}") as Record<string, unknown>;
-    const funnelId = typeof parsed.funnelId === "string" ? parsed.funnelId : searchParams?.get("funnelId") || "";
-    const offerId = typeof parsed.offerId === "string" ? parsed.offerId : searchParams?.get("offerId") || "";
-    if (!funnelId && !offerId) return undefined;
-    return { ...parsed, funnelId, offerId } as CheckoutFunnelAttribution;
-  } catch {
-    const funnelId = searchParams?.get("funnelId") || "";
-    const offerId = searchParams?.get("offerId") || "";
-    return funnelId || offerId ? { funnelId, offerId } : undefined;
-  }
 }
 
 function stringMeta(value: unknown) {

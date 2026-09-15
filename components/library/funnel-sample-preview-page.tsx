@@ -2,9 +2,11 @@
 
 import { ArrowLeft, Download, ExternalLink, ShoppingCart } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useMemo } from "react";
 import { HouseLinkBrand } from "@/components/brand/houselink-logo";
 import { PdfSampleViewer } from "@/components/library/pdf-sample-viewer";
 import { trackEvent } from "@/lib/analytics/client";
+import { trackLibraryFunnelEvent, type LibraryFunnelAttribution } from "@/lib/analytics/library-funnel-client";
 import type { ResolvedLibrarySalesFunnel } from "@/lib/library/funnels";
 
 type FunnelSamplePreviewPageProps = {
@@ -16,14 +18,36 @@ type FunnelSamplePreviewPageProps = {
 
 export function FunnelSamplePreviewPage({ resolved, sampleUrl, sampleDownloadUrl, funnelUrl }: FunnelSamplePreviewPageProps) {
   const { funnel, product } = resolved;
+  const attribution = useMemo<LibraryFunnelAttribution>(() => ({
+    funnelId: funnel.id,
+    funnelSlug: funnel.slug,
+    funnelVersion: funnel.version,
+    template: funnel.template,
+    productId: product.id,
+    productSlug: product.slug,
+    offerId: funnel.offer.id,
+    offerState: resolved.offerState,
+  }), [funnel.id, funnel.offer.id, funnel.slug, funnel.template, funnel.version, product.id, product.slug, resolved.offerState]);
+  const sampleMetadata = useMemo(() => ({
+    funnelId: funnel.id,
+    funnelSlug: funnel.slug,
+    productSlug: product.slug,
+    surface: "sales_funnel_sample_page",
+  }), [funnel.id, funnel.slug, product.slug]);
+
+  useEffect(() => {
+    trackEvent("library_sample_opened", product.id, sampleMetadata);
+    trackLibraryFunnelEvent("sample_opened", attribution, { surface: "sales_funnel_sample_page" });
+  }, [attribution, product.id, sampleMetadata]);
 
   function trackSampleViewed() {
-    trackEvent("library_sample_viewed", product.id, {
-      funnelId: funnel.id,
-      funnelSlug: funnel.slug,
-      productSlug: product.slug,
-      surface: "sales_funnel_sample_page",
-    });
+    trackEvent("library_sample_viewed", product.id, sampleMetadata);
+    trackLibraryFunnelEvent("sample_opened", attribution, { surface: "sales_funnel_sample_page", viewer: "embedded_pdf" });
+  }
+
+  function trackSampleDownloaded() {
+    trackEvent("library_sample_downloaded", product.id, sampleMetadata);
+    trackLibraryFunnelEvent("sample_downloaded", attribution, { surface: "sales_funnel_sample_page" });
   }
 
   return (
@@ -35,10 +59,10 @@ export function FunnelSamplePreviewPage({ resolved, sampleUrl, sampleDownloadUrl
           </Link>
           <HouseLinkBrand variant="nav" className="hidden rounded-2xl bg-white px-3 py-2 shadow-[0_12px_30px_rgba(0,0,0,0.24)] sm:inline-flex" />
           <div className="flex items-center gap-2">
-            <a href={sampleUrl} target="_blank" rel="noopener noreferrer" className="hidden min-h-10 items-center justify-center gap-2 border border-white/15 px-3 py-2 text-xs font-black uppercase text-white transition hover:bg-white/10 sm:inline-flex">
+            <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={trackSampleViewed} className="hidden min-h-10 items-center justify-center gap-2 border border-white/15 px-3 py-2 text-xs font-black uppercase text-white transition hover:bg-white/10 sm:inline-flex">
               <ExternalLink className="size-4" /> Open PDF
             </a>
-            <a href={sampleDownloadUrl} className="hidden min-h-10 items-center justify-center gap-2 border border-white/15 px-3 py-2 text-xs font-black uppercase text-white transition hover:bg-white/10 sm:inline-flex">
+            <a href={sampleDownloadUrl} onClick={trackSampleDownloaded} className="hidden min-h-10 items-center justify-center gap-2 border border-white/15 px-3 py-2 text-xs font-black uppercase text-white transition hover:bg-white/10 sm:inline-flex">
               <Download className="size-4" /> Download
             </a>
             <Link href={`${funnelUrl}#funnel-offer`} className="inline-flex min-h-10 items-center gap-2 bg-[#0b8f54] px-3 py-2 text-xs font-black uppercase text-white shadow-[0_5px_0_rgba(0,0,0,0.32)] transition hover:-translate-y-0.5 hover:bg-[#087044] sm:px-4">
@@ -58,10 +82,10 @@ export function FunnelSamplePreviewPage({ resolved, sampleUrl, sampleDownloadUrl
               before purchasing.
             </p>
             <div className="mt-2 flex gap-2 sm:hidden">
-              <a href={sampleUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-[0.68rem] font-black uppercase text-slate-700">
+              <a href={sampleUrl} target="_blank" rel="noopener noreferrer" onClick={trackSampleViewed} className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-[0.68rem] font-black uppercase text-slate-700">
                 <ExternalLink className="size-4" /> Open PDF
               </a>
-              <a href={sampleDownloadUrl} className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-[0.68rem] font-black uppercase text-slate-700">
+              <a href={sampleDownloadUrl} onClick={trackSampleDownloaded} className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-[0.68rem] font-black uppercase text-slate-700">
                 <Download className="size-4" /> Download
               </a>
             </div>

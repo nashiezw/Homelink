@@ -21,6 +21,7 @@ type PaymentProofUploadProps = {
   showToast: (message: string, tone?: "error" | "success" | "info") => void;
   label?: string;
   className?: string;
+  analyticsMetadata?: Record<string, string | number | boolean | undefined>;
 };
 
 export function PaymentProofUpload({
@@ -29,6 +30,7 @@ export function PaymentProofUpload({
   showToast,
   label = "Upload proof of payment",
   className,
+  analyticsMetadata,
 }: PaymentProofUploadProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -64,8 +66,15 @@ export function PaymentProofUpload({
     }
 
     showToast("Proof uploaded. Status is now pending finance verification.", "success");
-    if (typeof window !== "undefined" && window.location.pathname.includes("library")) {
-      trackEvent("library_proof_uploaded", paymentId, { path: window.location.pathname });
+    const shouldTrackLibraryProof =
+      typeof window !== "undefined" &&
+      (
+        /\/(?:library|funnel)\b/.test(window.location.pathname) ||
+        Boolean(analyticsMetadata?.funnelId) ||
+        String(analyticsMetadata?.source ?? "").startsWith("library")
+      );
+    if (shouldTrackLibraryProof) {
+      trackEvent("library_proof_uploaded", paymentId, { path: window.location.pathname, ...analyticsMetadata });
     }
     onUploaded();
   }

@@ -11,6 +11,8 @@ import { SetPasswordCard } from "@/components/library/set-password-card";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
+import { trackEvent } from "@/lib/analytics/client";
+import { libraryFunnelAnalyticsMetadata, trackLibraryFunnelEvent, type LibraryFunnelAttribution } from "@/lib/analytics/library-funnel-client";
 import { apiFetch } from "@/lib/api/client";
 import type { LibraryDigitalUpsellSuggestion } from "@/lib/library/catalog";
 import type { ResolvedLibrarySalesFunnel } from "@/lib/library/funnels";
@@ -72,6 +74,30 @@ export function LibraryCheckoutConfirmation({
   const paid = stage.stage === "paid" || stage.stage === "fulfilled" || status === "success";
   const isFunnelConfirmation = variant === "funnel" && Boolean(resolvedFunnel);
   const funnelPath = resolvedFunnel ? `/funnel/${resolvedFunnel.funnel.slug}` : "/library";
+  const funnelAttribution = useMemo<LibraryFunnelAttribution | undefined>(() => {
+    if (!resolvedFunnel) return undefined;
+    const paymentMeta = order.payment?.metadata ?? {};
+    return {
+      ...paymentMeta,
+      funnelId: typeof paymentMeta.funnelId === "string" ? paymentMeta.funnelId : resolvedFunnel.funnel.id,
+      funnelSlug: typeof paymentMeta.funnelSlug === "string" ? paymentMeta.funnelSlug : resolvedFunnel.funnel.slug,
+      funnelVersion: Number.isFinite(Number(paymentMeta.funnelVersion)) ? Number(paymentMeta.funnelVersion) : resolvedFunnel.funnel.version,
+      template: typeof paymentMeta.template === "string" ? paymentMeta.template : resolvedFunnel.funnel.template,
+      productId: typeof paymentMeta.productId === "string" ? paymentMeta.productId : resolvedFunnel.product.id,
+      productSlug: typeof paymentMeta.productSlug === "string" ? paymentMeta.productSlug : resolvedFunnel.product.slug,
+      offerId: typeof paymentMeta.offerId === "string" ? paymentMeta.offerId : resolvedFunnel.funnel.offer.id,
+      offerState: typeof paymentMeta.offerState === "string" ? paymentMeta.offerState : resolvedFunnel.offerState,
+    };
+  }, [order.payment?.metadata, resolvedFunnel]);
+  const funnelAnalyticsMetadata = useMemo(() => libraryFunnelAnalyticsMetadata(funnelAttribution, {
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    paymentId: resolvedPaymentId,
+    paymentStatus: order.paymentStatus,
+    orderStatus: order.status,
+    total: order.total,
+    currency: order.currency,
+  }), [funnelAttribution, order.currency, order.id, order.orderNumber, order.paymentStatus, order.status, order.total, resolvedPaymentId]);
 
   const refreshOrder = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
@@ -86,6 +112,12 @@ export function LibraryCheckoutConfirmation({
       if (result.data) setConfig(result.data);
     });
   }, [paid, resolvedPaymentId]);
+
+  useEffect(() => {
+    if (!isFunnelConfirmation || !funnelAttribution?.funnelId) return;
+    trackEvent("library_funnel_confirmation_viewed", order.id, funnelAnalyticsMetadata);
+    trackLibraryFunnelEvent("library_funnel_confirmation_viewed", funnelAttribution, funnelAnalyticsMetadata);
+  }, [funnelAnalyticsMetadata, funnelAttribution, isFunnelConfirmation, order.id]);
 
   useEffect(() => {
     if (paid || stage.stage === "refunded") return;
@@ -156,6 +188,16 @@ export function LibraryCheckoutConfirmation({
         : current.payment,
     }));
     showToast("Payment method updated. Use the new details below.", "success");
+    if (funnelAttribution?.funnelId) {
+      const metadata = {
+        ...funnelAnalyticsMetadata,
+        paymentMethod: methodId,
+        previousPaymentMethod: selectedMethodId,
+      };
+      trackEvent("library_funnel_payment_started", order.id, metadata);
+      trackEvent("payment_started", order.id, metadata);
+      trackLibraryFunnelEvent("library_funnel_payment_started", funnelAttribution, metadata);
+    }
     void refreshOrder(true);
   }
 
@@ -453,6 +495,7 @@ export function LibraryCheckoutConfirmation({
                       void refreshOrder(true);
                     }}
                     showToast={showToast}
+                    analyticsMetadata={funnelAnalyticsMetadata}
                   />
                 </div>
               )}

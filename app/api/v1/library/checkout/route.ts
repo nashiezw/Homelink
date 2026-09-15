@@ -267,6 +267,7 @@ function checkoutAttribution(value: unknown): LibraryCheckoutAttribution | undef
   for (const key of [
     "funnelId",
     "funnelSlug",
+    "template",
     "productId",
     "productSlug",
     "offerId",

@@ -9,6 +9,7 @@ import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
+import { libraryFunnelAnalyticsMetadata, type LibraryFunnelAttribution } from "@/lib/analytics/library-funnel-client";
 import { libraryOrderStageCopy, libraryOrderStatusLabel } from "@/lib/library/order-stage";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,20 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
   const [order, setOrder] = useState(initialOrder);
   const [busy, setBusy] = useState(false);
   const stage = useMemo(() => libraryOrderStageCopy(order), [order]);
+  const funnelAttribution = useMemo<LibraryFunnelAttribution | undefined>(() => {
+    const metadata = order.payment?.metadata;
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return undefined;
+    return typeof metadata.funnelId === "string" && metadata.funnelId ? metadata as LibraryFunnelAttribution : undefined;
+  }, [order.payment?.metadata]);
+  const proofAnalyticsMetadata = useMemo(() => libraryFunnelAnalyticsMetadata(funnelAttribution, {
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    paymentId: order.payment?.id,
+    paymentStatus: order.paymentStatus,
+    orderStatus: order.status,
+    total: order.total,
+    currency: order.currency,
+  }), [funnelAttribution, order.currency, order.id, order.orderNumber, order.payment?.id, order.paymentStatus, order.status, order.total]);
 
   const refresh = useCallback(async () => {
     const result = await apiFetch<OrderDetail>(`/api/v1/library/orders/${initialOrder.id}`);
@@ -220,6 +235,7 @@ export function LibraryOrderClient({ initialOrder }: { initialOrder: OrderDetail
                     void refresh();
                   }}
                   showToast={showToast}
+                  analyticsMetadata={proofAnalyticsMetadata}
                 />
               )}
               {paymentId && (

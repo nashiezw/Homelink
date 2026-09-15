@@ -429,12 +429,21 @@ async function buildSiteAnalyticsReport(days = 30): Promise<SiteAnalyticsReport>
     ]);
 
     const funnelOrder = [
+      "library_funnel_page_view",
       "library_product_viewed",
+      "library_sample_opened",
+      "library_sample_downloaded",
+      "library_funnel_cta_clicked",
       "library_cart_added",
+      "library_funnel_checkout_viewed",
+      "library_funnel_checkout_started",
       "library_checkout_started",
+      "library_funnel_payment_started",
       "library_proof_uploaded",
+      "library_funnel_confirmation_viewed",
       "library_purchase_completed",
       "library_download_started",
+      "library_download_completed",
     ];
     const funnelMap = new Map(funnels.map((event) => [event.name, event._count._all]));
     const whatsappSourceMap = new Map<string, number>();

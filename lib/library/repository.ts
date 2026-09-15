@@ -43,6 +43,7 @@ export type LibraryCheckoutAttribution = {
   funnelId?: string;
   funnelSlug?: string;
   funnelVersion?: number;
+  template?: string;
   productId?: string;
   productSlug?: string;
   offerId?: string;
@@ -1381,7 +1382,26 @@ export async function createLibraryOrderFromCheckout(input: {
 
   const shipping = printedLines.length && !isPickup ? normalizeShippingAddress(input.shipping) : null;
 
+  const attributionMetadata = input.attribution ? sanitizeCheckoutAttribution(input.attribution) : {};
   const order = await prisma.$transaction(async (tx) => {
+    if (Object.keys(attributionMetadata).length) {
+      const payment = await tx.payment.findUnique({
+        where: { id: input.paymentId },
+        select: { metadata: true },
+      });
+      if (payment) {
+        await tx.payment.update({
+          where: { id: input.paymentId },
+          data: {
+            metadata: {
+              ...safeJsonRecord(payment.metadata),
+              ...attributionMetadata,
+            } as Prisma.InputJsonObject,
+          },
+        });
+      }
+    }
+
     for (const line of printedLines) {
       if (line.product.stock == null || settings.inventory.allowBackorder) continue;
       const updated = await tx.libraryProduct.updateMany({
@@ -1433,7 +1453,7 @@ export async function createLibraryOrderFromCheckout(input: {
           stockReserved: printedLines.some((line) => line.product.stock != null) && !settings.inventory.allowBackorder,
           needsShipping: printedLines.length > 0 && quote.shippingMethod !== "PICKUP",
           hasDigital: lines.some((line) => line.productType !== LibraryProductType.PRINTED_BOOK),
-          ...(input.attribution ? sanitizeCheckoutAttribution(input.attribution) : {}),
+          ...attributionMetadata,
         } as Prisma.InputJsonValue,
         items: {
           create: lines.map((line) => ({
@@ -1523,6 +1543,7 @@ function sanitizeCheckoutAttribution(input: LibraryCheckoutAttribution) {
     funnelId: stringOrNull(input.funnelId),
     funnelSlug: stringOrNull(input.funnelSlug),
     funnelVersion: Number.isFinite(Number(input.funnelVersion)) ? Number(input.funnelVersion) : null,
+    template: stringOrNull(input.template),
     productId: stringOrNull(input.productId),
     productSlug: stringOrNull(input.productSlug),
     offerId: stringOrNull(input.offerId),
@@ -1542,6 +1563,10 @@ function stringOrNull(value: unknown) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed ? trimmed.slice(0, 240) : null;
+}
+
+function safeJsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 export async function createAdminLibraryManualOrder(input: {

@@ -81,6 +81,16 @@ export function MyLibraryClient({
 
   async function download(accessId?: string) {
     if (!accessId) return;
+    const item = library.downloads.find((row) => row.id === accessId);
+    const downloadMetadata = {
+      productId: item?.productId,
+      productTitle: item?.productTitle,
+      orderId: item?.orderId ?? undefined,
+      fileName: item?.fileName,
+      downloadCount: item?.downloadCount,
+      downloadLimit: item?.downloadLimit ?? undefined,
+      status: item?.status,
+    };
     setDownloadState((current) => ({ ...current, [accessId]: { tone: "pending", message: "Preparing secure download..." } }));
     try {
       const token = await apiFetch<{ token: string; downloadUrl: string }>(`/api/v1/library/downloads/${accessId}/token`, { method: "POST" });
@@ -90,8 +100,7 @@ export function MyLibraryClient({
         showToast(message, "error");
         return;
       }
-      trackEvent("library_download_started", accessId);
-      const item = library.downloads.find((row) => row.id === accessId);
+      trackEvent("library_download_started", accessId, downloadMetadata);
       try {
         const key = "houselink_nps_asked";
         const asked = new Set(JSON.parse(window.localStorage.getItem(key) || "[]") as string[]);
@@ -107,6 +116,7 @@ export function MyLibraryClient({
         /* ignore */
       }
       setDownloadState((current) => ({ ...current, [accessId]: { tone: "pending", message: "Opening download..." } }));
+      trackEvent("library_download_completed", accessId, downloadMetadata);
       window.location.href = `${token.data.downloadUrl}?token=${encodeURIComponent(token.data.token)}`;
     } catch (error) {
       const message = error instanceof Error ? `Download failed: ${error.message}` : "Download failed. Please try again.";

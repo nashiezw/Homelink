@@ -250,8 +250,8 @@ function buildDashboard(
     });
     const visitors = countEvents(scoped, ["library_funnel_page_view", "page_view"]);
     const ctaClicks = countEvents(scoped, ["library_funnel_cta_clicked", "library_cta_clicked"]);
-    const checkoutStarts = countEvents(scoped, ["library_checkout_started", "library_funnel_checkout_started"]);
-    const paymentStarts = countEvents(scoped, ["payment_started"]);
+    const checkoutStarts = countEvents(scoped, ["library_checkout_started", "library_funnel_checkout_started", "library_funnel_checkout_viewed"]);
+    const paymentStarts = countEvents(scoped, ["payment_started", "library_funnel_payment_started"]);
     const purchases = Math.max(countEvents(scoped, Array.from(PURCHASE_EVENTS)), orderRows.length);
     const revenue = orderRows.reduce((sum, order) => sum + Number(order.total || 0), 0);
     const ctaCounts = new Map<string, number>();
@@ -315,7 +315,7 @@ function buildDashboard(
       offerId: funnel.offer.id,
       views: countEvents(scoped, ["library_funnel_offer_viewed"]),
       clicks,
-      checkoutStarts: countEvents(scoped, ["library_checkout_started", "library_funnel_checkout_started"]),
+      checkoutStarts: countEvents(scoped, ["library_checkout_started", "library_funnel_checkout_started", "library_funnel_checkout_viewed"]),
       purchases,
       revenue,
       conversionRate: rate(purchases, clicks),
@@ -349,7 +349,7 @@ function buildDashboard(
     const row = campaignMap.get(campaign) ?? { visitors: 0, ctaClicks: 0, checkoutStarts: 0, purchases: 0, revenue: 0 };
     if (event.name === "library_funnel_page_view" || event.name === "page_view") row.visitors += 1;
     if (event.name === "library_funnel_cta_clicked") row.ctaClicks += 1;
-    if (event.name === "library_checkout_started") row.checkoutStarts += 1;
+    if (event.name === "library_checkout_started" || event.name === "library_funnel_checkout_started" || event.name === "library_funnel_checkout_viewed") row.checkoutStarts += 1;
     if (PURCHASE_EVENTS.has(event.name)) row.purchases += 1;
     campaignMap.set(campaign, row);
   });
