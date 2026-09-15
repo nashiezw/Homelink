@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
@@ -253,8 +252,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
           <span className="inline-flex items-center gap-1"><CreditCard className="size-3.5" /> Platform payments</span>
         </div>
         <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
-          Review the edition and sample before checkout. Refund requests follow the{" "}
-          <Link href="/returns" className="font-black text-[#0b8f54] underline underline-offset-2">Refund Policy</Link>.
+          Review the edition and sample before checkout so you know exactly what you are ordering.
         </p>
       </div>
     </div>
@@ -361,7 +359,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
               </div>
             </div>
             <p className="mt-6 text-xs font-semibold leading-5 text-[#675747]">
-              Review the selected format, sample where available, and <Link href="/returns" className="font-black text-[#201a14] underline underline-offset-2">Refund Policy</Link> before checkout.
+              Preview the sample where available and confirm the selected format before checkout.
             </p>
           </div>
         </section>
@@ -456,7 +454,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
           </div>
           <div className="mx-auto mt-8 max-w-6xl border-l-4 border-[#0b8f54] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
             <p className="text-sm font-semibold leading-7 text-[#475569]">
-              Review product details, edition type, sample where available, and the <Link href="/returns" className="font-black text-[#0b8f54] underline">Refund Policy</Link> before placing your order.
+              Review product details, edition type, and the sample where available before placing your order.
             </p>
           </div>
         </section>
@@ -601,7 +599,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
               </div>
             </div>
             <p className="mt-5 border-t border-[#bdd1c9] pt-4 text-xs font-semibold leading-5 text-[#64748b]">
-              Review the selected format, product description, sample where available, and <Link href="/returns" className="font-black text-[#0b8f54] underline">Refund Policy</Link> before checkout.
+              Preview the sample where available and confirm the selected format before checkout.
             </p>
           </div>
         </section>
@@ -789,8 +787,7 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
           </div>
           <div className="mt-5 border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-950">
             <p>
-              Review the selected format, product description, table of contents, and sample where available before buying. Refund and cancellation requests are handled under the{" "}
-              <Link href="/returns" className="font-black underline underline-offset-2">Returns, Refunds & Digital Products Policy</Link>.
+              Review the selected format, product description, table of contents, and sample where available before buying.
             </p>
             <p className="mt-2 text-xs leading-5 text-amber-900">{propertyLawScope}</p>
           </div>
@@ -804,10 +801,8 @@ export function SalesFunnelPage({ resolved, sampleUrl }: SalesFunnelPageProps) {
             <h2 className="mt-2 text-[2rem] font-black uppercase leading-[0.96] text-[#0d1422] sm:text-[2.65rem]">Questions before you order</h2>
             <p className="mt-4 text-sm font-semibold leading-7 text-slate-700">{funnel.disclaimer}</p>
             <div className="mt-5 border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-5 text-amber-950">
-              <p>{propertyLawScope}</p>
-              <p className="mt-2">
-                Before placing an order, review the sample where available and confirm whether you are choosing a digital or printed edition. See the{" "}
-                <Link href="/returns" className="font-black underline underline-offset-2">Refund Policy</Link>.
+              <p>
+                Before placing an order, review the sample where available and confirm whether you are choosing a digital or printed edition.
               </p>
             </div>
           </div>
