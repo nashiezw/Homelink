@@ -22,7 +22,7 @@ import { findPreparedLibrarySample, isLibrarySampleCandidate } from "@/lib/libra
 import { quoteLibraryShipping } from "@/lib/library/shipping";
 import { sendLibraryTemplatedEmail } from "@/lib/library/emails";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
-import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
+import { ensureLibraryReviewProductionSchema, isDatabaseUnavailableError } from "@/lib/db/production-schema";
 
 export { getLibraryStoreSettings, listLibrarySettingsAudit, productTemplateForType, saveLibraryStoreSettings, type LibraryStoreSettings };
 
@@ -2111,6 +2111,7 @@ export async function createLibraryCustomerReview(input: {
     };
   }
 
+  await ensureLibraryReviewProductionSchema();
   const prisma = getMainPrisma();
   const purchased = userId ? await hasLibraryProductPurchase(prisma, userId, input.productId) : false;
 
@@ -2154,6 +2155,7 @@ export async function createLibraryCustomerReview(input: {
 
 export async function listApprovedLibraryProductReviews(productId: string, limit = 12) {
   if (!productId || !shouldUsePostgresLibrary()) return [];
+  await ensureLibraryReviewProductionSchema();
   const rows = await getMainPrisma().libraryReview.findMany({
     where: { productId, status: { in: ["APPROVED", "PUBLISHED"] } },
     include: { user: { select: { name: true } } },

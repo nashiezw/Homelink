@@ -4,8 +4,10 @@ import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 
 let ensurePromise: Promise<void> | null = null;
 let ensureBlogPromise: Promise<void> | null = null;
+let ensureLibraryReviewPromise: Promise<void> | null = null;
 let coreSchemaUnavailableUntil = 0;
 let blogSchemaUnavailableUntil = 0;
+let libraryReviewSchemaUnavailableUntil = 0;
 const SCHEMA_UNAVAILABLE_BACKOFF_MS = 60_000;
 
 export function isMissingSchemaError(error: unknown) {
@@ -51,6 +53,36 @@ export async function ensureBlogProductionSchema() {
     throw error;
   });
   return ensureBlogPromise;
+}
+
+export async function ensureLibraryReviewProductionSchema() {
+  if (!isPostgresStoreEnabled()) return;
+  if (Date.now() < libraryReviewSchemaUnavailableUntil) return;
+  ensureLibraryReviewPromise ??= applyLibraryReviewProductionSchema().catch((error) => {
+    ensureLibraryReviewPromise = null;
+    if (isDatabaseUnavailableError(error)) {
+      libraryReviewSchemaUnavailableUntil = Date.now() + SCHEMA_UNAVAILABLE_BACKOFF_MS;
+      return;
+    }
+    throw error;
+  });
+  return ensureLibraryReviewPromise;
+}
+
+async function applyLibraryReviewProductionSchema() {
+  const prisma = getMainPrisma();
+  await prisma.$executeRawUnsafe(`ALTER TABLE "library_reviews" ADD COLUMN IF NOT EXISTS "displayName" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "library_reviews" ADD COLUMN IF NOT EXISTS "guestName" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "library_reviews" ADD COLUMN IF NOT EXISTS "guestEmail" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "library_reviews" ADD COLUMN IF NOT EXISTS "guestPhone" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "library_reviews" ADD COLUMN IF NOT EXISTS "purchaseSource" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "library_reviews" ADD COLUMN IF NOT EXISTS "adminNote" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "library_reviews" ALTER COLUMN "userId" DROP NOT NULL`);
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "library_reviews_productId_status_createdAt_idx" ON "library_reviews"("productId", "status", "createdAt")`,
+  );
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_reviews_guestEmail_idx" ON "library_reviews"("guestEmail")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_reviews_guestPhone_idx" ON "library_reviews"("guestPhone")`);
 }
 
 async function applyCoreProductionSchema() {

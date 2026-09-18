@@ -1,5 +1,6 @@
 import { created, ok, problem } from "@/lib/api/response";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
+import { isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 import { createLibraryCustomerReview, listApprovedLibraryProductReviews } from "@/lib/library/repository";
 
 export const dynamic = "force-dynamic";
@@ -30,18 +31,27 @@ export async function POST(request: Request) {
     return problem(400, "INVALID_JSON", "Request body must be valid JSON.");
   }
   if (!body.productId) return problem(400, "INVALID_PRODUCT", "productId is required.");
-  const result = await createLibraryCustomerReview({
-    userId,
-    productId: body.productId,
-    rating: Number(body.rating),
-    title: body.title,
-    body: body.body,
-    displayName: body.displayName,
-    guestName: body.guestName,
-    guestEmail: body.guestEmail,
-    guestPhone: body.guestPhone,
-    purchaseSource: body.purchaseSource,
-  });
+  let result;
+  try {
+    result = await createLibraryCustomerReview({
+      userId,
+      productId: body.productId,
+      rating: Number(body.rating),
+      title: body.title,
+      body: body.body,
+      displayName: body.displayName,
+      guestName: body.guestName,
+      guestEmail: body.guestEmail,
+      guestPhone: body.guestPhone,
+      purchaseSource: body.purchaseSource,
+    });
+  } catch (error) {
+    if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) {
+      return problem(503, "REVIEWS_UNAVAILABLE", "Reviews are temporarily unavailable. Please try again shortly.");
+    }
+    console.error("Library review submission failed", error);
+    return problem(500, "REVIEW_SUBMISSION_FAILED", "Your review could not be submitted. Please try again.");
+  }
   if (!result) return problem(400, "INVALID_REVIEW", "A valid rating and purchased product are required.");
   if ("error" in result) {
     if (result.error === "REVIEWS_DISABLED") {
