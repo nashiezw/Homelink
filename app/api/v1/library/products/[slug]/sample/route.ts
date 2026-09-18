@@ -88,7 +88,7 @@ function sampleHeaders(sample: LibrarySampleFile, disposition: "inline" | "attac
   return {
     "Content-Type": contentType(sample.fileType, sample.fileName),
     "Content-Disposition": `${disposition}; filename="${sample.fileName.replace(/"/g, "")}"`,
-    "Cache-Control": versioned ? "public, max-age=31536000, immutable" : "no-store, max-age=0",
+    "Cache-Control": versioned ? "public, max-age=31536000, immutable" : "private, max-age=60, stale-while-revalidate=300",
     "X-HouseLink-Sample": sample.productTitle,
     "X-HouseLink-Sample-Pages": String(maxSamplePages),
     "X-HouseLink-Sample-Watermark": watermarkSamples ? "1" : "0",

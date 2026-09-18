@@ -29,8 +29,9 @@ export default async function FunnelSampleRoute({ params }: { params: Promise<{ 
   if (!sample) notFound();
 
   const sampleVersion = encodeURIComponent([sample.fileId, sample.fileName].filter(Boolean).join("-"));
-  const sampleUrl = `/api/v1/library/products/${encodeURIComponent(resolved.product.slug)}/sample?v=${sampleVersion}&funnel=${encodeURIComponent(resolved.funnel.slug)}`;
-  const sampleDownloadUrl = `${sampleUrl}&download=1`;
+  const sampleApiUrl = `/api/v1/library/products/${encodeURIComponent(resolved.product.slug)}/sample?v=${sampleVersion}&funnel=${encodeURIComponent(resolved.funnel.slug)}`;
+  const sampleUrl = sample.fileUrl.startsWith("/uploads/library/samples/") ? sample.fileUrl : sampleApiUrl;
+  const sampleDownloadUrl = `${sampleApiUrl}&download=1`;
   const funnelUrl = `/funnel/${encodeURIComponent(resolved.funnel.slug)}`;
 
   return (

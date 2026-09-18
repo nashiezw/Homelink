@@ -314,11 +314,13 @@ export function LibraryProductPage({
     ? "Printed edition: review the description, format, price, delivery or pickup details, and refund policy before purchasing."
     : "Digital edition: this is an educational and professional reference publication. Please review the description, contents, and available sample before purchasing.";
   const sampleFile = useMemo(
-    () => product.downloads.find(isLibrarySampleFile) ?? preparedSampleToDownload(findPreparedLibrarySample({ slug: product.slug, title: product.title })),
+    () => preparedSampleToDownload(findPreparedLibrarySample({ slug: product.slug, title: product.title })) ?? product.downloads.find(isLibrarySampleFile),
     [product.downloads, product.slug, product.title],
   );
-  const sampleUrl = sampleFile ? `/api/v1/library/products/${encodeURIComponent(product.slug)}/sample` : null;
-  const sampleDownloadUrl = sampleUrl ? `${sampleUrl}?download=1` : null;
+  const sampleVersion = sampleFile ? encodeURIComponent([sampleFile.id, sampleFile.fileName, sampleFile.fileSizeBytes].filter(Boolean).join("-")) : "";
+  const sampleApiUrl = sampleFile ? `/api/v1/library/products/${encodeURIComponent(product.slug)}/sample?v=${sampleVersion}` : null;
+  const sampleUrl = sampleFile?.fileUrl?.startsWith("/uploads/library/samples/") ? sampleFile.fileUrl : sampleApiUrl;
+  const sampleDownloadUrl = sampleApiUrl ? `${sampleApiUrl}&download=1` : null;
   const sampleMeta = useMemo(() => {
     if (!sampleFile) return null;
     const size = sampleFile.size || formatSampleSize(sampleFile.fileSizeBytes);

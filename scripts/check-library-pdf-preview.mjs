@@ -23,8 +23,18 @@ const checks = [
   },
   {
     file: "components/library/pdf-sample-viewer.tsx",
-    label: "PDF.js render tasks are cancelled across rerenders",
-    pattern: /renderTasksRef[\s\S]*\.cancel\(\)/,
+    label: "PDF pages render progressively near the viewport",
+    pattern: /IntersectionObserver[\s\S]*rootMargin: "600px 0px"/,
+  },
+  {
+    file: "components/library/pdf-sample-viewer.tsx",
+    label: "the first PDF page renders eagerly",
+    pattern: /eager=\{page\.pageNumber === 1\}/,
+  },
+  {
+    file: "components/library/pdf-sample-viewer.tsx",
+    label: "mobile canvas density is capped",
+    pattern: /Math\.min\(window\.devicePixelRatio \|\| 1, 1\.5\)/,
   },
   {
     file: "components/library/pdf-sample-viewer.tsx",
@@ -37,9 +47,19 @@ const checks = [
     pattern: /sampleLookupKey[\s\S]*complete[\s\S]*guide/,
   },
   {
+    file: "lib/library/repository.ts",
+    label: "prepared sales samples take priority over slower uploaded fallbacks",
+    pattern: /resolveLibraryProductSampleFile[\s\S]*const prepared[\s\S]*if \(prepared\)[\s\S]*const sample/,
+  },
+  {
     file: "app/api/v1/library/products/[slug]/sample/route.ts",
     label: "sample route explicitly serves PDF content",
     pattern: /application\/pdf/,
+  },
+  {
+    file: "components/library/library-product-page.tsx",
+    label: "prepared product samples use static delivery",
+    pattern: /startsWith\("\/uploads\/library\/samples\/"\)/,
   },
   {
     file: "app/api/v1/library/products/[slug]/sample/route.ts",
@@ -50,6 +70,11 @@ const checks = [
     file: "next.config.ts",
     label: "standalone output traces local sample uploads",
     pattern: /\/api\/v1\/library\/products\/\[slug\]\/sample/,
+  },
+  {
+    file: "next.config.ts",
+    label: "prepared samples use immutable caching and byte ranges",
+    pattern: /\/uploads\/library\/samples\/:path\*[\s\S]*max-age=31536000, immutable[\s\S]*Accept-Ranges/,
   },
 ];
 
