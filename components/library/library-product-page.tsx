@@ -136,7 +136,6 @@ export function LibraryProductPage({
   const [reviewDeepLinkActive, setReviewDeepLinkActive] = useState(false);
   const [softcopyBadgeVariant, setSoftcopyBadgeVariant] = useState("control");
   const [sampleTouched, setSampleTouched] = useState(false);
-  const [displayViewCount, setDisplayViewCount] = useState(product.viewCount);
   const reviewSectionRef = useRef<HTMLDivElement>(null);
   const buyNowInFlightRef = useRef(false);
 
@@ -311,9 +310,6 @@ export function LibraryProductPage({
       : product.stock > 0
         ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} in stock`
         : "Printed format out of stock";
-  const accessCopy = isPrinted
-    ? printStockLabel
-    : "Digital PDF unlocks automatically once payment is confirmed. Your invoice and access stay in your HouseLink account.";
   const purchaseNotice = isPrinted
     ? "Printed edition: review the description, format, price, delivery or pickup details, and refund policy before purchasing."
     : "Digital edition: this is an educational and professional reference publication. Please review the description, contents, and available sample before purchasing.";
@@ -336,17 +332,6 @@ export function LibraryProductPage({
   const tableOfContents = product.tableOfContents.filter((item) => item.trim());
   const whoThisIsFor = product.whoThisIsFor.filter((item) => item.trim());
   const includedDownloads = product.downloads.filter((item) => item.label?.trim() && !isLibrarySampleFile(item));
-  const decisionAudience = whoThisIsFor.slice(0, 3).join(", ") || `${product.category} buyers`;
-  const decisionDownloads = includedDownloads.slice(0, 2).map((item) => item.label).join(", ") || `${selectedFormat?.label || "Library resource"} access`;
-  const urgencySignals = [
-    product.bestSeller ? "Best seller" : "",
-    product.newRelease ? "New release" : "",
-    displayViewCount >= 25 ? `Viewed ${displayViewCount} times` : "",
-    selectedFormat?.type === "PRINTED_BOOK" && product.stock != null && product.stock <= Math.max(1, product.lowStockThreshold) && product.stock > 0
-      ? `${product.stock} printed ${product.stock === 1 ? "copy" : "copies"} left`
-      : "",
-    selectedFormat?.type !== "PRINTED_BOOK" ? "Digital access after payment confirmation" : "",
-  ].filter(Boolean);
   const buyerFaqs = buildBuyerFaqs({
     productTitle: product.title,
     selectedFormatLabel: selectedFormat?.label || "this format",
@@ -386,8 +371,6 @@ export function LibraryProductPage({
     void apiFetch<{ tracked: boolean; viewCount?: number }>(`/api/v1/library/products/${encodeURIComponent(product.slug)}`, {
       method: "POST",
       body: JSON.stringify({ action: "view" }),
-    }).then((result) => {
-      if (typeof result.data?.viewCount === "number") setDisplayViewCount(result.data.viewCount);
     });
   }, [product.id, product.slug, product.title]);
 
@@ -1235,64 +1218,19 @@ export function LibraryProductPage({
                     ) : null}
                   </div>
                 ) : null}
-                <div className="mt-5 min-w-0 max-w-full overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5 dark:border-emerald-900 dark:bg-emerald-950/25 sm:p-4">
-                  <p className="max-w-full break-words text-[0.68rem] font-bold uppercase tracking-[0.14em] text-emerald-800 dark:text-emerald-200 sm:tracking-[0.16em]">Quick decision check</p>
-                  <div className="mt-3 grid min-w-0 gap-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                    <p className="flex min-w-0 gap-2">
-                      <Users className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                      <span className="min-w-0 break-words"><strong>Best for:</strong> {decisionAudience}</span>
-                    </p>
-                    <p className="flex min-w-0 gap-2">
-                      <Download className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                      <span className="min-w-0 break-words"><strong>You get:</strong> {decisionDownloads}</span>
-                    </p>
-                    <p className="flex min-w-0 gap-2">
-                      <ShieldCheck className="mt-1 size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                      <span className="min-w-0 break-words"><strong>Access:</strong> {accessCopy}</span>
-                    </p>
-                  </div>
-                  <div className="mt-3 grid min-w-0 gap-2 rounded-xl border border-white/70 bg-white/70 p-3 text-xs font-semibold leading-5 text-emerald-900 shadow-sm dark:border-emerald-900/40 dark:bg-slate-950/60 dark:text-emerald-100 sm:grid-cols-2">
-                    {["Secure checkout", "Invoice provided", "Access kept in your account", "WhatsApp support available"].map((item) => (
-                      <span key={item} className="inline-flex min-w-0 items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" /> <span className="min-w-0 break-words">{item}</span>
-                      </span>
-                    ))}
-                  </div>
-                  {urgencySignals.length ? (
-                    <div className="mt-3 flex min-w-0 flex-wrap gap-2">
-                      {urgencySignals.slice(0, 3).map((signal) => (
-                        <span key={signal} className="max-w-full whitespace-normal break-words rounded-full bg-white px-2.5 py-1 text-xs font-bold leading-5 text-emerald-800 ring-1 ring-emerald-100 dark:bg-slate-950 dark:text-emerald-100 dark:ring-emerald-900">
-                          {signal}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                  {sampleUrl ? (
-                    <button
-                      type="button"
-                      onClick={() => openSamplePreview("decision_block")}
-                      className="mt-4 inline-flex min-h-10 max-w-full items-center justify-center gap-2 whitespace-normal break-words rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-bold leading-tight text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-100"
-                    >
-                      <FileText className="size-4" /> Preview before buying
-                    </button>
-                  ) : null}
-                </div>
-                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/80 p-3.5 text-sm leading-6 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
-                  <p className="flex min-w-0 gap-2 font-semibold">
-                    <ReceiptText className="mt-1 size-4 shrink-0" />
-                    <span className="min-w-0 break-words">{purchaseNotice}</span>
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
-                    Refund and cancellation requests are handled under our{" "}
-                    <Link href="/returns" className="font-bold underline underline-offset-2">Refund Policy</Link>{" "}
-                    and applicable Zimbabwean consumer law. This notice does not limit statutory consumer rights.
-                  </p>
-                  {isPropertyLawGuide ? (
-                    <p className="mt-2 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
-                      About the property-law content: this is a practical property-development guide, not a property-law textbook or legal practitioner manual. The legal sections give a practical overview of issues such as ownership, land tenure, title deeds, conveyancing principles, contracts, leases, servitudes, disputes, legal risk, and regulatory compliance.
-                    </p>
-                  ) : null}
-                </div>
+                {sampleUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => openSamplePreview("purchase_panel")}
+                    className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-bold leading-tight text-emerald-900 transition hover:-translate-y-0.5 hover:bg-emerald-100 hover:shadow-md dark:border-emerald-500 dark:bg-emerald-950/35 dark:text-emerald-100"
+                  >
+                    <FileText className="size-4 shrink-0" /> Preview sample before buying
+                  </button>
+                ) : null}
+                <p className="mt-3 flex min-w-0 items-start gap-2 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">
+                  <BookOpen className="mt-0.5 size-3.5 shrink-0" />
+                  <span>{isPrinted ? "Confirm delivery or pickup details before purchasing." : "Educational reference publication. Not legal or professional advice."}</span>
+                </p>
                 <div className="mt-5 grid min-w-0 gap-2.5">
                   <Button disabled={outOfStock} onClick={buyNow} className="min-h-12 w-full">
                     <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{activeBuyLabel}</span>
@@ -1301,32 +1239,33 @@ export function LibraryProductPage({
                     <ShoppingBag className="size-4 shrink-0" /> <span className="min-w-0 break-words">{productQuantity ? `In bag (${productQuantity})` : "Add to cart"}</span>
                   </Button>
                 </div>
-                <div className="mt-4 grid min-w-0 gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/55 p-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/20 sm:grid-cols-2">
-                  <WhatsAppHelpLink
-                    context={{ source: "library_product", lane: "library", productTitle: product.title }}
-                    className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-center text-sm font-bold leading-tight text-emerald-800 shadow-sm ring-1 ring-emerald-100 transition hover:bg-emerald-50 dark:bg-slate-950 dark:text-emerald-100 dark:ring-emerald-900/70"
-                  >
-                    <HelpCircle className="size-4 shrink-0" />
-                    <span className="min-w-0 break-words">Questions? WhatsApp us</span>
-                  </WhatsAppHelpLink>
-                  <button
-                    type="button"
-                    onClick={() => setQuoteOpen(true)}
-                    className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-center text-sm font-bold leading-tight text-emerald-800 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-900/70 dark:bg-slate-950 dark:text-emerald-100 dark:hover:bg-emerald-950/40"
-                  >
-                    <Users className="size-4 shrink-0" />
-                    <span className="min-w-0 break-words">
-                      {isPrinted ? "Bulk order? Request a quote" : "Team access? Request a quote"}
-                    </span>
-                  </button>
-                </div>
+                <details className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800">
+                  <summary className="cursor-pointer text-center text-sm font-semibold text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300">Need help with your order?</summary>
+                  <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-2">
+                    <WhatsAppHelpLink
+                      context={{ source: "library_product", lane: "library", productTitle: product.title }}
+                      className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 dark:border-slate-700 dark:text-emerald-200"
+                    >
+                      <HelpCircle className="size-4 shrink-0" /> WhatsApp us
+                    </WhatsAppHelpLink>
+                    <button
+                      type="button"
+                      onClick={() => setQuoteOpen(true)}
+                      className="inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 dark:border-slate-700 dark:text-emerald-200"
+                    >
+                      <Users className="size-4 shrink-0" /> {isPrinted ? "Request bulk quote" : "Request team access"}
+                    </button>
+                  </div>
+                </details>
               </div>
             </div>
 
-            <div className="grid min-w-0 max-w-full gap-3 overflow-hidden border-t border-slate-100 pt-5 sm:grid-cols-3 dark:border-slate-800 xl:col-start-2 xl:border-0 xl:pt-0">
-              <HeroProof icon={ShieldCheck} label="Secure checkout" />
-              <HeroProof icon={ReceiptText} label="Invoice ready" />
-              <HeroProof icon={Download} label="Tracked access" />
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:text-slate-400 xl:col-start-2 xl:border-0 xl:pt-0">
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-emerald-700 dark:text-emerald-300" /> Secure checkout</span>
+              <span aria-hidden>·</span>
+              <span className="inline-flex items-center gap-1.5"><ReceiptText className="size-3.5 text-emerald-700 dark:text-emerald-300" /> Invoice provided</span>
+              <span aria-hidden>·</span>
+              <span className="inline-flex items-center gap-1.5"><Lock className="size-3.5 text-emerald-700 dark:text-emerald-300" /> {isPrinted ? "Tracked order" : "Secure digital access"}</span>
             </div>
           </div>
         </article>
@@ -2363,15 +2302,6 @@ function formatDescriptionSections(text: string) {
   }
 
   return sections.length ? sections : [{ type: "paragraph" as const, text: text.trim() }];
-}
-
-function HeroProof({ icon: Icon, label }: { icon: typeof ShieldCheck; label: string }) {
-  return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-950/50">
-      <Icon className="size-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-      <p className="min-w-0 break-words text-sm font-semibold leading-snug text-slate-700 dark:text-slate-200">{label}</p>
-    </div>
-  );
 }
 
 function readableSubtitle(value: string) {
