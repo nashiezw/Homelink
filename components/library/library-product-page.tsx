@@ -332,6 +332,19 @@ export function LibraryProductPage({
   const tableOfContents = product.tableOfContents.filter((item) => item.trim());
   const whoThisIsFor = product.whoThisIsFor.filter((item) => item.trim());
   const includedDownloads = product.downloads.filter((item) => item.label?.trim() && !isLibrarySampleFile(item));
+  const descriptionBlocks = product.description.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
+  const descriptionAudienceIndex = descriptionBlocks.findIndex((item) => /\bfor\s*:\s*$/i.test(item));
+  const descriptionAudience = descriptionAudienceIndex >= 0
+    ? (descriptionBlocks[descriptionAudienceIndex + 1] || "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
+    : [];
+  const purchaseHighlights = (learningOutcomes.length > 0 ? learningOutcomes : tableOfContents).slice(0, 3);
+  const purchaseHighlightsTitle = learningOutcomes.length > 0 ? "What this book helps you do" : "Inside this book";
+  const purchaseAudience = (whoThisIsFor.length > 0 ? whoThisIsFor : descriptionAudience).slice(0, 3);
+  const purchaseValueSummary = purchaseHighlights.length === 0
+    ? [...descriptionBlocks]
+        .reverse()
+        .find((item) => item.length >= 80 && !/\bfor\s*:\s*$/i.test(item) && !item.includes("\n")) || ""
+    : "";
   const buyerFaqs = buildBuyerFaqs({
     productTitle: product.title,
     selectedFormatLabel: selectedFormat?.label || "this format",
@@ -1020,8 +1033,37 @@ export function LibraryProductPage({
                 </span>
               </div>
 
+              {purchaseHighlights.length > 0 || purchaseValueSummary || purchaseAudience.length > 0 ? (
+                <div className="mt-5 border-y border-slate-100 py-4 dark:border-slate-800">
+                  {purchaseHighlights.length > 0 ? (
+                    <div>
+                      <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-slate-500">{purchaseHighlightsTitle}</p>
+                      <ul className="mt-2.5 grid gap-2">
+                        {purchaseHighlights.map((item) => (
+                          <li key={item} className="flex min-w-0 items-start gap-2 text-sm font-medium leading-5 text-slate-700 dark:text-slate-200">
+                            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                            <span className="min-w-0 break-words">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : purchaseValueSummary ? (
+                    <div>
+                      <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-slate-500">Why this book</p>
+                      <p className="mt-2 text-sm font-medium leading-6 text-slate-700 dark:text-slate-200">{purchaseValueSummary}</p>
+                    </div>
+                  ) : null}
+                  {purchaseAudience.length > 0 ? (
+                    <p className={cn("flex min-w-0 items-start gap-2 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400", (purchaseHighlights.length > 0 || purchaseValueSummary) && "mt-3")}>
+                      <Users className="mt-0.5 size-3.5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                      <span className="min-w-0 break-words"><strong className="text-slate-700 dark:text-slate-200">For:</strong> {purchaseAudience.join(" · ")}</span>
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
               {formats.length > 0 && (
-                <div className="mt-7 min-w-0">
+                <div className="mt-5 min-w-0">
                   <p className="max-w-full break-words text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Choose format</p>
                   <div className={cn("mt-3 grid w-full min-w-0 max-w-full gap-3", formats.length > 1 ? "sm:grid-cols-2" : "grid-cols-1")}>
                     {formats.map((format) => {
@@ -1227,10 +1269,6 @@ export function LibraryProductPage({
                     <FileText className="size-4 shrink-0" /> Preview sample before buying
                   </button>
                 ) : null}
-                <p className="mt-3 flex min-w-0 items-start gap-2 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">
-                  <BookOpen className="mt-0.5 size-3.5 shrink-0" />
-                  <span>{isPrinted ? "Confirm delivery or pickup details before purchasing." : "Educational reference publication. Not legal or professional advice."}</span>
-                </p>
                 <div className="mt-5 grid min-w-0 gap-2.5">
                   <Button disabled={outOfStock} onClick={buyNow} className="min-h-12 w-full">
                     <ShoppingCart className="size-4 shrink-0" /> <span className="min-w-0 break-words">{activeBuyLabel}</span>
@@ -1240,7 +1278,9 @@ export function LibraryProductPage({
                   </Button>
                 </div>
                 <details className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800">
-                  <summary className="cursor-pointer text-center text-sm font-semibold text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300">Need help with your order?</summary>
+                  <summary className="flex cursor-pointer list-none items-center justify-center gap-2 rounded-lg py-1 text-center text-sm font-semibold text-slate-600 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:text-slate-300 dark:hover:text-emerald-300 [&::-webkit-details-marker]:hidden">
+                    <HelpCircle className="size-4" /> Need help with your order?
+                  </summary>
                   <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-2">
                     <WhatsAppHelpLink
                       context={{ source: "library_product", lane: "library", productTitle: product.title }}
@@ -1260,12 +1300,18 @@ export function LibraryProductPage({
               </div>
             </div>
 
-            <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-slate-100 pt-4 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:text-slate-400 xl:col-start-2 xl:border-0 xl:pt-0">
-              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-emerald-700 dark:text-emerald-300" /> Secure checkout</span>
-              <span aria-hidden>·</span>
-              <span className="inline-flex items-center gap-1.5"><ReceiptText className="size-3.5 text-emerald-700 dark:text-emerald-300" /> Invoice provided</span>
-              <span aria-hidden>·</span>
-              <span className="inline-flex items-center gap-1.5"><Lock className="size-3.5 text-emerald-700 dark:text-emerald-300" /> {isPrinted ? "Tracked order" : "Secure digital access"}</span>
+            <div className="border-t border-slate-100 pt-4 dark:border-slate-800 xl:col-start-2 xl:border-0 xl:pt-0">
+              <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-emerald-700 dark:text-emerald-300" /> Secure checkout</span>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1.5"><ReceiptText className="size-3.5 text-emerald-700 dark:text-emerald-300" /> Invoice provided</span>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1.5"><Lock className="size-3.5 text-emerald-700 dark:text-emerald-300" /> {isPrinted ? "Tracked order" : "Secure digital access"}</span>
+              </div>
+              <p className="mx-auto mt-2 flex max-w-lg items-start justify-center gap-1.5 text-center text-[0.68rem] font-medium leading-4 text-slate-400 dark:text-slate-500">
+                <BookOpen className="mt-px size-3 shrink-0" />
+                <span>{isPrinted ? "Confirm delivery or pickup details before purchasing." : "Educational reference publication. Not legal or professional advice."}</span>
+              </p>
             </div>
           </div>
         </article>
