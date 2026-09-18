@@ -1317,7 +1317,7 @@ export function LibraryProductPage({
         </article>
       </section>
 
-      <section className="mx-auto grid w-full max-w-[88rem] min-w-0 gap-7 overflow-hidden px-4 pr-6 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:px-8">
+      <section className="mx-auto grid w-full max-w-[88rem] min-w-0 items-start gap-7 px-4 pr-6 pb-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8">
         <div className="min-w-0 max-w-full space-y-7 overflow-hidden">
           {showFullDescription ? (
             <section className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-slate-900 sm:p-7">
@@ -1743,7 +1743,7 @@ export function LibraryProductPage({
           )}
         </div>
 
-        <aside className="min-w-0 max-w-full space-y-4 overflow-hidden lg:sticky lg:top-24">
+        <aside className="min-w-0 max-w-full self-start space-y-4 overflow-hidden">
           <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Your selection</p>
             <p className="mt-2 break-words text-sm font-semibold text-ink dark:text-white">{selectedFormat?.label || "Library product"}</p>
@@ -2314,6 +2314,18 @@ function formatDescriptionSections(text: string) {
   const sections: Array<{ type: "paragraph"; text: string; emphasis?: boolean } | { type: "list"; items: string[] }> = [];
   for (const block of prepared.split(/\n\s*\n/)) {
     const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+    const previousSection = sections[sections.length - 1];
+    const followsListHeading = previousSection?.type === "paragraph" && /:\s*$/.test(previousSection.text);
+    const isPlainLineList =
+      followsListHeading &&
+      lines.length > 1 &&
+      lines.every((line) => line.length <= 100 && !/[.!?]$/.test(line));
+
+    if (isPlainLineList) {
+      sections.push({ type: "list", items: lines });
+      continue;
+    }
+
     let paragraphLines: string[] = [];
     let listItems: string[] = [];
 
