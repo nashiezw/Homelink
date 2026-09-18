@@ -48,8 +48,8 @@ const checks = [
   },
   {
     file: "lib/library/repository.ts",
-    label: "prepared sales samples take priority over slower uploaded fallbacks",
-    pattern: /resolveLibraryProductSampleFile[\s\S]*const prepared[\s\S]*if \(prepared\)[\s\S]*const sample/,
+    label: "the sample selected in the product form takes priority",
+    pattern: /resolveLibraryProductSampleFile[\s\S]*const sample[\s\S]*if \(!sample\?\.fileUrl\)[\s\S]*const prepared/,
   },
   {
     file: "app/api/v1/library/products/[slug]/sample/route.ts",

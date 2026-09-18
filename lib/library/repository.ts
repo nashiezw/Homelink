@@ -465,8 +465,10 @@ export async function getLibraryProductSampleFile(slug: string) {
 }
 
 export function resolveLibraryProductSampleFile(product: LibraryProduct) {
-  const prepared = findPreparedLibrarySample({ slug: product.slug, title: product.title });
-  if (prepared) {
+  const sample = product.downloads.find(isLibrarySampleCandidate) ?? null;
+  if (!sample?.fileUrl) {
+    const prepared = findPreparedLibrarySample({ slug: product.slug, title: product.title });
+    if (!prepared) return null;
     return {
       productId: product.id,
       productTitle: product.title,
@@ -476,8 +478,6 @@ export function resolveLibraryProductSampleFile(product: LibraryProduct) {
       fileType: prepared.fileType,
     };
   }
-  const sample = product.downloads.find(isLibrarySampleCandidate) ?? null;
-  if (!sample?.fileUrl) return null;
   return {
     productId: product.id,
     productTitle: product.title,

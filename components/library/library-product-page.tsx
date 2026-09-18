@@ -314,7 +314,7 @@ export function LibraryProductPage({
     ? "Printed edition: review the description, format, price, delivery or pickup details, and refund policy before purchasing."
     : "Digital edition: this is an educational and professional reference publication. Please review the description, contents, and available sample before purchasing.";
   const sampleFile = useMemo(
-    () => preparedSampleToDownload(findPreparedLibrarySample({ slug: product.slug, title: product.title })) ?? product.downloads.find(isLibrarySampleFile),
+    () => product.downloads.find(isLibrarySampleFile) ?? preparedSampleToDownload(findPreparedLibrarySample({ slug: product.slug, title: product.title })),
     [product.downloads, product.slug, product.title],
   );
   const sampleVersion = sampleFile ? encodeURIComponent([sampleFile.id, sampleFile.fileName, sampleFile.fileSizeBytes].filter(Boolean).join("-")) : "";
