@@ -356,20 +356,10 @@ export function LibraryProductPage({
     currency: product.currency,
     price: selectedFormat?.price ?? product.price,
   });
-  const shortDescription = product.shortDescription?.replace(/\s+/g, " ").trim() || "";
   const heroHeadline = product.salesHeadline?.replace(/\s+/g, " ").trim() || product.title;
   const heroPitch = product.shortMarketingPitch?.replace(/\s+/g, " ").trim() || product.subtitle?.replace(/\s+/g, " ").trim() || "";
   const fullDescription = product.description?.trim() || "";
-  const compactFullDescription = fullDescription.replace(/\s+/g, " ").trim();
-  const summaryExcerpt =
-    shortDescription && shortDescription !== compactFullDescription
-      ? shortDescription
-      : compactFullDescription
-        ? compactFullDescription.length > 220
-          ? `${compactFullDescription.slice(0, 217).trimEnd()}...`
-          : compactFullDescription
-        : "";
-  const showFullDescription = Boolean(fullDescription && compactFullDescription !== summaryExcerpt);
+  const showFullDescription = Boolean(fullDescription);
 
   function openLightbox(options?: { zoomed?: boolean }) {
     if (!activeGalleryImage?.url && !galleryImages[0]?.url) return;
@@ -1046,12 +1036,6 @@ export function LibraryProductPage({
                   <span className="text-slate-500 dark:text-slate-400">({ratingSummary.count} reviews)</span>
                 </span>
               </div>
-
-              {summaryExcerpt ? (
-                <p className="mt-5 max-w-full break-words text-[0.98rem] leading-7 text-slate-600 dark:text-slate-300 sm:max-w-[36rem]">
-                  {summaryExcerpt}
-                </p>
-              ) : null}
 
               {formats.length > 0 && (
                 <div className="mt-7 min-w-0">
