@@ -636,8 +636,10 @@ export function LibraryProductPage({
         count: result.data.productRating.count,
       });
     }
-    const refreshed = await apiFetch<{ reviews: typeof reviews }>(`/api/v1/library/reviews?productId=${encodeURIComponent(product.id)}`);
-    if (refreshed.data?.reviews) setReviews(refreshed.data.reviews);
+    if (result.data?.autoApproved) {
+      const refreshed = await apiFetch<{ reviews: typeof reviews }>(`/api/v1/library/reviews?productId=${encodeURIComponent(product.id)}`);
+      if (refreshed.data?.reviews) setReviews(refreshed.data.reviews);
+    }
   }
 
   function cartLineFromFormat(format: LibraryProductFormat, quantity = 1) {

@@ -22,6 +22,7 @@ import {
   listLibraryProducts,
   getLibraryCustomerJourney,
   moderateLibraryReview,
+  listLibraryReviewsForAdmin,
   deleteLibraryOrder,
   refundLibraryOrder,
   rejectLibraryGuestClaim,
@@ -70,6 +71,16 @@ export async function GET(request: Request) {
     } catch (error) {
       console.error("[admin/library] sales funnels failed", error);
       return problem(500, "SALES_FUNNELS_FAILED", "Sales funnel intelligence could not be loaded.");
+    }
+  }
+
+  if (type === "reviews") {
+    try {
+      const limit = Number(searchParams.get("limit") || 100);
+      return ok({ reviews: await listLibraryReviewsForAdmin(limit) });
+    } catch (error) {
+      console.error("[admin/library] reviews failed", error);
+      return problem(500, "LIBRARY_REVIEWS_LOAD_FAILED", "Library reviews could not be loaded.");
     }
   }
   

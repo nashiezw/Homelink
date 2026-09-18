@@ -81,6 +81,7 @@ async function applyLibraryReviewProductionSchema() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "library_reviews_productId_status_createdAt_idx" ON "library_reviews"("productId", "status", "createdAt")`,
   );
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_reviews_status_createdAt_idx" ON "library_reviews"("status", "createdAt" DESC)`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_reviews_guestEmail_idx" ON "library_reviews"("guestEmail")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_reviews_guestPhone_idx" ON "library_reviews"("guestPhone")`);
 }

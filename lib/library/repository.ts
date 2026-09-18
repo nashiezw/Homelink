@@ -22,7 +22,7 @@ import { findPreparedLibrarySample, isLibrarySampleCandidate } from "@/lib/libra
 import { quoteLibraryShipping } from "@/lib/library/shipping";
 import { sendLibraryTemplatedEmail } from "@/lib/library/emails";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
-import { ensureLibraryReviewProductionSchema, isDatabaseUnavailableError } from "@/lib/db/production-schema";
+import { ensureLibraryReviewProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 
 export { getLibraryStoreSettings, listLibrarySettingsAudit, productTemplateForType, saveLibraryStoreSettings, type LibraryStoreSettings };
 
@@ -499,10 +499,13 @@ export async function recordLibraryProductView(slug: string) {
 }
 
 export async function getAdminLibraryData() {
-  const products = await listLibraryProducts({ includeDrafts: true });
-  const operations = await getLibraryOperationsSummary();
-  const orders = await listLibraryOrders();
-  const analytics = await getLibraryAnalytics();
+  const [products, operations, orders, analytics, settingsAudit] = await Promise.all([
+    listLibraryProducts({ includeDrafts: true }),
+    getLibraryOperationsSummary(),
+    listLibraryOrders(),
+    getLibraryAnalytics(),
+    listLibrarySettingsAudit(24),
+  ]);
   const needsReportRecovery = shouldRecoverLibraryAdminReports(operations.reports, orders);
   const reportOrders = needsReportRecovery ? await listLibraryReportOrdersFallback() : [];
   const recoveredReports = needsReportRecovery
@@ -530,7 +533,7 @@ export async function getAdminLibraryData() {
     operations: {
       ...operations,
       reports: recoveredReports,
-      settingsAudit: await listLibrarySettingsAudit(24),
+      settingsAudit,
     },
   };
 }
@@ -2111,57 +2114,60 @@ export async function createLibraryCustomerReview(input: {
     };
   }
 
-  await ensureLibraryReviewProductionSchema();
   const prisma = getMainPrisma();
   const purchased = userId ? await hasLibraryProductPurchase(prisma, userId, input.productId) : false;
 
   const reviewData = {
-      productId: input.productId,
-      userId,
-      rating,
-      title,
-      body,
-      displayName,
-      guestName,
-      guestEmail,
-      guestPhone,
-      purchaseSource,
-      status,
-      verified: purchased,
-      featured: false,
+    productId: input.productId,
+    userId,
+    rating,
+    title,
+    body,
+    displayName,
+    guestName,
+    guestEmail,
+    guestPhone,
+    purchaseSource,
+    status,
+    verified: purchased,
+    featured: false,
   };
-  const review = userId
-    ? await prisma.libraryReview.upsert({
-        where: { productId_userId: { productId: input.productId, userId } },
-        create: reviewData,
-        update: {
-          rating,
-          title,
-          body,
-          displayName,
-          guestName,
-          guestEmail,
-          guestPhone,
-          purchaseSource,
-          // Resubmits always re-enter moderation unless auto-approve is on.
-          status,
-          verified: purchased,
-        },
-      })
-    : await prisma.libraryReview.create({ data: reviewData });
-  const productRating = await recalculateLibraryProductRating(input.productId);
+  const review = await withLibraryReviewSchemaRecovery(() =>
+    userId
+      ? prisma.libraryReview.upsert({
+          where: { productId_userId: { productId: input.productId, userId } },
+          create: reviewData,
+          update: {
+            rating,
+            title,
+            body,
+            displayName,
+            guestName,
+            guestEmail,
+            guestPhone,
+            purchaseSource,
+            // Resubmits always re-enter moderation unless auto-approve is on.
+            status,
+            verified: purchased,
+          },
+        })
+      : prisma.libraryReview.create({ data: reviewData }),
+  );
+  const productRating = autoApproved ? await recalculateLibraryProductRating(input.productId) : undefined;
   return { ...review, autoApproved, productRating };
 }
 
 export async function listApprovedLibraryProductReviews(productId: string, limit = 12) {
   if (!productId || !shouldUsePostgresLibrary()) return [];
-  await ensureLibraryReviewProductionSchema();
-  const rows = await getMainPrisma().libraryReview.findMany({
-    where: { productId, status: { in: ["APPROVED", "PUBLISHED"] } },
-    include: { user: { select: { name: true } } },
-    orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
-    take: limit,
-  }).catch(() => []);
+  const prisma = getMainPrisma();
+  const rows = await withLibraryReviewSchemaRecovery(() =>
+    prisma.libraryReview.findMany({
+      where: { productId, status: { in: ["APPROVED", "PUBLISHED"] } },
+      include: { user: { select: { name: true } } },
+      orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+      take: limit,
+    }),
+  ).catch(() => []);
   return rows.map((row) => ({
     id: row.id,
     rating: row.rating,
@@ -2220,15 +2226,17 @@ export async function deleteLibraryReview(id: string, actorId?: string) {
     select: { id: true, productId: true, title: true, status: true },
   }).catch(() => null);
   if (!row) return null;
-  await recalculateLibraryProductRating(row.productId);
-  await logLibraryActivity({
-    actorId,
-    targetType: "review",
-    targetId: row.id,
-    action: "REVIEW_DELETED",
-    message: `Deleted Library review${row.title ? `: ${row.title}` : ""}.`,
-    metadata: { status: row.status },
-  });
+  await Promise.all([
+    row.status === "APPROVED" || row.status === "PUBLISHED" ? recalculateLibraryProductRating(row.productId) : Promise.resolve(),
+    logLibraryActivity({
+      actorId,
+      targetType: "review",
+      targetId: row.id,
+      action: "REVIEW_DELETED",
+      message: `Deleted Library review${row.title ? `: ${row.title}` : ""}.`,
+      metadata: { status: row.status },
+    }),
+  ]);
   return { deleted: true, id: row.id, productId: row.productId };
 }
 
@@ -3773,9 +3781,28 @@ export async function moderateLibraryReview(
     include: { product: { select: { title: true } }, user: { select: { name: true, email: true } } },
   }).catch(() => null);
   if (!row) return null;
-  await recalculateLibraryProductRating(row.productId);
-  await logLibraryActivity({ actorId, targetType: "review", targetId: row.id, action: "REVIEW_MODERATED", message: `Review marked ${row.status}.`, metadata: input });
+  await Promise.all([
+    input.status ? recalculateLibraryProductRating(row.productId) : Promise.resolve(),
+    logLibraryActivity({ actorId, targetType: "review", targetId: row.id, action: "REVIEW_MODERATED", message: `Review marked ${row.status}.`, metadata: input }),
+  ]);
   return toLibraryReviewAdmin(row);
+}
+
+export async function listLibraryReviewsForAdmin(limit = 100) {
+  if (!shouldUsePostgresLibrary()) return [];
+  const prisma = getMainPrisma();
+  const take = Math.min(Math.max(Math.trunc(limit) || 100, 1), 250);
+  const rows = await withLibraryReviewSchemaRecovery(() =>
+    prisma.libraryReview.findMany({
+      orderBy: [{ status: "desc" }, { createdAt: "desc" }],
+      take,
+      include: { product: { select: { title: true } }, user: { select: { name: true, email: true } } },
+    }),
+  );
+  const statusRank = (status: string) => status === "PENDING" ? 0 : status === "APPROVED" || status === "PUBLISHED" ? 1 : 2;
+  return rows
+    .map(toLibraryReviewAdmin)
+    .sort((a, b) => statusRank(a.status) - statusRank(b.status) || b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function createLibraryGuestClaim(input: { orderId: string; email: string }, actorId?: string) {
@@ -4711,17 +4738,28 @@ function toLibraryReviewAdmin(row: {
 async function recalculateLibraryProductRating(productId: string) {
   const prisma = getMainPrisma();
   // Treat legacy PUBLISHED the same as APPROVED for aggregates.
-  const reviews = await prisma.libraryReview.findMany({
+  const aggregate = await prisma.libraryReview.aggregate({
     where: { productId, status: { in: ["APPROVED", "PUBLISHED"] } },
-    select: { rating: true },
+    _avg: { rating: true },
+    _count: { rating: true },
   });
-  const ratingCount = reviews.length;
-  const ratingAverage = ratingCount ? reviews.reduce((sum, review) => sum + review.rating, 0) / ratingCount : 0;
+  const ratingCount = aggregate._count.rating;
+  const ratingAverage = aggregate._avg.rating ?? 0;
   await prisma.libraryProduct.update({ where: { id: productId }, data: { ratingCount, ratingAverage } }).catch(() => null);
   return {
     average: Math.round(ratingAverage * 10) / 10,
     count: ratingCount,
   };
+}
+
+async function withLibraryReviewSchemaRecovery<T>(operation: () => Promise<T>) {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isMissingSchemaError(error)) throw error;
+    await ensureLibraryReviewProductionSchema();
+    return operation();
+  }
 }
 
 function buildSalesTrend(orders: Array<{ total: Prisma.Decimal; createdAt: Date }>) {

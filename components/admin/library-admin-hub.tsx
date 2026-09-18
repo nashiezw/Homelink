@@ -718,6 +718,17 @@ export function LibraryAdminHub() {
   }, [view]);
 
   useEffect(() => {
+    if (view !== "Reviews") return;
+    void apiFetch<{ reviews: LibraryReviewAdmin[] }>("/api/v1/admin/library?type=reviews&limit=100").then((result) => {
+      if (result.data?.reviews) {
+        setOperations((current) => ({ ...current, reviews: result.data!.reviews }));
+      } else if (result.error) {
+        setFeedback({ tone: "error", message: result.error.message || "Library reviews could not be loaded." });
+      }
+    });
+  }, [view]);
+
+  useEffect(() => {
     if (view !== "Sales Funnels") return;
     setSalesFunnelLoading(true);
     setSalesFunnelError(null);
@@ -742,7 +753,10 @@ export function LibraryAdminHub() {
       setProductsSource(result.data.products);
       setOrders(result.data.orders);
       setAnalytics(result.data.analytics);
-      setOperations(result.data.operations ?? emptyOperations);
+      setOperations((current) => {
+        const incoming = result.data?.operations ?? emptyOperations;
+        return { ...incoming, reviews: current.reviews.length ? current.reviews : incoming.reviews };
+      });
       setLoadError(null);
     }
     setLoaded(true);
@@ -1652,12 +1666,12 @@ export function LibraryAdminHub() {
   }
 
   async function moderateReview(id: string, status: string, patch: { featured?: boolean; verified?: boolean; title?: string | null; body?: string | null; adminNote?: string | null } = {}) {
-    const result = await apiFetch("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "moderate_review", id, status, ...patch }) });
-    if (result.error) {
-      setFeedback({ tone: "error", message: result.error.message || "Review could not be updated." });
+    const result = await apiFetch<{ review: LibraryReviewAdmin }>("/api/v1/admin/library", { method: "POST", body: JSON.stringify({ action: "moderate_review", id, status, ...patch }) });
+    if (result.error || !result.data?.review) {
+      setFeedback({ tone: "error", message: result.error?.message || "Review could not be updated." });
       return;
     }
-    await load();
+    setOperations((current) => ({ ...current, reviews: current.reviews.map((review) => (review.id === id ? result.data!.review : review)) }));
     setFeedback({ tone: "success", message: "Review moderation updated." });
   }
 
@@ -1674,7 +1688,7 @@ export function LibraryAdminHub() {
       setFeedback({ tone: "error", message: result.error.message || "Review could not be deleted." });
       return;
     }
-    await load();
+    setOperations((current) => ({ ...current, reviews: current.reviews.filter((review) => review.id !== row.id) }));
     setFeedback({ tone: "success", message: "Review deleted." });
   }
 

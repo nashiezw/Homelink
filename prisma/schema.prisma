@@ -207,7 +207,7 @@ model BlogReaderQuestion {
   updatedAt   DateTime  @updatedAt
   post        BlogPost? @relation(fields: [postId], references: [id])
 
-  @@index([status, createdAt])
+  @@index([status, createdAt(sort: Desc)])
   @@index([postId])
   @@map("blog_reader_questions")
 }
@@ -2011,6 +2011,7 @@ model LibraryReview {
 
   @@unique([productId, userId])
   @@index([status])
+  @@index([status, createdAt])
   @@index([productId, status, createdAt])
   @@index([guestEmail])
   @@index([guestPhone])

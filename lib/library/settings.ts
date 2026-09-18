@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 import {
@@ -20,7 +21,7 @@ export function shouldUsePostgresLibrarySettings() {
   return isPostgresStoreEnabled();
 }
 
-export async function getLibraryStoreSettings(): Promise<LibraryStoreSettings> {
+const getCachedLibraryStoreSettings = unstable_cache(async (): Promise<LibraryStoreSettings> => {
   if (!shouldUsePostgresLibrarySettings()) return defaultLibraryStoreSettings;
   try {
     const row = await getMainPrisma().librarySetting.findUnique({ where: { id: "singleton" } });
@@ -31,6 +32,10 @@ export async function getLibraryStoreSettings(): Promise<LibraryStoreSettings> {
     console.error("[library/settings] failed to load", error);
     return defaultLibraryStoreSettings;
   }
+}, ["library-store-settings"], { revalidate: 60, tags: ["library-store-settings"] });
+
+export async function getLibraryStoreSettings(): Promise<LibraryStoreSettings> {
+  return getCachedLibraryStoreSettings();
 }
 
 export async function saveLibraryStoreSettings(payload: unknown, actorId?: string) {
@@ -58,6 +63,7 @@ export async function saveLibraryStoreSettings(payload: unknown, actorId?: strin
         },
       }).catch(() => null);
     }
+    revalidateTag("library-store-settings");
   } catch (error) {
     if (isMissingSchemaError(error)) {
       throw new Error("Library settings table is missing. Run the latest database migration.");
