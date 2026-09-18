@@ -52,6 +52,11 @@ const checks = [
     pattern: /resolveLibraryProductSampleFile[\s\S]*const sample[\s\S]*if \(!sample\?\.fileUrl\)[\s\S]*const prepared/,
   },
   {
+    file: "lib/library/repository.ts",
+    label: "the configured property sample resolves atomically to its fast static copy",
+    pattern: /cmtz559gf000aj8rdsto9qsa5[\s\S]*property-development-admin-sample\.pdf/,
+  },
+  {
     file: "app/api/v1/library/products/[slug]/sample/route.ts",
     label: "sample route explicitly serves PDF content",
     pattern: /application\/pdf/,

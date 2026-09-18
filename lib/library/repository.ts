@@ -4524,7 +4524,7 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
         : "MATCH_SHOPPER",
     formats: parseFormats(row.formats, row.productType as PublicLibraryProductType, Number(row.price), row.compareAtPrice ? Number(row.compareAtPrice) : undefined, row.sku),
     gallery: row.media.map((item) => ({ label: item.label, url: item.url, kind: mediaKind(item.mediaType) })),
-    downloads: row.files.map((item) => ({ id: item.id, label: item.label, fileType: item.fileType, size: formatBytes(item.fileSizeBytes), secure: item.secure, fileUrl: item.fileUrl, fileName: item.fileName, fileSizeBytes: item.fileSizeBytes, previewable: item.previewable })),
+    downloads: row.files.map((item) => ({ id: item.id, label: item.label, fileType: item.fileType, size: formatBytes(item.fileSizeBytes), secure: item.secure, fileUrl: optimizedLibrarySampleUrl(item.id, item.fileUrl), fileName: item.fileName, fileSizeBytes: item.fileSizeBytes, previewable: item.previewable })),
     stock: row.stock,
     lowStockThreshold: row.lowStockThreshold,
     warehouse: row.warehouse ?? undefined,
@@ -4544,6 +4544,13 @@ function toLibraryProduct(row: DbProduct): LibraryProduct {
     publishedAt: row.publishedAt?.toISOString() ?? row.createdAt.toISOString(),
     scheduledAt: row.scheduledAt?.toISOString(),
   };
+}
+
+function optimizedLibrarySampleUrl(fileId: string, fileUrl: string) {
+  if (fileId === "cmtz559gf000aj8rdsto9qsa5") {
+    return "/uploads/library/samples/property-development-admin-sample.pdf";
+  }
+  return fileUrl;
 }
 
 function toLibraryOrder(row: DbOrder): LibraryOrder {
