@@ -721,7 +721,7 @@ type JourneyRow = {
   filters: string[];
   debug: { visitorId: string; sessionId: string; userId: string | null; landingPath: string };
 };
-const ADVANCED_REPORT_CACHE_TTL_MS = 5 * 60 * 1000;
+const ADVANCED_REPORT_CACHE_TTL_MS = 60 * 1000;
 const advancedReportCache = new Map<string, { value: AdvancedSiteAnalyticsReport; expiresAt: number }>();
 
 export async function getAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSiteAnalyticsReport> {
@@ -766,6 +766,7 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       }>,
       alerts: [] as string[],
     },
+    periodActivity: { libraryShoppers: 0, checkoutVisitors: 0 },
     products: [] as Array<{
       productId: string;
       title: string;
@@ -1392,12 +1393,16 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
       ...base,
       live: {
         online: liveVisitors.length,
-        libraryShoppers: libraryShoppers.length || recentLibraryShoppers.size,
-        onCheckout: onCheckout.length || recentCheckoutVisitors.size || todayOrders.length,
+        libraryShoppers: libraryShoppers.length,
+        onCheckout: onCheckout.length,
         openBags: openBags.length,
         bagValue: Math.round(bagValue * 100) / 100,
         visitors: liveVisitors.slice(0, 60),
         alerts: liveAlerts,
+      },
+      periodActivity: {
+        libraryShoppers: recentLibraryShoppers.size,
+        checkoutVisitors: recentCheckoutVisitors.size,
       },
       products,
       cartHeat: {
@@ -1436,6 +1441,12 @@ async function buildAdvancedSiteAnalyticsReport(days = 30): Promise<AdvancedSite
 export function advancedAnalyticsToCsv(report: Awaited<ReturnType<typeof getAdvancedSiteAnalyticsReport>>) {
   const lines = [siteAnalyticsReportToCsv(report).trimEnd()];
   lines.push("section,label,value,extra");
+  lines.push(`liveSummary,onlineLast5Minutes,${report.live.online},`);
+  lines.push(`liveSummary,libraryShoppers,${report.live.libraryShoppers},`);
+  lines.push(`liveSummary,onCheckout,${report.live.onCheckout},`);
+  lines.push(`liveSummary,openBags,${report.live.openBags},value=${report.live.bagValue}`);
+  lines.push(`periodActivity,trackedLibraryVisitors,${report.periodActivity.libraryShoppers},days=${report.days}`);
+  lines.push(`periodActivity,trackedCheckoutVisitors,${report.periodActivity.checkoutVisitors},days=${report.days}`);
   for (const row of report.products) {
     lines.push(
       `products,${csv(row.title)},${row.views},id=${row.productId};publicViewCount=${row.publicViewCount ?? 0};uniques=${row.uniqueViewers};adds=${row.adds};removes=${row.removes};purchases=${row.purchases};addRate=${row.addRate};purchaseRate=${row.purchaseRate}`,

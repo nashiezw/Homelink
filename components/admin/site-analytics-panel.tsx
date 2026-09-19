@@ -147,6 +147,7 @@ type AdvancedReport = {
     }>;
     alerts: string[];
   };
+  periodActivity: { libraryShoppers: number; checkoutVisitors: number };
   products: Array<{
     productId: string;
     title: string;
@@ -473,7 +474,7 @@ export function SiteAnalyticsPanel() {
     void load();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible" && (tab === "live" || tab === "board")) void load();
-    }, 300000);
+    }, tab === "live" ? 60000 : 300000);
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, tab]);
@@ -696,11 +697,15 @@ export function SiteAnalyticsPanel() {
       {tab === "live" && (
         <div className="grid gap-5">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <Metric label="Online now" value={report?.live.online ?? "—"} />
-            <Metric label="Library shoppers" value={report?.live.libraryShoppers ?? "—"} />
-            <Metric label="On checkout" value={report?.live.onCheckout ?? "—"} />
-            <Metric label="Open bags" value={report?.live.openBags ?? "—"} />
-            <Metric label="Open bag value" value={report ? `USD ${report.live.bagValue.toFixed(2)}` : "—"} />
+            <Metric label="Online (last 5 min)" value={report?.live.online ?? "—"} />
+            <Metric label="Library shoppers online" value={report?.live.libraryShoppers ?? "—"} />
+            <Metric label="On checkout now" value={report?.live.onCheckout ?? "—"} />
+            <Metric label="Open bags online" value={report?.live.openBags ?? "—"} />
+            <Metric label="Online bag value" value={report ? `USD ${report.live.bagValue.toFixed(2)}` : "—"} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Metric label={`Tracked library visitors (${days} days)`} value={report?.periodActivity?.libraryShoppers ?? "—"} />
+            <Metric label={`Tracked checkout visitors (${days} days)`} value={report?.periodActivity?.checkoutVisitors ?? "—"} />
           </div>
           <Panel title="Live visitor journeys (last 5 minutes)">
             <div className="max-h-[34rem] space-y-3 overflow-y-auto text-xs text-slate-300">
