@@ -38,6 +38,11 @@ const checks = [
   },
   {
     file: "components/library/pdf-sample-viewer.tsx",
+    label: "PDF canvas and transparent page regions render on white",
+    pattern: /context\.fillStyle = "#ffffff";[\s\S]*context\.fillRect\(0, 0, canvas\.width, canvas\.height\);[\s\S]*background: "#ffffff"/,
+  },
+  {
+    file: "components/library/pdf-sample-viewer.tsx",
     label: "sample viewed tracking does not restart rendering",
     pattern: /onViewedRef[\s\S]*onViewedRef\.current\?\.\(\)/,
   },

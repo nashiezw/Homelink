@@ -173,8 +173,10 @@ function PdfPageCanvas({ pdf, page, eager, onRendered }: { pdf: PDFDocumentProxy
       canvas.height = Math.floor(viewport.height * pixelRatio);
       canvas.style.width = `${Math.floor(viewport.width)}px`;
       canvas.style.height = `${Math.floor(viewport.height)}px`;
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-      renderTask = pdfPage.render({ canvas, canvasContext: context, viewport });
+      renderTask = pdfPage.render({ canvas, canvasContext: context, viewport, background: "#ffffff" });
       await renderTask.promise;
       if (!cancelled) {
         setRendered(true);
