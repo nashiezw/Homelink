@@ -120,7 +120,7 @@ test("admin can reach Library operations", async ({ page }) => {
   await expect(page.getByRole("button", { name: /create product/i })).toBeVisible();
 });
 
-test("admin can review and follow up on Library exit leads", async ({ page }) => {
+test("admin can review and follow up on Library exit leads", async ({ page, isMobile }) => {
   test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL/PASSWORD to run Library leads flow.");
   await login(page, adminEmail!, adminPassword!);
   await page.route(/\/api\/v1\/admin\/library\?type=exit-leads/, async (route) => {
@@ -143,7 +143,10 @@ test("admin can review and follow up on Library exit leads", async ({ page }) =>
       await route.fulfill({ json: { data: { quote: { status: "CONTACTED" } } } });
     } else await route.continue();
   });
-  await page.goto("/dashboard/admin/library?libraryView=Leads");
+  await page.goto("/dashboard/admin/library?libraryView=Inventory");
+  if (isMobile) await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.getByRole("button", { name: "Leads", exact: true }).click();
+  await expect(page).toHaveURL(/libraryView=Leads/);
   await expect(page.getByText("Ada Guide")).toBeVisible();
   await page.getByRole("button", { name: /Ada Guide/ }).click();
   await expect(page.getByText("Note: Please call me tomorrow")).toBeVisible();

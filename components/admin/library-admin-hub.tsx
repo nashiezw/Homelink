@@ -4226,7 +4226,10 @@ function LibraryTabManagement({
           </Button>
         </div>
         <div>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-300">Quote and lead inbox</h3>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">Bulk quote inbox</h3>
+            <Link href="/dashboard/admin/library?libraryView=Leads" className="text-xs font-semibold text-emerald-300 hover:underline">View customer help leads</Link>
+          </div>
           <AdminDataTable
             rows={quoteRows}
             emptyMessage="No quote requests yet."
