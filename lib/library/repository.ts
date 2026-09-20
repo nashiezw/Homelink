@@ -3548,25 +3548,30 @@ export async function listLibraryExitLeads(input: { page?: number; query?: strin
   const prisma = getMainPrisma();
   const periodStart = new Date(Date.now() - 30 * 86400000);
   const reviewCutoff = new Date(Date.now() - reviewDays * 86400000);
-  const [total, rows, recent, admins, shown, notificationFailures, submissionErrors, retentionReviewDue, overdue] = await Promise.all([
+  const [total, rows, recent, admins, summaryRows] = await Promise.all([
     prisma.libraryQuoteRequest.count({ where }),
     prisma.libraryQuoteRequest.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * pageSize, take: pageSize }),
     prisma.libraryQuoteRequest.findMany({ where: { formatType: "EXIT_LEAD", createdAt: { gte: periodStart } }, select: { id: true, createdAt: true, firstContactedAt: true, lastContactedAt: true, status: true, confirmedOrderId: true, nextFollowUpAt: true, helpType: true, sourceSurface: true, productId: true } }),
     prisma.user.findMany({ where: { accountStatus: "ACTIVE", OR: [{ roles: { has: Role.ADMIN } }, { roles: { has: Role.SUPER_ADMIN } }] }, select: { id: true, name: true, email: true } }),
-    prisma.siteFunnelEvent.count({ where: { name: "library_exit_intent_shown", createdAt: { gte: periodStart } } }),
-    prisma.libraryActivity.count({ where: { targetType: "quote_request", action: "EXIT_LEAD_NOTIFICATION_FAILED", createdAt: { gte: periodStart } } }),
-    prisma.siteFunnelEvent.count({ where: { name: "library_exit_lead_failed", createdAt: { gte: periodStart } } }),
-    prisma.libraryQuoteRequest.count({ where: { formatType: "EXIT_LEAD", createdAt: { lt: reviewCutoff }, mergedIntoId: null, OR: [{ retentionDecision: "ERASURE_REQUEST" }, { retentionReviewedAt: null }, { retentionReviewedAt: { lt: reviewCutoff } }] } }),
-    prisma.libraryQuoteRequest.count({ where: { formatType: "EXIT_LEAD", mergedIntoId: null, nextFollowUpAt: { lte: new Date() }, status: { in: ["NEW", "CONTACTED", "QUOTED"] } } }),
+    prisma.$queryRaw<Array<{ shown: number; notificationFailures: number; submissionErrors: number; retentionReviewDue: number; overdue: number }>>`
+      SELECT
+        (SELECT COUNT(*)::int FROM "SiteFunnelEvent" WHERE "name" = 'library_exit_intent_shown' AND "createdAt" >= ${periodStart}) AS "shown",
+        (SELECT COUNT(*)::int FROM "library_activity" WHERE "targetType" = 'quote_request' AND "action" = 'EXIT_LEAD_NOTIFICATION_FAILED' AND "createdAt" >= ${periodStart}) AS "notificationFailures",
+        (SELECT COUNT(*)::int FROM "SiteFunnelEvent" WHERE "name" = 'library_exit_lead_failed' AND "createdAt" >= ${periodStart}) AS "submissionErrors",
+        (SELECT COUNT(*)::int FROM "library_quote_requests" WHERE "formatType" = 'EXIT_LEAD' AND "createdAt" < ${reviewCutoff} AND "mergedIntoId" IS NULL AND ("retentionDecision" = 'ERASURE_REQUEST' OR "retentionReviewedAt" IS NULL OR "retentionReviewedAt" < ${reviewCutoff})) AS "retentionReviewDue",
+        (SELECT COUNT(*)::int FROM "library_quote_requests" WHERE "formatType" = 'EXIT_LEAD' AND "mergedIntoId" IS NULL AND "nextFollowUpAt" <= CURRENT_TIMESTAMP AND "status" IN ('NEW', 'CONTACTED', 'QUOTED')) AS "overdue"
+    `,
   ]);
+  const { shown, notificationFailures, submissionErrors, retentionReviewDue, overdue } = summaryRows[0];
   const contacts = rows;
   const emails = Array.from(new Set(contacts.map((row) => row.email.toLowerCase()).filter(Boolean)));
   const phones = Array.from(new Set(contacts.map((row) => row.phone).filter((phone): phone is string => Boolean(phone))));
   const phoneDigits = Array.from(new Set(contacts.map((row) => normalizeLeadPhone(row.phone)).filter(Boolean)));
   const userPhones = Array.from(new Set([...phones, ...phoneDigits, ...phoneDigits.filter((phone) => phone.startsWith("263") && phone.length === 12).map((phone) => `0${phone.slice(3)}`)]));
-  const [users, relatedLeads, activity, chatVisitors] = await Promise.all([
-    prisma.user.findMany({ where: { OR: [{ email: { in: emails } }, { phone: { in: userPhones } }] }, select: { id: true, email: true, phone: true } }),
-    prisma.libraryQuoteRequest.findMany({ where: { formatType: "EXIT_LEAD", OR: [{ email: { in: emails } }, { phoneDigits: { in: phoneDigits } }] }, select: { id: true, email: true, phoneDigits: true, createdAt: true } }),
+  const earliestLeadAt = contacts.reduce((earliest, lead) => lead.createdAt < earliest ? lead.createdAt : earliest, new Date());
+  const productIds = Array.from(new Set([...rows, ...recent].map((row) => row.productId).filter((id): id is string => Boolean(id))));
+  const [relatedLeads, activity, chatVisitors, orders, products] = await Promise.all([
+    rows.length ? prisma.libraryQuoteRequest.findMany({ where: { formatType: "EXIT_LEAD", OR: [{ email: { in: emails } }, { phoneDigits: { in: phoneDigits } }] }, select: { id: true, email: true, phoneDigits: true, createdAt: true } }) : Promise.resolve([]),
     rows.length ? prisma.$queryRaw<Array<{ id: string; targetId: string; actorId: string | null; action: string; message: string; createdAt: Date }>>`
       SELECT "id", "targetId", "actorId", "action", "message", "createdAt"
       FROM (
@@ -3577,27 +3582,20 @@ export async function listLibraryExitLeads(input: { page?: number; query?: strin
       ) AS recent_activity
       WHERE row_number <= 30
     ` : Promise.resolve([]),
-    prisma.liveChatVisitor.findMany({ where: { email: { in: emails } }, select: { email: true, conversations: { select: { id: true, publicId: true, subject: true, status: true, createdAt: true, lastMessageAt: true }, orderBy: { createdAt: "desc" }, take: 5 } } }).catch(() => []),
+    rows.length ? prisma.liveChatVisitor.findMany({ where: { email: { in: emails } }, select: { email: true, conversations: { select: { id: true, publicId: true, subject: true, status: true, createdAt: true, lastMessageAt: true }, orderBy: { createdAt: "desc" }, take: 5 } } }).catch(() => []) : Promise.resolve([]),
+    rows.length ? prisma.libraryOrder.findMany({
+      where: { createdAt: { gte: earliestLeadAt }, status: { in: [LibraryOrderStatus.PAID, LibraryOrderStatus.FULFILLED] }, OR: [{ billingEmail: { in: emails } }, { customer: { is: { OR: [{ email: { in: emails } }, { phone: { in: userPhones } }] } } }] },
+      select: { id: true, orderNumber: true, billingEmail: true, createdAt: true, total: true, items: { select: { productId: true } }, customer: { select: { email: true, phone: true } } },
+    }) : Promise.resolve([]),
+    productIds.length ? prisma.libraryProduct.findMany({ where: { id: { in: productIds } }, select: { id: true, title: true } }) : Promise.resolve([]),
   ]);
-  const userIds = users.map((user) => user.id);
-  const earliestLeadAt = contacts.reduce((earliest, lead) => lead.createdAt < earliest ? lead.createdAt : earliest, new Date());
-  const orders = await prisma.libraryOrder.findMany({
-    where: { createdAt: { gte: earliestLeadAt }, status: { in: [LibraryOrderStatus.PAID, LibraryOrderStatus.FULFILLED] }, OR: [{ billingEmail: { in: emails } }, { customerId: { in: userIds } }] },
-    select: { id: true, orderNumber: true, billingEmail: true, customerId: true, createdAt: true, total: true, status: true, items: { select: { productId: true } } },
-  });
-  const userById = new Map(users.map((user) => [user.id, user]));
   const matchingOrders = (lead: { email: string; phone: string | null; createdAt: Date }) => orders.filter((order) => {
     if (order.createdAt < lead.createdAt) return false;
-    const user = userById.get(order.customerId);
-    return order.billingEmail?.toLowerCase() === lead.email.toLowerCase() || user?.email.toLowerCase() === lead.email.toLowerCase() || Boolean(lead.phone && user?.phone && normalizeLeadPhone(user.phone) === normalizeLeadPhone(lead.phone));
+    return order.billingEmail?.toLowerCase() === lead.email.toLowerCase() || order.customer.email.toLowerCase() === lead.email.toLowerCase() || Boolean(lead.phone && order.customer.phone && normalizeLeadPhone(order.customer.phone) === normalizeLeadPhone(lead.phone));
   });
   const responseMinutes = recent.flatMap((lead) => lead.firstContactedAt || lead.lastContactedAt ? [Math.max(0, ((lead.firstContactedAt || lead.lastContactedAt)!.getTime() - lead.createdAt.getTime()) / 60000)] : []).sort((a, b) => a - b);
   const percentile = (p: number) => responseMinutes.length ? Math.round(responseMinutes[Math.min(responseMinutes.length - 1, Math.ceil(responseMinutes.length * p) - 1)]) : null;
   const breakdown = (key: "helpType" | "sourceSurface" | "productId") => Array.from(recent.reduce((counts, lead) => counts.set(lead[key] || "Unknown", (counts.get(lead[key] || "Unknown") || 0) + 1), new Map<string, number>())).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value).slice(0, 8);
-  const productIds = Array.from(new Set([...rows, ...recent].map((row) => row.productId).filter((id): id is string => Boolean(id))));
-  const products = productIds.length
-    ? await prisma.libraryProduct.findMany({ where: { id: { in: productIds } }, select: { id: true, title: true } })
-    : [];
   const titles = new Map(products.map((product) => [product.id, product.title]));
   return {
     page, pageSize, total, canExport: Boolean(input.canExport), reviewDays,
