@@ -3708,7 +3708,7 @@ export async function processLibraryLeadReminders() {
   const prisma = getMainPrisma();
   const now = new Date();
   const due = await prisma.libraryQuoteRequest.findMany({
-    where: { formatType: "EXIT_LEAD", mergedIntoId: null, status: { in: ["NEW", "CONTACTED", "QUOTED"] }, nextFollowUpAt: { lte: now }, OR: [{ lastReminderAt: null }, { lastReminderAt: { lt: now } }] },
+    where: { formatType: "EXIT_LEAD", mergedIntoId: null, status: { in: ["NEW", "CONTACTED", "QUOTED"] }, nextFollowUpAt: { lte: now }, OR: [{ lastReminderAt: null }, { lastReminderAt: { lt: prisma.libraryQuoteRequest.fields.nextFollowUpAt } }] },
     orderBy: { nextFollowUpAt: "asc" }, take: 100,
   });
   const admins = await prisma.user.findMany({ where: { accountStatus: "ACTIVE", OR: [{ roles: { has: Role.ADMIN } }, { roles: { has: Role.SUPER_ADMIN } }] }, select: { id: true } });
