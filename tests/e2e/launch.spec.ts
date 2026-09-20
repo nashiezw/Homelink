@@ -123,6 +123,7 @@ test("admin can reach Library operations", async ({ page }) => {
 test("admin can review and follow up on Library exit leads", async ({ page, isMobile }) => {
   test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL/PASSWORD to run Library leads flow.");
   await login(page, adminEmail!, adminPassword!);
+  let fullLibraryLoads = 0;
   await page.route(/\/api\/v1\/admin\/library\?type=exit-leads/, async (route) => {
     const query = new URL(route.request().url()).searchParams.get("query");
     await route.fulfill({ json: { data: {
@@ -141,7 +142,10 @@ test("admin can review and follow up on Library exit leads", async ({ page, isMo
   await page.route("**/api/v1/admin/library", async (route) => {
     if (route.request().method() === "POST") {
       await route.fulfill({ json: { data: { quote: { status: "CONTACTED" } } } });
-    } else await route.continue();
+    } else {
+      fullLibraryLoads += 1;
+      await route.continue();
+    }
   });
   await page.goto("/dashboard/admin/library?libraryView=Inventory");
   if (isMobile) await page.getByRole("button", { name: "Open navigation" }).click();
@@ -156,6 +160,10 @@ test("admin can review and follow up on Library exit leads", async ({ page, isMo
   await page.getByRole("button", { name: "Mark contacted" }).click();
   await page.getByLabel("Search Library leads").fill("not found");
   await expect(page.getByText("No leads match these filters.")).toBeVisible();
+  fullLibraryLoads = 0;
+  await page.goto("/dashboard/admin/library?libraryView=Leads");
+  await expect(page.getByText("Ada Guide")).toBeVisible();
+  expect(fullLibraryLoads).toBe(0);
 });
 
 test("mobile navigation exposes core journeys", async ({ page, isMobile }) => {

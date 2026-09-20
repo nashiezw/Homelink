@@ -497,7 +497,10 @@ function categoryMetricsFromProducts(products: LibraryProduct[]) {
 
 export function LibraryAdminHub() {
   const searchParams = useSearchParams();
-  const [view, setView] = useState("Dashboard");
+  const [view, setView] = useState(() => {
+    const requested = searchParams?.get("libraryView");
+    return requested && views.includes(requested) ? requested : "Dashboard";
+  });
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -705,8 +708,9 @@ export function LibraryAdminHub() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (view === "Leads" || loaded) return;
     void load();
-  }, []);
+  }, [view, loaded]);
 
   useEffect(() => {
     if (view !== "Analytics") return;
@@ -1899,7 +1903,7 @@ export function LibraryAdminHub() {
         onCancel={() => closeConfirm(false)}
         onConfirm={() => closeConfirm(true)}
       />
-      {loadError && !feedback && (
+      {view !== "Leads" && loadError && !feedback && (
         <div role="alert" className="rounded-lg border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-200">
           {loadError}
         </div>
