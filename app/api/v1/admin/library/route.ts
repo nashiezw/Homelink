@@ -2,7 +2,7 @@ import { requireAdminAsync, requireAdmin } from "@/lib/admin/require-admin";
 import { created, ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import { getMainPrisma } from "@/lib/db/main-prisma";
-import { ensureLibraryLeadProductionSchema } from "@/lib/db/production-schema";
+import { ensureLibraryLeadProductionSchema, LibraryLeadSchemaNotReadyError } from "@/lib/db/production-schema";
 import { testCloudinaryEnvConfig } from "@/lib/integrations/cloudinary";
 import {
   archiveLibraryProducts,
@@ -105,13 +105,19 @@ export async function GET(request: Request) {
       }));
     } catch (error) {
       console.error("[admin/library] exit leads failed", error);
+      if (error instanceof LibraryLeadSchemaNotReadyError) return problem(503, "LEAD_SCHEMA_NOT_READY", "Library lead migration is not yet applied.");
       return problem(500, "LEADS_LOAD_FAILED", "Library leads could not be loaded.");
     }
   }
   if (type === "exit-leads-export") {
     if (!auth.user?.roles.includes("SUPER_ADMIN")) return problem(403, "FORBIDDEN", "Only a super admin can export customer lead data.");
     if (!isPostgresStoreEnabled()) return problem(503, "LEADS_UNAVAILABLE", "Lead storage is unavailable.");
-    await ensureLibraryLeadProductionSchema();
+    try {
+      await ensureLibraryLeadProductionSchema();
+    } catch (error) {
+      if (error instanceof LibraryLeadSchemaNotReadyError) return problem(503, "LEAD_SCHEMA_NOT_READY", "Library lead migration is not yet applied.");
+      throw error;
+    }
     const from = searchParams.get("from") ? new Date(`${searchParams.get("from")}T00:00:00.000Z`) : new Date(Date.now() - 30 * 86400000);
     const to = searchParams.get("to") ? new Date(`${searchParams.get("to")}T23:59:59.999Z`) : new Date();
     if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from || to.getTime() - from.getTime() > 366 * 86400000) return problem(400, "INVALID_DATE_RANGE", "Choose a valid range of up to one year.");
@@ -168,6 +174,7 @@ export async function POST(request: Request) {
         if (!lead) return problem(404, "LEAD_NOT_FOUND", "Library lead not found.");
         return ok({ lead });
       } catch (error) {
+        if (error instanceof LibraryLeadSchemaNotReadyError) return problem(503, "LEAD_SCHEMA_NOT_READY", "Library lead migration is not yet applied.");
         if (error instanceof Error && ["INVALID_LEAD_ASSIGNEE", "INVALID_FOLLOW_UP_DATE", "INVALID_LEAD_STATUS", "INVALID_RETENTION_DECISION", "CLOSE_REASON_REQUIRED", "INVALID_MERGE_TARGET", "INVALID_CONFIRMED_ORDER", "ORDER_PRODUCT_MISMATCH", "ORDER_ALREADY_LINKED", "CONFIRMED_LEAD_CANNOT_MERGE", "MERGED_LEAD_CANNOT_CONFIRM_ORDER"].includes(error.message)) return problem(400, error.message, "Check the lead status, close reason, assignee, follow-up date, retention decision, merge target, or paid order. A confirmed order must include the requested product and cannot be linked to a duplicate lead.");
         throw error;
       }

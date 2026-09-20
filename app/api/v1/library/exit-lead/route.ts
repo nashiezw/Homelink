@@ -3,7 +3,7 @@ import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { recordSiteFunnelEvent } from "@/lib/analytics/site-analytics";
 import { upsertSitePresence } from "@/lib/analytics/presence";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { ensureCoreProductionSchema, ensureLibraryLeadProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
+import { ensureLibraryLeadProductionSchema, isDatabaseUnavailableError, isMissingSchemaError, LibraryLeadSchemaNotReadyError } from "@/lib/db/production-schema";
 import { NotificationChannel, NotificationStatus, Role } from "@prisma/client";
 import { normalizeLeadPhone } from "@/lib/library/lead-contact";
 import { checkRateLimit, getClientIp } from "@/lib/api/request-meta";
@@ -168,7 +168,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    await ensureCoreProductionSchema();
     await ensureLibraryLeadProductionSchema();
     const prisma = getMainPrisma();
     const contactWindow = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -243,6 +242,7 @@ export async function POST(request: Request) {
     });
     return created({ id: row.id, status: "NEW" });
   } catch (error) {
+    if (error instanceof LibraryLeadSchemaNotReadyError) return problem(503, "LEAD_SCHEMA_NOT_READY", "Library lead capture is temporarily unavailable. Please contact us directly.");
     if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) {
       await recordFailure("storage_unavailable");
       return problem(503, "LEAD_STORAGE_UNAVAILABLE", "We could not save your details. Please try again later or contact us directly.");

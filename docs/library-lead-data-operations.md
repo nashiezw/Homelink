@@ -24,3 +24,4 @@ This is an internal operating procedure, not a legal determination of retention 
 - Reconcile `EXIT_LEAD_NOTIFICATION_FAILED` activity with SMTP and application logs. A saved lead remains in the inbox even if an alert fails.
 - Paid orders matched by contact are contextual only. An admin must confirm one qualifying paid order link for attribution; one order cannot be linked to multiple leads. The confirmed order must include the lead's requested product, and duplicate leads cannot receive an order link.
 - Before production deployment, apply the Library lead migration against a staging copy, inspect old quote and lead rows, and run authenticated admin and customer-submission tests. Do not use the configured production database as the migration test target.
+- The lead schema guard is read-only. Until the migration is applied, lead endpoints return `LEAD_SCHEMA_NOT_READY` instead of altering tables during a request; existing bulk-quote operations remain available.

@@ -3451,6 +3451,7 @@ export async function createLibraryBulkQuoteRequest(input: {
       message: input.message?.trim() || null,
       status: "NEW",
     },
+    select: { id: true, productId: true, email: true, name: true, phone: true, company: true, quantity: true, formatType: true, message: true, status: true, createdAt: true, updatedAt: true },
   });
   await sendLibraryTemplatedEmail({
     to: email,
@@ -3494,12 +3495,12 @@ const LIBRARY_QUOTE_STATUSES = new Set(["NEW", "CONTACTED", "QUOTED", "WON", "LO
 
 export async function listLibraryQuoteRequests(limit = 80): Promise<LibraryQuoteRequestAdmin[]> {
   if (!shouldUsePostgresLibrary()) return [];
-  await ensureLibraryLeadProductionSchema();
   const prisma = getMainPrisma();
   const rows = await prisma.libraryQuoteRequest.findMany({
     where: { OR: [{ formatType: null }, { formatType: { not: "EXIT_LEAD" } }] },
     orderBy: { createdAt: "desc" },
     take: Math.max(1, Math.min(200, Math.floor(limit) || 80)),
+    select: { id: true, productId: true, email: true, name: true, phone: true, company: true, quantity: true, formatType: true, message: true, status: true, createdAt: true },
   }).catch(() => []);
   if (!rows.length) return [];
   const productIds = Array.from(new Set(rows.map((row) => row.productId).filter((id): id is string => Boolean(id))));
@@ -3737,12 +3738,12 @@ export async function updateLibraryQuoteRequestStatus(id: string, status: string
   const nextStatus = String(status || "").trim().toUpperCase();
   if (!id || !LIBRARY_QUOTE_STATUSES.has(nextStatus)) return null;
   if (!shouldUsePostgresLibrary()) return { id, status: nextStatus };
-  await ensureLibraryLeadProductionSchema();
   const existing = await getMainPrisma().libraryQuoteRequest.findUnique({ where: { id }, select: { formatType: true } });
   if (existing?.formatType === "EXIT_LEAD") return null;
   const row = await getMainPrisma().libraryQuoteRequest.update({
     where: { id },
     data: { status: nextStatus },
+    select: { id: true, productId: true, email: true, name: true, phone: true, company: true, quantity: true, formatType: true, message: true, status: true, createdAt: true, updatedAt: true },
   }).catch(() => null);
   if (!row) return null;
   await logLibraryActivity({

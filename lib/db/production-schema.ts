@@ -74,36 +74,29 @@ export async function ensureLibraryLeadProductionSchema() {
   if (!isPostgresStoreEnabled()) return;
   ensureLibraryLeadPromise ??= (async () => {
     const prisma = getMainPrisma();
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "assignedToId" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "nextFollowUpAt" TIMESTAMP(3)`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "lastContactedAt" TIMESTAMP(3)`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "firstContactedAt" TIMESTAMP(3)`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "phoneDigits" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "followUpNote" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "helpType" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "sourceSurface" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "sourcePath" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "customerNote" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "mergedIntoId" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "closeReason" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "confirmedOrderId" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "retentionReviewedAt" TIMESTAMP(3)`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "retentionDecision" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "lastReminderAt" TIMESTAMP(3)`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_quote_requests_formatType_status_nextFollowUpAt_idx" ON "library_quote_requests"("formatType", "status", "nextFollowUpAt")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_quote_requests_formatType_createdAt_idx" ON "library_quote_requests"("formatType", "createdAt")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_quote_requests_email_createdAt_idx" ON "library_quote_requests"("email", "createdAt")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_quote_requests_assignedToId_nextFollowUpAt_idx" ON "library_quote_requests"("assignedToId", "nextFollowUpAt")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_quote_requests_phoneDigits_createdAt_idx" ON "library_quote_requests"("phoneDigits", "createdAt")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_quote_requests_formatType_helpType_createdAt_idx" ON "library_quote_requests"("formatType", "helpType", "createdAt")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "library_quote_requests_mergedIntoId_idx" ON "library_quote_requests"("mergedIntoId")`);
-    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "library_quote_requests_confirmedOrderId_key" ON "library_quote_requests"("confirmedOrderId")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Notification_userId_createdAt_idx" ON "Notification"("userId", "createdAt")`);
+    const [columns, indexes] = await Promise.all([
+      prisma.$queryRaw<Array<{ column_name: string }>>`SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'library_quote_requests'`,
+      prisma.$queryRaw<Array<{ indexname: string }>>`SELECT indexname FROM pg_indexes WHERE schemaname = current_schema() AND tablename IN ('library_quote_requests', 'Notification')`,
+    ]);
+    const availableColumns = new Set(columns.map((row) => row.column_name));
+    const availableIndexes = new Set(indexes.map((row) => row.indexname));
+    const requiredColumns = ["assignedToId", "nextFollowUpAt", "lastContactedAt", "firstContactedAt", "phoneDigits", "followUpNote", "helpType", "sourceSurface", "sourcePath", "customerNote", "mergedIntoId", "closeReason", "confirmedOrderId", "retentionReviewedAt", "retentionDecision", "lastReminderAt"];
+    const requiredIndexes = ["library_quote_requests_formatType_status_nextFollowUpAt_idx", "library_quote_requests_formatType_createdAt_idx", "library_quote_requests_email_createdAt_idx", "library_quote_requests_assignedToId_nextFollowUpAt_idx", "library_quote_requests_phoneDigits_createdAt_idx", "library_quote_requests_formatType_helpType_createdAt_idx", "library_quote_requests_mergedIntoId_idx", "library_quote_requests_confirmedOrderId_key", "Notification_userId_createdAt_idx"];
+    if (requiredColumns.some((column) => !availableColumns.has(column)) || requiredIndexes.some((index) => !availableIndexes.has(index))) {
+      throw new LibraryLeadSchemaNotReadyError();
+    }
   })().catch((error) => {
     ensureLibraryLeadPromise = null;
     throw error;
   });
   return ensureLibraryLeadPromise;
+}
+
+export class LibraryLeadSchemaNotReadyError extends Error {
+  constructor() {
+    super("Library lead migration has not been applied.");
+    this.name = "LibraryLeadSchemaNotReadyError";
+  }
 }
 
 async function applyLibraryReviewProductionSchema() {
