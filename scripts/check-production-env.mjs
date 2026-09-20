@@ -11,7 +11,9 @@ const required = [
 const missing = required.filter((name) => !process.env[name]);
 const weak = [];
 const sessionSecret = process.env.HOUSELINK_SESSION_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "";
-const cronSecret = process.env.CRON_SECRET || process.env.HOUSELINK_CRON_SECRET || "";
+const cronSecret = process.env.VERCEL === "1"
+  ? process.env.CRON_SECRET || ""
+  : process.env.CRON_SECRET || process.env.HOUSELINK_CRON_SECRET || "";
 
 if (!sessionSecret) {
   missing.push("HOUSELINK_SESSION_SECRET, AUTH_SECRET, or NEXTAUTH_SECRET");
@@ -20,7 +22,7 @@ if (!sessionSecret) {
 }
 
 if (!cronSecret) {
-  missing.push("CRON_SECRET or HOUSELINK_CRON_SECRET");
+  missing.push(process.env.VERCEL === "1" ? "CRON_SECRET" : "CRON_SECRET or HOUSELINK_CRON_SECRET");
 } else if (cronSecret.length < 32) {
   weak.push("The configured cron secret must be at least 32 characters.");
 }
