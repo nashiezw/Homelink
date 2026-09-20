@@ -22,7 +22,8 @@ import { findPreparedLibrarySample, isLibrarySampleCandidate } from "@/lib/libra
 import { quoteLibraryShipping } from "@/lib/library/shipping";
 import { sendLibraryTemplatedEmail } from "@/lib/library/emails";
 import { getCanonicalSiteUrl } from "@/lib/seo/site-url";
-import { ensureLibraryReviewProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
+import { normalizeLeadPhone } from "@/lib/library/lead-contact";
+import { ensureLibraryLeadProductionSchema, ensureLibraryReviewProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
 
 export { getLibraryStoreSettings, listLibrarySettingsAudit, productTemplateForType, saveLibraryStoreSettings, type LibraryStoreSettings };
 
@@ -2670,7 +2671,7 @@ export async function getLibraryOperationsSummary() {
         select: { metadata: true, targetId: true },
       }).catch(() => [] as Array<{ metadata: unknown; targetId: string | null }>),
       safe(listLibraryQuoteRequests(80), [] as LibraryQuoteRequestAdmin[]),
-      prisma.libraryQuoteRequest.count().catch(() => 0),
+      prisma.libraryQuoteRequest.count({ where: { OR: [{ formatType: null }, { formatType: { not: "EXIT_LEAD" } }] } }).catch(() => 0),
     ]);
     const cartAddCounts = {
       single: cartAddGroups.find((row) => row.action === "CART_ADD_SINGLE")?._count._all ?? 0,
@@ -3493,8 +3494,10 @@ const LIBRARY_QUOTE_STATUSES = new Set(["NEW", "CONTACTED", "QUOTED", "WON", "LO
 
 export async function listLibraryQuoteRequests(limit = 80): Promise<LibraryQuoteRequestAdmin[]> {
   if (!shouldUsePostgresLibrary()) return [];
+  await ensureLibraryLeadProductionSchema();
   const prisma = getMainPrisma();
   const rows = await prisma.libraryQuoteRequest.findMany({
+    where: { OR: [{ formatType: null }, { formatType: { not: "EXIT_LEAD" } }] },
     orderBy: { createdAt: "desc" },
     take: Math.max(1, Math.min(200, Math.floor(limit) || 80)),
   }).catch(() => []);
@@ -3520,10 +3523,223 @@ export async function listLibraryQuoteRequests(limit = 80): Promise<LibraryQuote
   }));
 }
 
+export async function listLibraryExitLeads(input: { page?: number; query?: string; status?: string; assignment?: string; id?: string; pageSize?: number; actorId?: string; canExport?: boolean }) {
+  await ensureLibraryLeadProductionSchema();
+  const page = Number.isFinite(input.page) ? Math.max(1, Math.min(10000, Math.floor(input.page!))) : 1;
+  const pageSize = Number.isFinite(input.pageSize) ? Math.max(1, Math.min(50, Math.floor(input.pageSize!))) : 20;
+  const query = (input.query || "").trim().slice(0, 120);
+  const status = (input.status || "").trim().toUpperCase();
+  const assignment = (input.assignment || "").trim();
+  const reviewDays = Math.max(30, Math.min(3650, Number(process.env.LIBRARY_LEAD_RETENTION_REVIEW_DAYS) || 365));
+  const where = {
+    formatType: "EXIT_LEAD",
+    ...(input.id ? { id: input.id } : {}),
+    ...(!input.id && assignment !== "merged" ? { mergedIntoId: null } : {}),
+    ...(LIBRARY_QUOTE_STATUSES.has(status) ? { status } : {}),
+    ...(assignment === "unassigned" ? { assignedToId: null } : assignment === "mine" ? { assignedToId: input.actorId || "" } : assignment === "merged" ? { mergedIntoId: { not: null } } : assignment === "review" ? { createdAt: { lt: new Date(Date.now() - reviewDays * 86400000) }, AND: [{ OR: [{ retentionDecision: "ERASURE_REQUEST" }, { retentionReviewedAt: null }, { retentionReviewedAt: { lt: new Date(Date.now() - reviewDays * 86400000) } }] }] } : assignment === "due" ? { nextFollowUpAt: { lte: new Date() }, status: { in: ["NEW", "CONTACTED", "QUOTED"] } } : assignment && assignment !== "all" ? { assignedToId: assignment } : {}),
+    ...(query ? { OR: [
+      { name: { contains: query, mode: "insensitive" as const } },
+      { email: { contains: query, mode: "insensitive" as const } },
+      { phone: { contains: query, mode: "insensitive" as const } },
+      { message: { contains: query, mode: "insensitive" as const } },
+    ] } : {}),
+  };
+  const prisma = getMainPrisma();
+  const periodStart = new Date(Date.now() - 30 * 86400000);
+  const reviewCutoff = new Date(Date.now() - reviewDays * 86400000);
+  const [total, rows, recent, admins, shown, notificationFailures, submissionErrors, retentionReviewDue, overdue] = await Promise.all([
+    prisma.libraryQuoteRequest.count({ where }),
+    prisma.libraryQuoteRequest.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * pageSize, take: pageSize }),
+    prisma.libraryQuoteRequest.findMany({ where: { formatType: "EXIT_LEAD", mergedIntoId: null, createdAt: { gte: periodStart } }, select: { id: true, createdAt: true, firstContactedAt: true, lastContactedAt: true, status: true, confirmedOrderId: true, nextFollowUpAt: true, helpType: true, sourceSurface: true, productId: true } }),
+    prisma.user.findMany({ where: { accountStatus: "ACTIVE", OR: [{ roles: { has: Role.ADMIN } }, { roles: { has: Role.SUPER_ADMIN } }] }, select: { id: true, name: true, email: true } }),
+    prisma.siteFunnelEvent.count({ where: { name: "library_exit_intent_shown", createdAt: { gte: periodStart } } }),
+    prisma.libraryActivity.count({ where: { targetType: "quote_request", action: "EXIT_LEAD_NOTIFICATION_FAILED", createdAt: { gte: periodStart } } }),
+    prisma.siteFunnelEvent.count({ where: { name: "library_exit_lead_failed", createdAt: { gte: periodStart } } }),
+    prisma.libraryQuoteRequest.count({ where: { formatType: "EXIT_LEAD", createdAt: { lt: reviewCutoff }, mergedIntoId: null, OR: [{ retentionDecision: "ERASURE_REQUEST" }, { retentionReviewedAt: null }, { retentionReviewedAt: { lt: reviewCutoff } }] } }),
+    prisma.libraryQuoteRequest.count({ where: { formatType: "EXIT_LEAD", mergedIntoId: null, nextFollowUpAt: { lte: new Date() }, status: { in: ["NEW", "CONTACTED", "QUOTED"] } } }),
+  ]);
+  const contacts = rows;
+  const emails = Array.from(new Set(contacts.map((row) => row.email.toLowerCase()).filter(Boolean)));
+  const phones = Array.from(new Set(contacts.map((row) => row.phone).filter((phone): phone is string => Boolean(phone))));
+  const phoneDigits = Array.from(new Set(contacts.map((row) => normalizeLeadPhone(row.phone)).filter(Boolean)));
+  const userPhones = Array.from(new Set([...phones, ...phoneDigits, ...phoneDigits.filter((phone) => phone.startsWith("263") && phone.length === 12).map((phone) => `0${phone.slice(3)}`)]));
+  const [users, relatedLeads, activity, chatVisitors] = await Promise.all([
+    prisma.user.findMany({ where: { OR: [{ email: { in: emails } }, { phone: { in: userPhones } }] }, select: { id: true, email: true, phone: true } }),
+    prisma.libraryQuoteRequest.findMany({ where: { formatType: "EXIT_LEAD", OR: [{ email: { in: emails } }, { phoneDigits: { in: phoneDigits } }] }, select: { id: true, email: true, phoneDigits: true, createdAt: true } }),
+    prisma.libraryActivity.findMany({ where: { targetType: "quote_request", targetId: { in: rows.map((row) => row.id) } }, select: { id: true, targetId: true, actorId: true, action: true, message: true, metadata: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 500 }),
+    prisma.liveChatVisitor.findMany({ where: { email: { in: emails } }, select: { email: true, conversations: { select: { id: true, publicId: true, subject: true, status: true, createdAt: true, lastMessageAt: true }, orderBy: { createdAt: "desc" }, take: 5 } } }).catch(() => []),
+  ]);
+  const userIds = users.map((user) => user.id);
+  const earliestLeadAt = contacts.reduce((earliest, lead) => lead.createdAt < earliest ? lead.createdAt : earliest, new Date());
+  const orders = await prisma.libraryOrder.findMany({
+    where: { createdAt: { gte: earliestLeadAt }, status: { in: [LibraryOrderStatus.PAID, LibraryOrderStatus.FULFILLED] }, OR: [{ billingEmail: { in: emails } }, { customerId: { in: userIds } }] },
+    select: { id: true, orderNumber: true, billingEmail: true, customerId: true, createdAt: true, total: true, status: true, items: { select: { productId: true } } },
+  });
+  const userById = new Map(users.map((user) => [user.id, user]));
+  const matchingOrders = (lead: { email: string; phone: string | null; createdAt: Date }) => orders.filter((order) => {
+    if (order.createdAt < lead.createdAt) return false;
+    const user = userById.get(order.customerId);
+    return order.billingEmail?.toLowerCase() === lead.email.toLowerCase() || user?.email.toLowerCase() === lead.email.toLowerCase() || Boolean(lead.phone && user?.phone && normalizeLeadPhone(user.phone) === normalizeLeadPhone(lead.phone));
+  });
+  const responseMinutes = recent.flatMap((lead) => lead.firstContactedAt || lead.lastContactedAt ? [Math.max(0, ((lead.firstContactedAt || lead.lastContactedAt)!.getTime() - lead.createdAt.getTime()) / 60000)] : []).sort((a, b) => a - b);
+  const percentile = (p: number) => responseMinutes.length ? Math.round(responseMinutes[Math.min(responseMinutes.length - 1, Math.ceil(responseMinutes.length * p) - 1)]) : null;
+  const breakdown = (key: "helpType" | "sourceSurface" | "productId") => Array.from(recent.reduce((counts, lead) => counts.set(lead[key] || "Unknown", (counts.get(lead[key] || "Unknown") || 0) + 1), new Map<string, number>())).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+  const productIds = Array.from(new Set([...rows, ...recent].map((row) => row.productId).filter((id): id is string => Boolean(id))));
+  const products = productIds.length
+    ? await prisma.libraryProduct.findMany({ where: { id: { in: productIds } }, select: { id: true, title: true } })
+    : [];
+  const titles = new Map(products.map((product) => [product.id, product.title]));
+  return {
+    page, pageSize, total, canExport: Boolean(input.canExport), reviewDays,
+    admins,
+    metrics: {
+      shown,
+      submitted: recent.length,
+      contacted: recent.filter((lead) => Boolean(lead.firstContactedAt || lead.lastContactedAt)).length,
+      confirmedConversions: recent.filter((lead) => Boolean(lead.confirmedOrderId)).length,
+      overdue,
+      notificationFailures,
+      submissionErrors,
+      retentionReviewDue,
+      responseMedianMinutes: percentile(0.5),
+      responseP90Minutes: percentile(0.9),
+      averageResponseMinutes: responseMinutes.length ? Math.round(responseMinutes.reduce((sum, minutes) => sum + minutes, 0) / responseMinutes.length) : null,
+      byHelpType: breakdown("helpType"),
+      bySource: breakdown("sourceSurface"),
+      byProduct: breakdown("productId").map((row) => ({ ...row, label: titles.get(row.label) || row.label })),
+    },
+    leads: rows.map((row) => ({
+      id: row.id,
+      productId: row.productId,
+      productTitle: (row.productId && titles.get(row.productId)) || row.message?.match(/^Product: (.+)$/m)?.[1] || "Library product",
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      message: row.message,
+      status: row.status,
+      assignedToId: row.assignedToId,
+      nextFollowUpAt: row.nextFollowUpAt ? toIso(row.nextFollowUpAt) : null,
+      lastContactedAt: row.lastContactedAt ? toIso(row.lastContactedAt) : null,
+      followUpNote: row.followUpNote,
+      helpType: row.helpType,
+      sourceSurface: row.sourceSurface,
+      sourcePath: row.sourcePath,
+      customerNote: row.customerNote,
+      closeReason: row.closeReason,
+      mergedIntoId: row.mergedIntoId,
+      confirmedOrderId: row.confirmedOrderId,
+      retentionReviewedAt: row.retentionReviewedAt ? toIso(row.retentionReviewedAt) : null,
+      retentionDecision: row.retentionDecision,
+      relatedLeads: relatedLeads.filter((other) => other.id !== row.id && (other.email.toLowerCase() === row.email.toLowerCase() || Boolean(row.phoneDigits && other.phoneDigits === row.phoneDigits))).map((other) => ({ id: other.id, createdAt: toIso(other.createdAt) })).slice(0, 20),
+      activity: activity.filter((event) => event.targetId === row.id).slice(0, 30).map((event) => ({ id: event.id, action: event.action, message: event.message, actorId: event.actorId, createdAt: toIso(event.createdAt) })),
+      supportChats: chatVisitors.filter((visitor) => visitor.email?.toLowerCase() === row.email.toLowerCase()).flatMap((visitor) => visitor.conversations).slice(0, 5).map((chat) => ({ id: chat.id, publicId: chat.publicId, subject: chat.subject, status: chat.status, createdAt: toIso(chat.createdAt) })),
+      relatedRequests: relatedLeads.filter((other) => other.id !== row.id && (other.email.toLowerCase() === row.email.toLowerCase() || Boolean(row.phoneDigits && other.phoneDigits === row.phoneDigits))).length,
+      paidOrders: matchingOrders(row).map((order) => ({ id: order.id, orderNumber: order.orderNumber, total: Number(order.total), createdAt: toIso(order.createdAt), matchesProduct: !row.productId || order.items.some((item) => item.productId === row.productId) })),
+      createdAt: toIso(row.createdAt),
+    })),
+  };
+}
+
+export async function updateLibraryExitLead(input: { id: string; assignedToId?: string | null; nextFollowUpAt?: string | null; followUpNote?: string | null; markContacted?: boolean; status?: string; closeReason?: string | null; mergedIntoId?: string | null; confirmedOrderId?: string | null; retentionDecision?: string; activityNote?: string }, actorId?: string) {
+  await ensureLibraryLeadProductionSchema();
+  const prisma = getMainPrisma();
+  const current = await prisma.libraryQuoteRequest.findFirst({ where: { id: input.id, formatType: "EXIT_LEAD" } });
+  if (!current) return null;
+  const nextStatus = input.status?.trim().toUpperCase();
+  if (nextStatus && !LIBRARY_QUOTE_STATUSES.has(nextStatus)) throw new Error("INVALID_LEAD_STATUS");
+  if (input.retentionDecision && !["RETAIN", "ERASURE_REQUEST", "CORRECTION_REQUEST"].includes(input.retentionDecision)) throw new Error("INVALID_RETENTION_DECISION");
+  const closeReason = input.closeReason?.trim().slice(0, 500) || null;
+  const resultingStatus = nextStatus || (input.markContacted && current.status === "NEW" ? "CONTACTED" : current.status);
+  const resultingCloseReason = input.closeReason === undefined ? current.closeReason : closeReason;
+  if ((resultingStatus === "LOST" || resultingStatus === "CLOSED") && !resultingCloseReason) throw new Error("CLOSE_REASON_REQUIRED");
+  if (input.mergedIntoId) {
+    if (current.confirmedOrderId || input.confirmedOrderId) throw new Error("CONFIRMED_LEAD_CANNOT_MERGE");
+    const target = await prisma.libraryQuoteRequest.findFirst({ where: { id: input.mergedIntoId, formatType: "EXIT_LEAD", mergedIntoId: null } });
+    if (!target || target.id === current.id || (target.email.toLowerCase() !== current.email.toLowerCase() && (!current.phoneDigits || target.phoneDigits !== current.phoneDigits))) throw new Error("INVALID_MERGE_TARGET");
+  }
+  if (input.confirmedOrderId) {
+    if (current.mergedIntoId || input.mergedIntoId) throw new Error("MERGED_LEAD_CANNOT_CONFIRM_ORDER");
+    const linked = await prisma.libraryQuoteRequest.findFirst({ where: { confirmedOrderId: input.confirmedOrderId, id: { not: current.id } }, select: { id: true } });
+    if (linked) throw new Error("ORDER_ALREADY_LINKED");
+    const order = await prisma.libraryOrder.findFirst({ where: { id: input.confirmedOrderId, status: { in: [LibraryOrderStatus.PAID, LibraryOrderStatus.FULFILLED] } }, include: { customer: { select: { email: true, phone: true } }, items: { select: { productId: true } } } });
+    if (!order || order.createdAt < current.createdAt || (order.billingEmail?.toLowerCase() !== current.email.toLowerCase() && order.customer.email.toLowerCase() !== current.email.toLowerCase() && normalizeLeadPhone(order.customer.phone) !== current.phoneDigits)) throw new Error("INVALID_CONFIRMED_ORDER");
+    if (current.productId && !order.items.some((item) => item.productId === current.productId)) throw new Error("ORDER_PRODUCT_MISMATCH");
+  }
+  if (input.assignedToId) {
+    const admin = await prisma.user.findFirst({ where: { id: input.assignedToId, accountStatus: "ACTIVE", OR: [{ roles: { has: Role.ADMIN } }, { roles: { has: Role.SUPER_ADMIN } }] }, select: { id: true } });
+    if (!admin) throw new Error("INVALID_LEAD_ASSIGNEE");
+  }
+  const nextFollowUpAt = input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null;
+  if (input.nextFollowUpAt && Number.isNaN(nextFollowUpAt?.getTime())) throw new Error("INVALID_FOLLOW_UP_DATE");
+  const lead = await prisma.$transaction(async (tx) => {
+    const updated = await tx.libraryQuoteRequest.update({
+      where: { id: input.id },
+      data: {
+      ...(input.assignedToId !== undefined ? { assignedToId: input.assignedToId || null } : {}),
+      ...(input.nextFollowUpAt !== undefined ? { nextFollowUpAt } : {}),
+      ...(input.followUpNote !== undefined ? { followUpNote: input.followUpNote?.trim().slice(0, 1000) || null } : {}),
+      ...(input.markContacted ? { lastContactedAt: new Date(), firstContactedAt: current.firstContactedAt || current.lastContactedAt || new Date(), status: current.status === "NEW" ? "CONTACTED" : current.status } : {}),
+      ...(nextStatus ? { status: nextStatus } : {}),
+      ...(input.closeReason !== undefined ? { closeReason } : {}),
+      ...(input.mergedIntoId !== undefined ? { mergedIntoId: input.mergedIntoId || null } : {}),
+      ...(input.confirmedOrderId !== undefined ? { confirmedOrderId: input.confirmedOrderId || null } : {}),
+      ...(input.retentionDecision ? { retentionDecision: input.retentionDecision, retentionReviewedAt: new Date() } : {}),
+      },
+    });
+    await tx.libraryActivity.create({ data: {
+      actorId,
+      targetType: "quote_request",
+      targetId: updated.id,
+      action: input.retentionDecision ? "EXIT_LEAD_RETENTION_REVIEWED" : input.markContacted ? "EXIT_LEAD_CONTACTED" : nextStatus ? "EXIT_LEAD_STATUS" : input.mergedIntoId ? "EXIT_LEAD_MERGED" : input.confirmedOrderId ? "EXIT_LEAD_ORDER_LINKED" : "EXIT_LEAD_UPDATED",
+      message: input.activityNote?.trim().slice(0, 1000) || `Library lead follow-up updated for ${updated.email}.`,
+      metadata: { assignedToId: updated.assignedToId, nextFollowUpAt: updated.nextFollowUpAt?.toISOString() || null, contacted: Boolean(input.markContacted), status: updated.status, closeReason: updated.closeReason, mergedIntoId: updated.mergedIntoId, confirmedOrderId: updated.confirmedOrderId, retentionDecision: updated.retentionDecision, note: updated.followUpNote } as Prisma.InputJsonValue,
+    } });
+    return updated;
+  });
+  if (input.assignedToId && input.assignedToId !== current.assignedToId) {
+    await prisma.notification.create({ data: { userId: input.assignedToId, channel: NotificationChannel.PUSH, status: NotificationStatus.QUEUED, subject: "Library lead assigned", body: `${lead.name || lead.email} · lead:${lead.id}` } }).catch(() => null);
+  }
+  return lead;
+}
+
+export async function processLibraryLeadReminders() {
+  await ensureLibraryLeadProductionSchema();
+  const prisma = getMainPrisma();
+  const now = new Date();
+  const due = await prisma.libraryQuoteRequest.findMany({
+    where: { formatType: "EXIT_LEAD", mergedIntoId: null, status: { in: ["NEW", "CONTACTED", "QUOTED"] }, nextFollowUpAt: { lte: now }, OR: [{ lastReminderAt: null }, { lastReminderAt: { lt: now } }] },
+    orderBy: { nextFollowUpAt: "asc" }, take: 100,
+  });
+  const admins = await prisma.user.findMany({ where: { accountStatus: "ACTIVE", OR: [{ roles: { has: Role.ADMIN } }, { roles: { has: Role.SUPER_ADMIN } }] }, select: { id: true } });
+  const adminIds = new Set(admins.map((admin) => admin.id));
+  let reminded = 0;
+  for (const lead of due) {
+    if (!lead.nextFollowUpAt || (lead.lastReminderAt && lead.lastReminderAt >= lead.nextFollowUpAt)) continue;
+    const recipients = lead.assignedToId && adminIds.has(lead.assignedToId) ? [lead.assignedToId] : [...adminIds];
+    if (!recipients.length) continue;
+    const claimed = await prisma.libraryQuoteRequest.updateMany({
+      where: { id: lead.id, nextFollowUpAt: lead.nextFollowUpAt, lastReminderAt: lead.lastReminderAt },
+      data: { lastReminderAt: now },
+    });
+    if (!claimed.count) continue;
+    try {
+      await prisma.notification.createMany({ data: recipients.map((userId) => ({ userId, channel: NotificationChannel.PUSH, status: NotificationStatus.QUEUED, subject: "Library lead follow-up due", body: `${lead.name || lead.email} · lead:${lead.id}` })) });
+      reminded += 1;
+    } catch (error) {
+      await prisma.libraryQuoteRequest.updateMany({ where: { id: lead.id, lastReminderAt: now }, data: { lastReminderAt: lead.lastReminderAt } }).catch(() => null);
+      console.error("[library-leads] reminder delivery failed", error);
+    }
+  }
+  return { checked: due.length, reminded };
+}
+
 export async function updateLibraryQuoteRequestStatus(id: string, status: string, actorId?: string) {
   const nextStatus = String(status || "").trim().toUpperCase();
   if (!id || !LIBRARY_QUOTE_STATUSES.has(nextStatus)) return null;
   if (!shouldUsePostgresLibrary()) return { id, status: nextStatus };
+  await ensureLibraryLeadProductionSchema();
+  const existing = await getMainPrisma().libraryQuoteRequest.findUnique({ where: { id }, select: { formatType: true } });
+  if (existing?.formatType === "EXIT_LEAD") return null;
   const row = await getMainPrisma().libraryQuoteRequest.update({
     where: { id },
     data: { status: nextStatus },

@@ -120,6 +120,41 @@ test("admin can reach Library operations", async ({ page }) => {
   await expect(page.getByRole("button", { name: /create product/i })).toBeVisible();
 });
 
+test("admin can review and follow up on Library exit leads", async ({ page }) => {
+  test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL/PASSWORD to run Library leads flow.");
+  await login(page, adminEmail!, adminPassword!);
+  await page.route(/\/api\/v1\/admin\/library\?type=exit-leads/, async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("query");
+    await route.fulfill({ json: { data: {
+      page: 1, pageSize: 20, total: query && !"Ada Guide".toLowerCase().includes(query.toLowerCase()) ? 0 : 1,
+      admins: [{ id: "admin-1", name: "Admin", email: "admin@example.com" }],
+      canExport: false, reviewDays: 365,
+      metrics: { shown: 1, submitted: 1, contacted: 0, confirmedConversions: 0, overdue: 0, notificationFailures: 0, submissionErrors: 0, retentionReviewDue: 0, averageResponseMinutes: null, responseMedianMinutes: null, responseP90Minutes: null, byHelpType: [], bySource: [], byProduct: [] },
+      leads: query && !"Ada Guide".toLowerCase().includes(query.toLowerCase()) ? [] : [{
+        id: "sample-lead", name: "Ada Guide", email: "ada@example.com", phone: "+263771234567",
+        productTitle: "Property Investment Guide", status: "NEW", createdAt: new Date().toISOString(),
+        assignedToId: null, nextFollowUpAt: null, lastContactedAt: null, followUpNote: null, relatedRequests: 0, relatedLeads: [], paidOrders: [], activity: [], supportChats: [], helpType: "complete_purchase", sourceSurface: "checkout", sourcePath: "/library/checkout", customerNote: "Please call me tomorrow", closeReason: null, mergedIntoId: null, confirmedOrderId: null,
+        message: "[Exit intent lead]\nHelp requested: Help me complete the purchase\nNote: Please call me tomorrow",
+      }],
+    } } });
+  });
+  await page.route("**/api/v1/admin/library", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({ json: { data: { quote: { status: "CONTACTED" } } } });
+    } else await route.continue();
+  });
+  await page.goto("/dashboard/admin/library?libraryView=Leads");
+  await expect(page.getByText("Ada Guide")).toBeVisible();
+  await page.getByRole("button", { name: /Ada Guide/ }).click();
+  await expect(page.getByText("Note: Please call me tomorrow")).toBeVisible();
+  await page.getByLabel("Assign Library lead").selectOption("admin-1");
+  await page.getByLabel("Internal follow-up note").fill("Call tomorrow morning");
+  await page.getByRole("button", { name: "Save follow-up" }).click();
+  await page.getByRole("button", { name: "Mark contacted" }).click();
+  await page.getByLabel("Search Library leads").fill("not found");
+  await expect(page.getByText("No leads match these filters.")).toBeVisible();
+});
+
 test("mobile navigation exposes core journeys", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Mobile navigation scan runs only in mobile projects.");
   await page.goto("/");

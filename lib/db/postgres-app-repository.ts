@@ -91,11 +91,14 @@ export async function createSavedSearchInPostgres(
 
 export async function listNotificationsFromPostgres(userId: string) {
   assertPostgres();
-  const rows = await getMainPrisma().notification.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const prisma = getMainPrisma();
+  const [queued, recent] = await Promise.all([
+    prisma.notification.findMany({ where: { userId, status: "QUEUED" }, orderBy: { createdAt: "desc" }, take: 100 }),
+    prisma.notification.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 100 }),
+  ]);
+  const rows = [...new Map([...queued, ...recent].map((row) => [row.id, row])).values()]
+    .sort((a, b) => Number(b.status === "QUEUED") - Number(a.status === "QUEUED") || b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 100);
   return rows.map((row) => ({
     id: row.id,
     userId: row.userId,

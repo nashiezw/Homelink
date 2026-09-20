@@ -263,7 +263,7 @@ function isNavItemActive(item: NavItem, activeTab: AdminTab, activeAcademyView: 
 }
 
 function allowedTabsForRoles(roles: string[]): Set<AdminTab> | null {
-  if (roles.includes("ADMIN")) return null;
+  if (roles.includes("ADMIN") || roles.includes("SUPER_ADMIN")) return null;
   const tabs = new Set<AdminTab>();
   if (roles.includes("SUPPORT")) ["overview", "support", "property-requests", "tenant-requests", "student-accommodation", "enquiries", "proptech", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
   if (roles.includes("BILLING")) ["overview", "support", "payments", "reports"].forEach((tab) => tabs.add(tab as AdminTab));
@@ -289,6 +289,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationError, setNotificationError] = useState("");
   const [expandedGroupLabel, setExpandedGroupLabel] = useState<string | null>(null);
 
   const navigate = useCallback(
@@ -329,15 +330,28 @@ export function AdminShell({ children }: { children: ReactNode }) {
     });
     void apiFetch<Notification[]>("/api/v1/notifications").then((r) => {
       if (r.data) setNotifications(r.data);
+      else if (r.error) setNotificationError(r.error.message);
     });
   }, [tab]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void apiFetch<Notification[]>("/api/v1/notifications").then((result) => {
+        if (result.data) setNotifications(result.data);
+        else if (result.error) setNotificationError(result.error.message);
+      });
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   async function toggleNotifications() {
     const nextOpen = !notificationsOpen;
     setNotificationsOpen(nextOpen);
     if (nextOpen) {
       const result = await apiFetch<Notification[]>("/api/v1/notifications");
-      if (result.data) setNotifications(result.data);
+      if (result.data) { setNotifications(result.data); setNotificationError(""); }
+      else setNotificationError(result.error?.message || "Notifications could not be loaded.");
     }
   }
 
@@ -412,14 +426,21 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const openGroupLabel = visibleGroups.some((group) => group.label === expandedGroupLabel)
     ? expandedGroupLabel
     : activeGroupLabel;
-  const notificationCount = summary
+  const notificationCount = (summary
     ? summary.pendingListings +
       summary.openTickets +
       summary.pendingVerification +
       summary.openPmRequests +
       summary.pendingAcademyApprovals +
       summary.pendingPaymentProofs
-    : 0;
+    : 0) + notifications.filter((notification) =>
+      (notification.subject === "New Library lead" || notification.subject === "Library lead assigned" || notification.subject === "Library lead follow-up due") &&
+      notification.status === "QUEUED",
+    ).length;
+  const visibleNotifications = [...notifications].sort((a, b) => {
+    const priority = (item: Notification) => item.status === "QUEUED" && ["New Library lead", "Library lead assigned", "Library lead follow-up due"].includes(item.subject) ? 1 : 0;
+    return priority(b) - priority(a) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   function toggleGroup(label: string) {
     setExpandedGroupLabel((current) => {
@@ -553,13 +574,25 @@ export function AdminShell({ children }: { children: ReactNode }) {
                         </div>
                       )}
                       <div className="max-h-80 overflow-y-auto p-2">
-                        {notifications.slice(0, 8).map((notification) => (
+                        {notificationError && <p role="alert" className="px-3 py-2 text-xs text-red-300">{notificationError}</p>}
+                        {visibleNotifications.map((notification) => (
                           <button
                             key={notification.id}
                             type="button"
-                            onClick={() => {
-                              navigate(notification.subject.toLowerCase().includes("pm") || notification.subject.toLowerCase().includes("property management") ? "property-management" : "overview");
-                              setNotificationsOpen(false);
+                            onClick={async () => {
+                              let ackFailed = false;
+                              if (notification.status === "QUEUED") {
+                                const result = await apiFetch<{ updated: number }>("/api/v1/notifications", { method: "PATCH", body: JSON.stringify({ id: notification.id }) });
+                                if (result.error || !result.data?.updated) { ackFailed = true; setNotificationError(result.error?.message || "This notification could not be marked as read."); }
+                                else { setNotifications((rows) => rows.map((row) => row.id === notification.id ? { ...row, status: "SENT" } : row)); setNotificationError(""); }
+                              }
+                              if (notification.subject === "New Library lead" || notification.subject === "Library lead assigned" || notification.subject === "Library lead follow-up due") {
+                                const leadId = notification.body.match(/lead:([a-z0-9]+)/i)?.[1];
+                                router.push(`/dashboard/admin/library?libraryView=Leads${leadId ? `&leadId=${encodeURIComponent(leadId)}` : ""}`);
+                              } else {
+                                navigate(notification.subject.toLowerCase().includes("pm") || notification.subject.toLowerCase().includes("property management") ? "property-management" : "overview");
+                              }
+                              if (!ackFailed) setNotificationsOpen(false);
                             }}
                             className="w-full rounded-xl px-3 py-2.5 text-left transition hover:bg-white/[0.04]"
                           >

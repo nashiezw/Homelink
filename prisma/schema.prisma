@@ -824,6 +824,8 @@ model Notification {
   createdAt DateTime            @default(now())
   sentAt    DateTime?
   user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Neighbourhood {
@@ -2150,16 +2152,40 @@ model LibraryQuoteRequest {
   email      String
   name       String?
   phone      String?
+  phoneDigits String?
   company    String?
   quantity   Int      @default(20)
   formatType String?
   message    String?
+  helpType   String?
+  sourceSurface String?
+  sourcePath String?
+  customerNote String?
+  mergedIntoId String?
+  closeReason String?
+  confirmedOrderId String?
+  lastReminderAt DateTime?
+  retentionReviewedAt DateTime?
+  retentionDecision String?
   status     String   @default("NEW")
+  assignedToId String?
+  nextFollowUpAt DateTime?
+  lastContactedAt DateTime?
+  firstContactedAt DateTime?
+  followUpNote String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([status, createdAt])
   @@index([productId, createdAt])
+  @@index([formatType, status, nextFollowUpAt])
+  @@index([formatType, createdAt])
+  @@index([email, createdAt])
+  @@index([assignedToId, nextFollowUpAt])
+  @@index([phoneDigits, createdAt])
+  @@index([formatType, helpType, createdAt])
+  @@index([mergedIntoId])
+  @@unique([confirmedOrderId])
   @@map("library_quote_requests")
 }
 

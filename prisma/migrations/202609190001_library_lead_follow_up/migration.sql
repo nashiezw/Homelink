@@ -1,0 +1,27 @@
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "assignedToId" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "nextFollowUpAt" TIMESTAMP(3);
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "lastContactedAt" TIMESTAMP(3);
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "firstContactedAt" TIMESTAMP(3);
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "phoneDigits" TEXT;
+UPDATE "library_quote_requests" SET "phoneDigits" = CASE WHEN regexp_replace("phone", '[^0-9]', '', 'g') ~ '^0[0-9]{9}$' THEN '263' || substring(regexp_replace("phone", '[^0-9]', '', 'g') from 2) ELSE regexp_replace("phone", '[^0-9]', '', 'g') END WHERE "phoneDigits" IS NULL AND "phone" IS NOT NULL;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "followUpNote" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "helpType" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "sourceSurface" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "sourcePath" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "customerNote" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "mergedIntoId" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "closeReason" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "confirmedOrderId" TEXT;
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "lastReminderAt" TIMESTAMP(3);
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "retentionReviewedAt" TIMESTAMP(3);
+ALTER TABLE "library_quote_requests" ADD COLUMN IF NOT EXISTS "retentionDecision" TEXT;
+
+CREATE INDEX IF NOT EXISTS "library_quote_requests_formatType_status_nextFollowUpAt_idx" ON "library_quote_requests"("formatType", "status", "nextFollowUpAt");
+CREATE INDEX IF NOT EXISTS "library_quote_requests_formatType_createdAt_idx" ON "library_quote_requests"("formatType", "createdAt");
+CREATE INDEX IF NOT EXISTS "library_quote_requests_email_createdAt_idx" ON "library_quote_requests"("email", "createdAt");
+CREATE INDEX IF NOT EXISTS "library_quote_requests_assignedToId_nextFollowUpAt_idx" ON "library_quote_requests"("assignedToId", "nextFollowUpAt");
+CREATE INDEX IF NOT EXISTS "library_quote_requests_phoneDigits_createdAt_idx" ON "library_quote_requests"("phoneDigits", "createdAt");
+CREATE INDEX IF NOT EXISTS "library_quote_requests_formatType_helpType_createdAt_idx" ON "library_quote_requests"("formatType", "helpType", "createdAt");
+CREATE INDEX IF NOT EXISTS "library_quote_requests_mergedIntoId_idx" ON "library_quote_requests"("mergedIntoId");
+CREATE UNIQUE INDEX IF NOT EXISTS "library_quote_requests_confirmedOrderId_key" ON "library_quote_requests"("confirmedOrderId");
+CREATE INDEX IF NOT EXISTS "Notification_userId_createdAt_idx" ON "Notification"("userId", "createdAt");

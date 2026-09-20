@@ -22,6 +22,7 @@ import {
 import { BarChart, DonutChart, MetricRow } from "@/components/admin/charts";
 import { LibrarySettingsPanel } from "@/components/admin/library-settings-panel";
 import { SiteAnalyticsPanel } from "@/components/admin/site-analytics-panel";
+import { LibraryLeadsInbox } from "@/components/admin/library-leads-inbox";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import sampleManifest from "@/public/uploads/library/samples/sample-manifest.json";
@@ -53,6 +54,7 @@ const views = [
   "Orders",
   "Sales Funnels",
   "Customers",
+  "Leads",
   "Reviews",
   "Coupons",
   "Downloads",
@@ -2051,6 +2053,8 @@ export function LibraryAdminHub() {
           onSave={saveSalesFunnel}
         />
       )}
+
+      {view === "Leads" && <AdminPanel title="Library leads" description="Customer requests for help before leaving a product or checkout page."><LibraryLeadsInbox /></AdminPanel>}
 
       {["Categories", "Collections", "Authors", "Customers", "Reviews", "Coupons", "Downloads", "Inventory", "Reports", "Analytics", "Settings"].includes(view) && (
         <AdminPanel
@@ -4205,7 +4209,7 @@ function LibraryTabManagement({
   }
 
   if (view === "Inventory") {
-    const quoteRows = operations.quoteRequests ?? [];
+    const quoteRows = (operations.quoteRequests ?? []).filter((row) => row.formatType !== "EXIT_LEAD");
     return (
       <div className="grid gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -4225,7 +4229,7 @@ function LibraryTabManagement({
           <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-300">Quote and lead inbox</h3>
           <AdminDataTable
             rows={quoteRows}
-            emptyMessage="No quote requests or exit leads yet."
+            emptyMessage="No quote requests yet."
             columns={[
               { key: "when", header: "When", render: (row) => new Date(row.createdAt).toLocaleDateString() },
               { key: "customer", header: "Customer", render: (row) => <span className="font-semibold text-white">{row.name || row.email}</span> },
@@ -5559,6 +5563,7 @@ function sectionDescription(view: string) {
     Collections: "Curate featured shelves, bundles, series, and professional product groups.",
     Authors: "Manage author profiles, bios, products, royalties, and publishing status.",
     Customers: "Review customer value, access state, downloads, orders, and support notes.",
+    Leads: "Follow up on Library shoppers who requested help before leaving.",
     Reviews: "Moderate ratings, product feedback, featured reviews, and abuse reports.",
     Coupons: "Create coupons, gift cards, usage rules, expiry windows, and campaign tracking.",
     Downloads: "Configure secure files, limits, expiry, watermarking, license keys, and tracking.",

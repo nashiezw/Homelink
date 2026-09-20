@@ -21,8 +21,8 @@ export default defineConfig({
         timeout: 120_000,
       },
   projects: [
-    { name: "desktop-chrome", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile-chrome", use: { ...devices["Pixel 7"] } },
+    { name: "desktop-chrome", use: { ...devices["Desktop Chrome"], ...(process.env.PLAYWRIGHT_CHROME_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHROME_CHANNEL } : {}) } },
+    { name: "mobile-chrome", use: { ...devices["Pixel 7"], ...(process.env.PLAYWRIGHT_CHROME_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHROME_CHANNEL } : {}) } },
     { name: "mobile-safari", use: { ...devices["iPhone 14"] } },
   ],
 });

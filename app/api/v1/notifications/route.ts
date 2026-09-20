@@ -6,6 +6,7 @@ import {
   shouldUsePostgresPersistence,
 } from "@/lib/db/postgres-app-repository";
 import { getStore } from "@/lib/store/app-store";
+import { getMainPrisma } from "@/lib/db/main-prisma";
 
 export async function GET(request: Request) {
   const userId = getSessionUserIdFromRequest(request);
@@ -48,4 +49,15 @@ export async function POST(request: Request) {
       body: body.body,
     }),
   );
+}
+
+export async function PATCH(request: Request) {
+  const userId = getSessionUserIdFromRequest(request);
+  if (!userId) return problem(401, "UNAUTHORIZED", "Sign in to update notifications.");
+  if (!shouldUsePostgresPersistence()) return problem(503, "NOTIFICATIONS_UNAVAILABLE", "Notification updates are unavailable.");
+  const body = await request.json().catch(() => ({}));
+  const id = String(body.id || "").trim();
+  if (!id) return problem(400, "INVALID_NOTIFICATION", "Notification id is required.");
+  const result = await getMainPrisma().notification.updateMany({ where: { id, userId, status: "QUEUED" }, data: { status: "SENT", sentAt: new Date() } });
+  return ok({ updated: result.count });
 }

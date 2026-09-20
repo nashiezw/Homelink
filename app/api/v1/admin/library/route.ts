@@ -1,6 +1,8 @@
 import { requireAdminAsync, requireAdmin } from "@/lib/admin/require-admin";
 import { created, ok, problem } from "@/lib/api/response";
 import { isPostgresStoreEnabled } from "@/lib/db/main-prisma";
+import { getMainPrisma } from "@/lib/db/main-prisma";
+import { ensureLibraryLeadProductionSchema } from "@/lib/db/production-schema";
 import { testCloudinaryEnvConfig } from "@/lib/integrations/cloudinary";
 import {
   archiveLibraryProducts,
@@ -23,6 +25,9 @@ import {
   getLibraryCustomerJourney,
   moderateLibraryReview,
   listLibraryReviewsForAdmin,
+  listLibraryExitLeads,
+  logLibraryActivity,
+  updateLibraryExitLead,
   deleteLibraryOrder,
   refundLibraryOrder,
   rejectLibraryGuestClaim,
@@ -52,6 +57,7 @@ export async function GET(request: Request) {
   
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type");
+  const leadAdmin = auth.user?.roles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN");
   
   // Handle customer journey analytics request
   if (type === "customer-journey") {
@@ -83,6 +89,46 @@ export async function GET(request: Request) {
       return problem(500, "LIBRARY_REVIEWS_LOAD_FAILED", "Library reviews could not be loaded.");
     }
   }
+  if (type === "exit-leads") {
+    if (!leadAdmin) return problem(403, "FORBIDDEN", "Library lead access requires an admin role.");
+    if (!isPostgresStoreEnabled()) return problem(503, "LEADS_UNAVAILABLE", "Lead storage is unavailable.");
+    try {
+      return ok(await listLibraryExitLeads({
+        page: Number(searchParams.get("page") || 1),
+        pageSize: 20,
+        query: searchParams.get("query") || "",
+        status: searchParams.get("status") || "",
+        assignment: searchParams.get("assignment") || "",
+        id: searchParams.get("id") || "",
+        actorId: auth.user?.id,
+        canExport: auth.user?.roles.includes("SUPER_ADMIN"),
+      }));
+    } catch (error) {
+      console.error("[admin/library] exit leads failed", error);
+      return problem(500, "LEADS_LOAD_FAILED", "Library leads could not be loaded.");
+    }
+  }
+  if (type === "exit-leads-export") {
+    if (!auth.user?.roles.includes("SUPER_ADMIN")) return problem(403, "FORBIDDEN", "Only a super admin can export customer lead data.");
+    if (!isPostgresStoreEnabled()) return problem(503, "LEADS_UNAVAILABLE", "Lead storage is unavailable.");
+    await ensureLibraryLeadProductionSchema();
+    const from = searchParams.get("from") ? new Date(`${searchParams.get("from")}T00:00:00.000Z`) : new Date(Date.now() - 30 * 86400000);
+    const to = searchParams.get("to") ? new Date(`${searchParams.get("to")}T23:59:59.999Z`) : new Date();
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from || to.getTime() - from.getTime() > 366 * 86400000) return problem(400, "INVALID_DATE_RANGE", "Choose a valid range of up to one year.");
+    const where = { formatType: "EXIT_LEAD", createdAt: { gte: from, lte: to } };
+    const prisma = getMainPrisma();
+    const count = await prisma.libraryQuoteRequest.count({ where });
+    if (count > 5000) return problem(413, "EXPORT_TOO_LARGE", "Narrow the export date range to 5,000 leads or fewer.");
+    const rows = await prisma.libraryQuoteRequest.findMany({ where, orderBy: { createdAt: "desc" }, select: { id: true, createdAt: true, name: true, email: true, phone: true, productId: true, helpType: true, sourceSurface: true, status: true, assignedToId: true, firstContactedAt: true, confirmedOrderId: true } });
+    const csv = (value: unknown) => {
+      const clean = String(value ?? "").replace(/[\r\n\t]/g, " ");
+      return `"${(/^[\s]*[=+\-@]/.test(clean) ? `'${clean}` : clean).replaceAll('"', '""')}"`;
+    };
+    const lines = ["id,submitted_at,name,email,phone,product_id,help_type,source,status,assigned_to,first_contacted_at,confirmed_order_id", ...rows.map((row) => [row.id, row.createdAt.toISOString(), row.name, row.email, row.phone, row.productId, row.helpType, row.sourceSurface, row.status, row.assignedToId, row.firstContactedAt?.toISOString(), row.confirmedOrderId].map(csv).join(","))];
+    const audit = await logLibraryActivity({ actorId: auth.user.id, targetType: "lead_export", targetId: "library", action: "EXIT_LEADS_EXPORTED", message: `Exported ${rows.length} Library leads.`, metadata: { from: from.toISOString(), to: to.toISOString(), count: rows.length } });
+    if (!audit) return problem(503, "EXPORT_AUDIT_UNAVAILABLE", "Lead export is unavailable until its audit record can be saved.");
+    return new Response(lines.join("\r\n"), { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="library-leads-${new Date().toISOString().slice(0, 10)}.csv"`, "Cache-Control": "private, no-store" } });
+  }
   
   try {
     return ok(await getAdminLibraryData());
@@ -102,6 +148,30 @@ export async function POST(request: Request) {
     return problem(400, "INVALID_JSON", "Request body must be valid JSON.");
   }
   try {
+    if (body.action === "update_exit_lead") {
+      if (!auth.user.roles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN")) return problem(403, "FORBIDDEN", "Library lead access requires an admin role.");
+      if (Object.hasOwn(body, "retentionDecision") && !auth.user.roles.includes("SUPER_ADMIN")) return problem(403, "FORBIDDEN", "Only a super admin can record a retention review decision.");
+      try {
+        const lead = await updateLibraryExitLead({
+          id: String(body.id || ""),
+          ...(Object.hasOwn(body, "assignedToId") ? { assignedToId: body.assignedToId == null ? null : String(body.assignedToId) } : {}),
+          ...(Object.hasOwn(body, "nextFollowUpAt") ? { nextFollowUpAt: body.nextFollowUpAt == null ? null : String(body.nextFollowUpAt) } : {}),
+          ...(Object.hasOwn(body, "followUpNote") ? { followUpNote: body.followUpNote == null ? null : String(body.followUpNote) } : {}),
+          markContacted: body.markContacted === true,
+          ...(Object.hasOwn(body, "status") ? { status: String(body.status) } : {}),
+          ...(Object.hasOwn(body, "closeReason") ? { closeReason: body.closeReason == null ? null : String(body.closeReason) } : {}),
+          ...(Object.hasOwn(body, "mergedIntoId") ? { mergedIntoId: body.mergedIntoId == null ? null : String(body.mergedIntoId) } : {}),
+          ...(Object.hasOwn(body, "confirmedOrderId") ? { confirmedOrderId: body.confirmedOrderId == null ? null : String(body.confirmedOrderId) } : {}),
+          ...(Object.hasOwn(body, "retentionDecision") ? { retentionDecision: String(body.retentionDecision) } : {}),
+          ...(Object.hasOwn(body, "activityNote") ? { activityNote: String(body.activityNote) } : {}),
+        }, auth.user.id);
+        if (!lead) return problem(404, "LEAD_NOT_FOUND", "Library lead not found.");
+        return ok({ lead });
+      } catch (error) {
+        if (error instanceof Error && ["INVALID_LEAD_ASSIGNEE", "INVALID_FOLLOW_UP_DATE", "INVALID_LEAD_STATUS", "INVALID_RETENTION_DECISION", "CLOSE_REASON_REQUIRED", "INVALID_MERGE_TARGET", "INVALID_CONFIRMED_ORDER", "ORDER_PRODUCT_MISMATCH", "ORDER_ALREADY_LINKED", "CONFIRMED_LEAD_CANNOT_MERGE", "MERGED_LEAD_CANNOT_CONFIRM_ORDER"].includes(error.message)) return problem(400, error.message, "Check the lead status, close reason, assignee, follow-up date, retention decision, merge target, or paid order. A confirmed order must include the requested product and cannot be linked to a duplicate lead.");
+        throw error;
+      }
+    }
     if (body.action === "bulk_archive") {
       const count = await archiveLibraryProducts(arrayOfStrings(body.ids), auth.user.id);
       revalidatePublicLibrary();

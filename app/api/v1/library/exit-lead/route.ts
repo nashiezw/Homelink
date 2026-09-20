@@ -1,9 +1,16 @@
-import { created, ok, problem } from "@/lib/api/response";
+import { created, problem } from "@/lib/api/response";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { recordSiteFunnelEvent } from "@/lib/analytics/site-analytics";
 import { upsertSitePresence } from "@/lib/analytics/presence";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
-import { ensureCoreProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
+import { ensureCoreProductionSchema, ensureLibraryLeadProductionSchema, isDatabaseUnavailableError, isMissingSchemaError } from "@/lib/db/production-schema";
+import { NotificationChannel, NotificationStatus, Role } from "@prisma/client";
+import { normalizeLeadPhone } from "@/lib/library/lead-contact";
+import { checkRateLimit, getClientIp } from "@/lib/api/request-meta";
+import { logLibraryActivity } from "@/lib/library/repository";
+import { getHydratedRuntimePlatformSettings } from "@/lib/settings/runtime";
+import { sendSmtpPlainEmail } from "@/lib/integrations/smtp";
+import { after } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +59,8 @@ function decodeHeaderValue(value: string | null) {
 }
 
 export async function POST(request: Request) {
+  const rate = checkRateLimit(`library-exit-lead:${getClientIp(request)}`, 4);
+  if (!rate.allowed) return problem(429, "RATE_LIMITED", "Too many requests. Please try again shortly.", { retryAfterSec: rate.retryAfterSec });
   let body: ExitLeadBody;
   try {
     body = await request.json();
@@ -62,12 +71,16 @@ export async function POST(request: Request) {
   const name = clip(body.name, 120);
   const phone = clip(body.phone, 40);
   const email = clip(body.email, 160).toLowerCase();
-  if (!name || !phone || !email || !email.includes("@")) {
+  if (!name || !phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return problem(400, "MISSING_CONTACT", "Name, phone number, and a valid email are required.");
   }
 
   const visitorId = clip(body.visitorId, 64);
   const sessionId = clip(body.sessionId, 64);
+  const recordFailure = async (reason: string) => {
+    if (!visitorId) return;
+    await recordSiteFunnelEvent({ visitorId, sessionId: sessionId || undefined, name: "library_exit_lead_failed", path: clip(body.path, 320) || "/library", metadata: { reason } }).catch(() => null);
+  };
   const path = clip(body.path, 320) || "/library";
   const productId = clip(body.productId, 64) || null;
   const productTitle = clip(body.productTitle, 200) || "HouseLink Library guide";
@@ -99,8 +112,10 @@ export async function POST(request: Request) {
     `Product: ${productTitle}${productSlug ? ` (${productSlug})` : ""}`,
     `Help requested: ${HELP_LABELS[helpType]}`,
     `Current page: ${path}`,
+    `Source: ${metadata.surface}`,
     metadata.note ? `Note: ${metadata.note}` : "",
     cartSummary.length ? `Cart: ${cartSummary.map((item) => `${item.quantity}x ${item.title}`).join("; ")}` : "",
+    metadata.cartItemCount ? `Bag: ${metadata.cartItemCount} item(s), ${metadata.cartCurrency || "USD"} ${metadata.cartValue.toFixed(2)}` : "",
   ].filter(Boolean).join("\n");
 
   const userId = getSessionUserIdFromRequest(request) ?? undefined;
@@ -110,7 +125,7 @@ export async function POST(request: Request) {
     city: decodeHeaderValue(request.headers.get("x-vercel-ip-city")),
   };
 
-  const presence = visitorId && sessionId
+  const presence = () => visitorId && sessionId
     ? upsertSitePresence({
         visitorId,
         sessionId,
@@ -133,7 +148,7 @@ export async function POST(request: Request) {
       }).catch(() => ({ ok: false }))
     : Promise.resolve({ ok: false });
 
-  const funnel = visitorId
+  const funnel = () => visitorId
     ? recordSiteFunnelEvent({
         visitorId,
         sessionId: sessionId || undefined,
@@ -148,33 +163,91 @@ export async function POST(request: Request) {
     : Promise.resolve({ id: null });
 
   if (!isPostgresStoreEnabled()) {
-    await Promise.all([presence, funnel]);
-    return ok({ id: null, status: "ACCEPTED" });
+    await recordFailure("storage_unavailable");
+    return problem(503, "LEAD_STORAGE_UNAVAILABLE", "We could not save your details. Please try again later or contact us directly.");
   }
 
   try {
     await ensureCoreProductionSchema();
+    await ensureLibraryLeadProductionSchema();
     const prisma = getMainPrisma();
-    const row = await prisma.libraryQuoteRequest.create({
-      data: {
+    const contactWindow = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentContactLeads = await prisma.libraryQuoteRequest.findMany({
+      where: { formatType: "EXIT_LEAD", createdAt: { gte: contactWindow }, OR: [{ email }, { phoneDigits: normalizeLeadPhone(phone) }] },
+      select: { id: true, productId: true, createdAt: true },
+      orderBy: { createdAt: "desc" }, take: 6,
+    });
+    const repeat = recentContactLeads.find((lead) => lead.productId === productId && lead.createdAt.getTime() > Date.now() - 2 * 60 * 1000);
+    if (repeat) return created({ id: repeat.id, status: "NEW", duplicate: true });
+    if (recentContactLeads.length >= 5) {
+      await recordFailure("contact_rate_limited");
+      return problem(429, "CONTACT_RATE_LIMITED", "Please contact HouseLink support if you still need help.");
+    }
+    const row = await prisma.$transaction(async (tx) => {
+      const lead = await tx.libraryQuoteRequest.create({ data: {
         productId,
         email,
         name,
         phone,
+        phoneDigits: normalizeLeadPhone(phone),
         company: null,
         quantity: 1,
         formatType: "EXIT_LEAD",
         message,
+        helpType,
+        sourceSurface: metadata.surface,
+        sourcePath: path,
+        customerNote: metadata.note || null,
         status: "NEW",
-      },
+      } });
+      await tx.libraryActivity.create({ data: { targetType: "quote_request", targetId: lead.id, action: "EXIT_LEAD_CREATED", message: `Library help requested for ${productTitle}.`, metadata: { helpType, surface: metadata.surface, productId } } });
+      return lead;
     });
-    await Promise.all([presence, funnel]);
+    let admins: Array<{ id: string }> = [];
+    try {
+      admins = await prisma.user.findMany({
+        where: { accountStatus: "ACTIVE", OR: [{ roles: { has: Role.ADMIN } }, { roles: { has: Role.SUPER_ADMIN } }] },
+        select: { id: true },
+      });
+      if (admins.length) await prisma.notification.createMany({
+        data: admins.map((admin) => ({
+          userId: admin.id,
+          channel: NotificationChannel.PUSH,
+          status: NotificationStatus.QUEUED,
+          subject: "New Library lead",
+          body: `${name} · ${productTitle} · lead:${row.id}`,
+        })),
+      });
+    } catch (notificationError) {
+      console.error("[library/exit-lead] admin notification failed", notificationError);
+      await logLibraryActivity({ targetType: "quote_request", targetId: row.id, action: "EXIT_LEAD_NOTIFICATION_FAILED", message: "Admin notification could not be delivered." }).catch(() => null);
+    }
+    after(async () => {
+      await Promise.all([
+        presence(),
+        funnel(),
+      ]);
+      if (process.env.LIBRARY_LEAD_EMAIL_ALERTS === "1" && admins.length) {
+        try {
+          const platform = await getHydratedRuntimePlatformSettings();
+          const sent = await Promise.all(admins.map(async (admin) => {
+            const recipient = await prisma.user.findUnique({ where: { id: admin.id }, select: { email: true } });
+            return recipient?.email ? sendSmtpPlainEmail(platform.integrations, recipient.email, "New Library lead", `${name} requested help with ${productTitle}.\n\nOpen: /dashboard/admin/library?libraryView=Leads&leadId=${row.id}`) : null;
+          }));
+          if (sent.some((result) => result && !result.ok)) throw new Error("One or more email alerts failed");
+        } catch (error) {
+          console.error("[library/exit-lead] email alert failed", error);
+          await logLibraryActivity({ targetType: "quote_request", targetId: row.id, action: "EXIT_LEAD_NOTIFICATION_FAILED", message: "One or more email alerts could not be delivered." }).catch(() => null);
+        }
+      }
+    });
     return created({ id: row.id, status: "NEW" });
   } catch (error) {
-    await Promise.all([presence, funnel]);
     if (isMissingSchemaError(error) || isDatabaseUnavailableError(error)) {
-      return ok({ id: null, status: "ACCEPTED", stored: false });
+      await recordFailure("storage_unavailable");
+      return problem(503, "LEAD_STORAGE_UNAVAILABLE", "We could not save your details. Please try again later or contact us directly.");
     }
+    await recordFailure("unexpected_error");
     throw error;
   }
 }
