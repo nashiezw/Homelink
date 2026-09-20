@@ -3551,7 +3551,7 @@ export async function listLibraryExitLeads(input: { page?: number; query?: strin
   const [total, rows, recent, admins, shown, notificationFailures, submissionErrors, retentionReviewDue, overdue] = await Promise.all([
     prisma.libraryQuoteRequest.count({ where }),
     prisma.libraryQuoteRequest.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * pageSize, take: pageSize }),
-    prisma.libraryQuoteRequest.findMany({ where: { formatType: "EXIT_LEAD", mergedIntoId: null, createdAt: { gte: periodStart } }, select: { id: true, createdAt: true, firstContactedAt: true, lastContactedAt: true, status: true, confirmedOrderId: true, nextFollowUpAt: true, helpType: true, sourceSurface: true, productId: true } }),
+    prisma.libraryQuoteRequest.findMany({ where: { formatType: "EXIT_LEAD", createdAt: { gte: periodStart } }, select: { id: true, createdAt: true, firstContactedAt: true, lastContactedAt: true, status: true, confirmedOrderId: true, nextFollowUpAt: true, helpType: true, sourceSurface: true, productId: true } }),
     prisma.user.findMany({ where: { accountStatus: "ACTIVE", OR: [{ roles: { has: Role.ADMIN } }, { roles: { has: Role.SUPER_ADMIN } }] }, select: { id: true, name: true, email: true } }),
     prisma.siteFunnelEvent.count({ where: { name: "library_exit_intent_shown", createdAt: { gte: periodStart } } }),
     prisma.libraryActivity.count({ where: { targetType: "quote_request", action: "EXIT_LEAD_NOTIFICATION_FAILED", createdAt: { gte: periodStart } } }),
