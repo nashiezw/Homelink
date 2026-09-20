@@ -3603,6 +3603,7 @@ export async function listLibraryExitLeads(input: { page?: number; query?: strin
     page, pageSize, total, canExport: Boolean(input.canExport), reviewDays,
     admins,
     metrics: {
+      remindersConfigured: Boolean(process.env.VERCEL === "1" ? process.env.CRON_SECRET : process.env.CRON_SECRET || process.env.HOUSELINK_CRON_SECRET),
       shown,
       submitted: recent.length,
       contacted: recent.filter((lead) => Boolean(lead.firstContactedAt || lead.lastContactedAt)).length,

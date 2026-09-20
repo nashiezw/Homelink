@@ -131,7 +131,7 @@ test("admin can review and follow up on Library exit leads", async ({ page, isMo
       page: 1, pageSize: 20, total: query && !"Ada Guide".toLowerCase().includes(query.toLowerCase()) ? 0 : 1,
       admins: [{ id: "admin-1", name: "Admin", email: "admin@example.com" }],
       canExport: false, reviewDays: 365,
-      metrics: { shown: 1, submitted: 1, contacted: 0, confirmedConversions: 0, overdue: 0, notificationFailures: 0, submissionErrors: 0, retentionReviewDue: 0, averageResponseMinutes: null, responseMedianMinutes: null, responseP90Minutes: null, byHelpType: [], bySource: [], byProduct: [] },
+      metrics: { remindersConfigured: true, shown: 1, submitted: 1, contacted: 0, confirmedConversions: 0, overdue: 0, notificationFailures: 0, submissionErrors: 0, retentionReviewDue: 0, averageResponseMinutes: null, responseMedianMinutes: null, responseP90Minutes: null, byHelpType: [], bySource: [], byProduct: [] },
       leads: query && !"Ada Guide".toLowerCase().includes(query.toLowerCase()) ? [] : [{
         id: "sample-lead", name: "Ada Guide", email: "ada@example.com", phone: "+263771234567",
         productTitle: "Property Investment Guide", status: "NEW", createdAt: new Date().toISOString(),

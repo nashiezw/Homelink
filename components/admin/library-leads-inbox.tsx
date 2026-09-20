@@ -39,7 +39,7 @@ type LeadPage = {
   canExport: boolean;
   reviewDays: number;
   metrics: {
-    shown: number; submitted: number; contacted: number; confirmedConversions: number; overdue: number;
+    remindersConfigured: boolean; shown: number; submitted: number; contacted: number; confirmedConversions: number; overdue: number;
     notificationFailures: number; submissionErrors: number; retentionReviewDue: number; averageResponseMinutes: number | null;
     responseMedianMinutes: number | null; responseP90Minutes: number | null;
     byHelpType: Array<{ label: string; value: number }>;
@@ -149,6 +149,7 @@ export function LibraryLeadsInbox() {
   }
   return (
     <div className="space-y-4">
+      {data && !data.metrics.remindersConfigured && <p role="alert" className="rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">Scheduled lead follow-up reminders are unavailable. Set CRON_SECRET in the production environment and redeploy.</p>}
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <Summary label="Prompt shown (30 days)" value={data?.metrics.shown ?? "—"} />
         <Summary label="Leads submitted" value={data?.metrics.submitted ?? "—"} />
