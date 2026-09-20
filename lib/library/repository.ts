@@ -3707,7 +3707,12 @@ export async function updateLibraryExitLead(input: { id: string; assignedToId?: 
     return updated;
   });
   if (input.assignedToId && input.assignedToId !== current.assignedToId) {
-    await prisma.notification.create({ data: { userId: input.assignedToId, channel: NotificationChannel.PUSH, status: NotificationStatus.QUEUED, subject: "Library lead assigned", body: `${lead.name || lead.email} · lead:${lead.id}` } }).catch(() => null);
+    try {
+      await prisma.notification.create({ data: { userId: input.assignedToId, channel: NotificationChannel.PUSH, status: NotificationStatus.QUEUED, subject: "Library lead assigned", body: `${lead.name || lead.email} · lead:${lead.id}` } });
+    } catch (error) {
+      console.error("[library-leads] assignment alert failed", error);
+      await logLibraryActivity({ targetType: "quote_request", targetId: lead.id, action: "EXIT_LEAD_NOTIFICATION_FAILED", message: "Assigned admin alert could not be delivered." }).catch(() => null);
+    }
   }
   return lead;
 }
@@ -3738,6 +3743,7 @@ export async function processLibraryLeadReminders() {
     } catch (error) {
       await prisma.libraryQuoteRequest.updateMany({ where: { id: lead.id, lastReminderAt: now }, data: { lastReminderAt: lead.lastReminderAt } }).catch(() => null);
       console.error("[library-leads] reminder delivery failed", error);
+      await logLibraryActivity({ targetType: "quote_request", targetId: lead.id, action: "EXIT_LEAD_NOTIFICATION_FAILED", message: "Follow-up reminder could not be delivered." }).catch(() => null);
     }
   }
   return { checked: due.length, reminded };
