@@ -20,7 +20,7 @@ This is an internal operating procedure, not a legal determination of retention 
 
 ## Operations
 
-- Set `CRON_SECRET` (or `HOUSELINK_CRON_SECRET`) for the daily follow-up reminder route. Without a secret, the route returns 503.
+- Set a random 32-character-or-longer `CRON_SECRET` in the Vercel Production environment, then redeploy. Vercel sends it as a bearer token to the daily follow-up reminder route. The route returns `CRON_NOT_CONFIGURED` (503) without it; never put the secret in the repository or a public issue. `HOUSELINK_CRON_SECRET` remains supported for non-Vercel schedulers that send the same bearer token.
 - Reconcile `EXIT_LEAD_NOTIFICATION_FAILED` activity with SMTP and application logs. A saved lead remains in the inbox even if an alert fails.
 - Paid orders matched by contact are contextual only. An admin must confirm one qualifying paid order link for attribution; one order cannot be linked to multiple leads. The confirmed order must include the lead's requested product, and duplicate leads cannot receive an order link.
 - Before production deployment, apply the Library lead migration against a staging copy, inspect old quote and lead rows, and run authenticated admin and customer-submission tests. Do not use the configured production database as the migration test target.
