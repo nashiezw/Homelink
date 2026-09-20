@@ -36,12 +36,15 @@ test("Library checkout shows a polished exit capture prompt", async ({ page }) =
   await expect(dialog.getByRole("link", { name: "Privacy Policy" })).toBeVisible();
 });
 
-test("Library exit capture shows a storage error and keeps entered details", async ({ page }) => {
+for (const response of [
+  { name: "storage error", status: 503, body: { error: { code: "LEAD_STORAGE_UNAVAILABLE", message: "We could not save your details. Please try again later." } }, message: "could not save" },
+  { name: "unconfirmed response", status: 200, body: { data: {} }, message: "Could not confirm" },
+]) test(`Library exit capture keeps entered details after ${response.name}`, async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("houselink_library_cart", JSON.stringify([{ productId: "test-guide", title: "Sample Library Guide", price: 15, currency: "USD", quantity: 1, formatId: "pdf", formatType: "PDF", formatLabel: "PDF" }]));
     for (const key of Object.keys(window.localStorage)) if (key.startsWith("houselink_library_exit_capture:")) window.localStorage.removeItem(key);
   });
-  await page.route("**/api/v1/library/exit-lead", async (route) => route.fulfill({ status: 503, json: { error: { code: "LEAD_STORAGE_UNAVAILABLE", message: "We could not save your details. Please try again later." } } }));
+  await page.route("**/api/v1/library/exit-lead", async (route) => route.fulfill({ status: response.status, json: response.body }));
   await page.goto("/library/checkout");
   await page.waitForTimeout(4200);
   await page.goBack();
@@ -50,6 +53,6 @@ test("Library exit capture shows a storage error and keeps entered details", asy
   await dialog.getByLabel("Phone").fill("0771234567");
   await dialog.getByLabel("Email").fill("ada@example.com");
   await dialog.getByRole("button", { name: /Send my details/i }).click();
-  await expect(dialog.getByRole("alert")).toContainText("could not save");
+  await expect(dialog.getByRole("alert")).toContainText(response.message);
   await expect(dialog.getByLabel("Name")).toHaveValue("Ada Guide");
 });

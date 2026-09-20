@@ -241,8 +241,8 @@ export function LibraryExitIntentCapture({
       }),
     });
     setBusy(false);
-    if (result.error) {
-      setError(result.error.message || "Could not save your details. Please try again.");
+    if (result.error || !result.data?.id) {
+      setError(result.error?.message || "Could not confirm your details were saved. Please try again.");
       return;
     }
     window.localStorage.setItem(storageKey(productSlug, "submitted"), String(Date.now()));
