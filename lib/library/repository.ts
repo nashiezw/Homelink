@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes } from "crypto";
-import { LibraryDownloadStatus, LibraryOrderStatus, LibraryProductStatus, LibraryProductType, NotificationChannel, NotificationStatus, PaymentProvider, PaymentStatus, Role, type Prisma } from "@prisma/client";
+import { LibraryDownloadStatus, LibraryOrderStatus, LibraryProductStatus, LibraryProductType, NotificationChannel, NotificationStatus, PaymentProvider, PaymentStatus, Prisma, Role } from "@prisma/client";
 import { getMainPrisma, isPostgresStoreEnabled } from "@/lib/db/main-prisma";
 import {
   applyLibraryBundlePromoToCartLines,
@@ -3567,7 +3567,16 @@ export async function listLibraryExitLeads(input: { page?: number; query?: strin
   const [users, relatedLeads, activity, chatVisitors] = await Promise.all([
     prisma.user.findMany({ where: { OR: [{ email: { in: emails } }, { phone: { in: userPhones } }] }, select: { id: true, email: true, phone: true } }),
     prisma.libraryQuoteRequest.findMany({ where: { formatType: "EXIT_LEAD", OR: [{ email: { in: emails } }, { phoneDigits: { in: phoneDigits } }] }, select: { id: true, email: true, phoneDigits: true, createdAt: true } }),
-    prisma.libraryActivity.findMany({ where: { targetType: "quote_request", targetId: { in: rows.map((row) => row.id) } }, select: { id: true, targetId: true, actorId: true, action: true, message: true, metadata: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 500 }),
+    rows.length ? prisma.$queryRaw<Array<{ id: string; targetId: string; actorId: string | null; action: string; message: string; createdAt: Date }>>`
+      SELECT "id", "targetId", "actorId", "action", "message", "createdAt"
+      FROM (
+        SELECT "id", "targetId", "actorId", "action", "message", "createdAt",
+          ROW_NUMBER() OVER (PARTITION BY "targetId" ORDER BY "createdAt" DESC, "id" DESC) AS row_number
+        FROM "library_activity"
+        WHERE "targetType" = 'quote_request' AND "targetId" IN (${Prisma.join(rows.map((row) => row.id))})
+      ) AS recent_activity
+      WHERE row_number <= 30
+    ` : Promise.resolve([]),
     prisma.liveChatVisitor.findMany({ where: { email: { in: emails } }, select: { email: true, conversations: { select: { id: true, publicId: true, subject: true, status: true, createdAt: true, lastMessageAt: true }, orderBy: { createdAt: "desc" }, take: 5 } } }).catch(() => []),
   ]);
   const userIds = users.map((user) => user.id);
