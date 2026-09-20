@@ -107,17 +107,22 @@ export function LibraryLeadsInbox() {
 
   async function saveFollowUp(id: string, fields: Record<string, unknown>) {
     setSavingId(id);
-    const result = await apiFetch<{ lead: Lead }>("/api/v1/admin/library", {
-      method: "POST",
-      body: JSON.stringify({ action: "update_exit_lead", id, ...fields }),
-    });
-    setSavingId(null);
-    if (result.error || !result.data) {
-      setError(result.error?.message || "Could not save follow-up details.");
-      return;
+    try {
+      const result = await apiFetch<{ lead: Lead }>("/api/v1/admin/library", {
+        method: "POST",
+        body: JSON.stringify({ action: "update_exit_lead", id, ...fields }),
+      });
+      if (result.error || result.data?.lead?.id !== id) {
+        setError(result.error?.message || "Could not confirm the follow-up was saved. Please try again.");
+        return;
+      }
+      setError("");
+      setRevision((value) => value + 1);
+    } catch {
+      setError("Could not confirm the follow-up was saved. Please try again.");
+    } finally {
+      setSavingId(null);
     }
-    setError("");
-    setRevision((value) => value + 1);
   }
 
   async function updateStatus(id: string, nextStatus: string) {

@@ -124,6 +124,7 @@ test("admin can review and follow up on Library exit leads", async ({ page, isMo
   test.skip(!adminEmail || !adminPassword, "Set E2E_ADMIN_EMAIL/PASSWORD to run Library leads flow.");
   await login(page, adminEmail!, adminPassword!);
   let fullLibraryLoads = 0;
+  let unconfirmedUpdate = false;
   await page.route(/\/api\/v1\/admin\/library\?type=exit-leads/, async (route) => {
     const query = new URL(route.request().url()).searchParams.get("query");
     await route.fulfill({ json: { data: {
@@ -141,7 +142,7 @@ test("admin can review and follow up on Library exit leads", async ({ page, isMo
   });
   await page.route("**/api/v1/admin/library", async (route) => {
     if (route.request().method() === "POST") {
-      await route.fulfill({ json: { data: { quote: { status: "CONTACTED" } } } });
+      await route.fulfill({ json: unconfirmedUpdate ? { data: {} } : { data: { lead: { id: "sample-lead", status: "CONTACTED" } } } });
     } else {
       fullLibraryLoads += 1;
       await route.continue();
@@ -164,6 +165,11 @@ test("admin can review and follow up on Library exit leads", async ({ page, isMo
   await page.goto("/dashboard/admin/library?libraryView=Leads");
   await expect(page.getByText("Ada Guide")).toBeVisible();
   expect(fullLibraryLoads).toBe(0);
+  await page.getByRole("button", { name: /Ada Guide/ }).click();
+  unconfirmedUpdate = true;
+  await page.getByRole("button", { name: "Save follow-up" }).click();
+  await expect(page.getByRole("alert")).toContainText("Could not confirm the follow-up was saved");
+  await expect(page.getByRole("button", { name: "Save follow-up" })).toBeEnabled();
 });
 
 test("mobile navigation exposes core journeys", async ({ page, isMobile }) => {
