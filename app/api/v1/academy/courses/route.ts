@@ -7,12 +7,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const response = ok(await listPublicAcademyCourses());
-    response.headers.set("Cache-Control", "public, max-age=300, s-maxage=600, stale-while-revalidate=600");
+    response.headers.set("Cache-Control", "no-store, max-age=0");
     return response;
   } catch (error) {
     if (isDatabaseUnavailableError(error)) {
       const response = ok([]);
-      response.headers.set("Cache-Control", "public, max-age=60, s-maxage=60");
+      response.headers.set("Cache-Control", "no-store, max-age=0");
       return response;
     }
     console.error("Failed to load public Academy courses", error);
