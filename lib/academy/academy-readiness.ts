@@ -62,7 +62,7 @@ const CATEGORY_DEFINITIONS = [
   },
 ] as const;
 
-const PASSING_ASSIGNMENT_STATUSES = new Set(["SUBMITTED", "APPROVED", "GRADED"]);
+const PASSING_ASSIGNMENT_STATUSES = new Set(["PASSED", "APPROVED"]);
 
 function statusFor(score: number): ReadinessCategory["status"] {
   if (score >= 85) return "READY";

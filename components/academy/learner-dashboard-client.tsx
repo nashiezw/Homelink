@@ -34,6 +34,7 @@ import { AcademyEngagementHub } from "@/components/academy/engagement-hub";
 import { AcademyPaymentDetails } from "@/components/academy/academy-payment-details";
 import { CertificateDocument } from "@/components/academy/certificate-document";
 import type { CertificateDocumentProps } from "@/components/academy/certificate-document";
+import type { CertificateEligibility } from "@/lib/academy/certificate-eligibility";
 import type { ToolkitAccessState } from "@/components/academy/academy-accordion";
 import { PaymentProofUpload } from "@/components/payments/payment-proof-upload";
 import type { PublicPaymentConfig } from "@/lib/payments/public-payment-config";
@@ -74,6 +75,7 @@ type LearnerDashboard = {
     unlocked: boolean;
     progress: number;
     completed: boolean;
+    courseworkComplete?: boolean;
     badgeEarned: boolean;
     badgeName: string;
     firstLesson?: { lessonId: string; lessonTitle: string; courseId: string; courseTitle: string } | null;
@@ -84,8 +86,9 @@ type LearnerDashboard = {
       learnerName: string;
       courseTitle: string;
       progress: number;
-      requirements: Array<{ label: string; complete: boolean }>;
+      requirements: Array<{ id: string; kind: string; label: string; detail: string; complete: boolean; state: string }>;
     };
+    certification?: CertificateEligibility | null;
   }>;
   certificates: Array<{
     id: string;
@@ -426,7 +429,18 @@ export function LearnerDashboardClient() {
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full transition-all" style={{ width: `${course.progress}%`, backgroundColor: course.theme.accent }} />
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">{course.progress}% complete / {course.badgeName}</p>
+                  <p className="mt-2 text-xs text-slate-500">{course.progress}% lesson progress / {course.badgeName}</p>
+                  {course.certificatePreview?.enabled && course.certification ? (
+                    <div className={cn(
+                      "mt-3 rounded-lg border px-3 py-2.5 text-sm",
+                      course.certification.status === "ISSUED" ? "border-emerald-200 bg-emerald-50 text-emerald-900" :
+                        course.certification.status === "AWAITING_REVIEW" || course.certification.status === "READY_TO_ISSUE" ? "border-sky-200 bg-sky-50 text-sky-900" :
+                          "border-amber-200 bg-amber-50 text-amber-900",
+                    )}>
+                      <p className="font-bold">{course.certification.statusLabel}</p>
+                      <p className="mt-0.5 text-xs leading-5 opacity-80">{course.certification.summary}</p>
+                    </div>
+                  ) : null}
                   {course.certificatePreview?.enabled && (
                     <LockedCertificatePreview
                       learnerName={course.certificatePreview.learnerName}
@@ -463,14 +477,20 @@ export function LearnerDashboardClient() {
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <span>Certificate</span>
-                        <span className="font-semibold text-slate-800">{course.certificate ? course.certificate.certificateNumber : "Not issued yet"}</span>
+                        <span className="text-right font-semibold text-slate-800">{course.certificate ? course.certificate.certificateNumber : course.certification?.statusLabel ?? "Not issued yet"}</span>
                       </div>
+                      {course.certification?.requirements.filter((requirement) => !requirement.complete).slice(0, 4).map((requirement) => (
+                        <div key={`${requirement.kind}-${requirement.id}`} className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                          <p className="font-bold">{requirement.title}</p>
+                          <p className="mt-0.5 leading-5 opacity-80">{requirement.detail}</p>
+                        </div>
+                      ))}
                     </div>
                   )}
                   <div className="mt-4 flex flex-col gap-2">
                     {hasCourseAccess ? (
-                      <Link href={course.progress <= 0 && course.firstLesson ? `/dashboard/academy/${course.id}?lesson=${encodeURIComponent(course.firstLesson.lessonId)}` : `/dashboard/academy/${course.id}`} className="w-full">
-                        <Button className="w-full text-sm px-3 py-2.5" style={{ backgroundColor: course.theme.accent }}>{course.completed ? "Review course" : course.progress <= 0 ? "Start Lesson 1" : "Continue"}</Button>
+                      <Link href={course.progress <= 0 && course.firstLesson ? `/dashboard/academy/${course.id}?lesson=${encodeURIComponent(course.firstLesson.lessonId)}` : course.courseworkComplete && !course.completed ? `/dashboard/academy/${course.id}?tab=progress` : `/dashboard/academy/${course.id}`} className="w-full">
+                        <Button className="w-full text-sm px-3 py-2.5" style={{ backgroundColor: course.theme.accent }}>{course.completed ? "Review course" : course.courseworkComplete ? "Finish certification" : course.progress <= 0 ? "Start Lesson 1" : "Continue"}</Button>
                       </Link>
                     ) : hasPendingApplication ? (
                       <Link href="/dashboard/academy" className="w-full">

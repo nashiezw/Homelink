@@ -1,6 +1,7 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { ACADEMY_PROGRAMME_COURSES, getProgrammeCourse, PROGRAMME_COURSE_IDS } from "@/lib/academy/academy-programme";
 import { TrainingCourseStatus } from "@prisma/client";
+import { getCertificateEligibility } from "@/lib/academy/certificate-eligibility";
 
 export async function canAccessProgrammeCourse(learnerId: string, courseId: string) {
   const course = getProgrammeCourse(courseId);
@@ -24,76 +25,11 @@ export async function canAccessProgrammeCourse(learnerId: string, courseId: stri
 }
 
 export async function hasPassedCourseAssessments(learnerId: string, courseId: string) {
-  const prisma = getMainPrisma();
-  const course = await prisma.trainingCourse.findUnique({
-    where: { id: courseId },
-    select: {
-      passingPercentage: true,
-      quizzes: { where: { active: true }, select: { id: true, passingPercentage: true } },
-      assignments: { where: { active: true }, select: { id: true, points: true } },
-      finalExams: { where: { active: true }, select: { id: true, passingScore: true } },
-    },
-  });
-  if (!course) return false;
-  const coursePassMark = course?.passingPercentage ?? 80;
-  const assessmentScores: number[] = [];
-  const programme = getProgrammeCourse(courseId);
-  const quizIds = course.quizzes.map((quiz) => quiz.id);
-  const assignmentIds = course.assignments.map((assignment) => assignment.id);
-  const requiresFinalExam = programme?.requiresFinalExam ?? course.finalExams.length > 0;
-
-  for (const quizId of quizIds) {
-    const quiz = course.quizzes.find((entry) => entry.id === quizId);
-    const bestAttempt = await prisma.quizAttempt.findFirst({
-      where: { quizId, agentId: learnerId, status: "PASSED" },
-      orderBy: { score: "desc" },
-    });
-    if (!bestAttempt) return false;
-    const score = Number(bestAttempt.score);
-    if (score < (quiz?.passingPercentage ?? coursePassMark)) return false;
-    assessmentScores.push(score);
-  }
-
-  for (const assignmentId of assignmentIds) {
-    const submission = await prisma.assignmentSubmission.findFirst({
-      where: {
-        assignmentId,
-        agentId: learnerId,
-        OR: [
-          { status: "APPROVED" },
-          { status: "GRADED" },
-        ],
-      },
-      include: { assignment: { select: { points: true } } },
-      orderBy: [{ reviewedAt: "desc" }, { submittedAt: "desc" }],
-    });
-    if (!submission) return false;
-    const gradePercent = submission.grade == null
-      ? coursePassMark
-      : submission.assignment.points > 0
-        ? Math.round((Number(submission.grade) / submission.assignment.points) * 100)
-        : 0;
-    if (gradePercent < coursePassMark) return false;
-    assessmentScores.push(gradePercent);
-  }
-
-  if (requiresFinalExam) {
-    for (const exam of course.finalExams) {
-      const passedExam = await prisma.examAttempt.findFirst({
-        where: { agentId: learnerId, status: "PASSED", examId: exam.id },
-        orderBy: { score: "desc" },
-      });
-      if (!passedExam) return false;
-      const score = Number(passedExam.score);
-      if (score < exam.passingScore) return false;
-      assessmentScores.push(score);
-    }
-  }
-
-  const overallScore = assessmentScores.length
-    ? Math.round(assessmentScores.reduce((sum, score) => sum + score, 0) / assessmentScores.length)
-    : 100;
-  return overallScore >= coursePassMark;
+  const eligibility = await getCertificateEligibility(learnerId, courseId);
+  if (!eligibility) return false;
+  return eligibility.requirements
+    .filter((requirement) => requirement.kind !== "lesson" && requirement.kind !== "certificate")
+    .every((requirement) => requirement.complete);
 }
 
 export async function awardProgrammeBadge(learnerId: string, courseId: string) {

@@ -30,11 +30,6 @@ type GateCourseShape = {
   }>;
 };
 
-const PASSING_ASSIGNMENT_STATUSES = new Set<string>([
-  AssignmentSubmissionStatus.APPROVED,
-  AssignmentSubmissionStatus.GRADED,
-]);
-
 const COMPLETE_GATE: AcademyGateState = { locked: false, title: "", requirements: [] };
 
 export async function getProgrammeGateState(learnerId: string, courseId: string, beforeSortOrder: number): Promise<AcademyGateState> {
@@ -62,7 +57,7 @@ export async function getAssessmentGateState(learnerId: string, courseId: string
 
 export async function getLessonCompletionGateState(learnerId: string, courseId: string, lessonId: string, completionRequirement: string): Promise<AcademyGateState> {
   if (completionRequirement !== "COMPLETE_QUIZ" && completionRequirement !== "SUBMIT_ASSIGNMENT") return COMPLETE_GATE;
-  const gate = await getCurrentLessonAssessmentState(learnerId, lessonId, completionRequirement);
+  const gate = await getCurrentLessonAssessmentState(learnerId, courseId, lessonId, completionRequirement);
   return {
     locked: gate.requirements.some((requirement) => !requirement.complete),
     title: completionRequirement === "COMPLETE_QUIZ"
@@ -118,16 +113,16 @@ async function getGateStateForTarget(learnerId: string, courseId: string, target
           where: {
             agentId: learnerId,
             assignmentId: { in: prerequisiteAssignments.map((assignment) => assignment.id) },
-            status: { in: Array.from(PASSING_ASSIGNMENT_STATUSES) as AssignmentSubmissionStatus[] },
           },
-          select: { assignmentId: true },
+          select: { assignmentId: true, status: true, grade: true, assignment: { select: { points: true, course: { select: { passingPercentage: true } } } } },
+          orderBy: { submittedAt: "desc" },
         })
       : Promise.resolve([]),
   ]);
 
   const completedLessonIds = new Set(lessonProgress.map((entry) => entry.lessonId));
   const passedQuizIds = new Set(quizAttempts.map((attempt) => attempt.quizId));
-  const approvedAssignmentIds = new Set(assignmentSubmissions.map((submission) => submission.assignmentId));
+  const approvedAssignmentIds = passingAssignmentIds(assignmentSubmissions, course.passingPercentage);
 
   const incompletePriorLessons = positions.lessons
     .filter((lesson) => prerequisiteLessonIds.includes(lesson.id) && !completedLessonIds.has(lesson.id))
@@ -151,15 +146,16 @@ async function getGateStateForTarget(learnerId: string, courseId: string, target
   };
 }
 
-async function getCurrentLessonAssessmentState(learnerId: string, lessonId: string, completionRequirement: string): Promise<AcademyGateState> {
+async function getCurrentLessonAssessmentState(learnerId: string, courseId: string, lessonId: string, completionRequirement: string): Promise<AcademyGateState> {
   const prisma = getMainPrisma();
-  const [quizzes, assignments] = await Promise.all([
+  const [quizzes, assignments, course] = await Promise.all([
     completionRequirement === "COMPLETE_QUIZ"
       ? prisma.quiz.findMany({ where: { lessonId, active: true }, select: { id: true, title: true } })
       : Promise.resolve([]),
     completionRequirement === "SUBMIT_ASSIGNMENT"
       ? prisma.assignment.findMany({ where: { lessonId, active: true }, select: { id: true, title: true } })
       : Promise.resolve([]),
+    prisma.trainingCourse.findUnique({ where: { id: courseId }, select: { passingPercentage: true } }),
   ]);
   if (!quizzes.length && !assignments.length) return COMPLETE_GATE;
 
@@ -172,20 +168,44 @@ async function getCurrentLessonAssessmentState(learnerId: string, lessonId: stri
           where: {
             agentId: learnerId,
             assignmentId: { in: assignments.map((assignment) => assignment.id) },
-            status: { in: Array.from(PASSING_ASSIGNMENT_STATUSES) as AssignmentSubmissionStatus[] },
           },
-          select: { assignmentId: true },
+          select: { assignmentId: true, status: true, grade: true, assignment: { select: { points: true, course: { select: { passingPercentage: true } } } } },
+          orderBy: { submittedAt: "desc" },
         })
       : Promise.resolve([]),
   ]);
 
   const passedQuizIds = new Set(quizAttempts.map((attempt) => attempt.quizId));
-  const approvedAssignmentIds = new Set(assignmentSubmissions.map((submission) => submission.assignmentId));
+  const approvedAssignmentIds = passingAssignmentIds(assignmentSubmissions, course?.passingPercentage ?? 80);
   const requirements: AcademyGateRequirement[] = [
     ...quizzes.map((quiz) => ({ id: quiz.id, title: quiz.title, type: "quiz" as const, complete: passedQuizIds.has(quiz.id) })),
     ...assignments.map((assignment) => ({ id: assignment.id, title: assignment.title, type: "assignment" as const, complete: approvedAssignmentIds.has(assignment.id) })),
   ];
   return { locked: requirements.some((requirement) => !requirement.complete), title: "", requirements };
+}
+
+function passingAssignmentIds(submissions: Array<{
+  assignmentId: string;
+  status: AssignmentSubmissionStatus;
+  grade: unknown;
+  assignment: { points: number; course: { passingPercentage: number } | null };
+}>, fallbackPassMark: number) {
+  const latestByAssignment = new Map<string, (typeof submissions)[number]>();
+  for (const submission of submissions) {
+    if (!latestByAssignment.has(submission.assignmentId)) latestByAssignment.set(submission.assignmentId, submission);
+  }
+  return new Set(
+    [...latestByAssignment.values()]
+      .filter((submission) => {
+        if (submission.status === AssignmentSubmissionStatus.APPROVED) return true;
+        if (submission.status !== AssignmentSubmissionStatus.GRADED || submission.grade == null) return false;
+        const gradePercent = submission.assignment.points > 0
+          ? (Number(submission.grade) / submission.assignment.points) * 100
+          : 0;
+        return gradePercent >= (submission.assignment.course?.passingPercentage ?? fallbackPassMark);
+      })
+      .map((submission) => submission.assignmentId),
+  );
 }
 
 function buildCoursePositions(course: GateCourseShape) {

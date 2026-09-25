@@ -169,6 +169,10 @@ type LearnerCourseRow = {
   certificateStatus: string;
   certificateIssuedAt: string | null;
   certificateEnabled: boolean;
+  certificationStatus: string;
+  certificationStatusLabel: string;
+  certificationSummary: string;
+  certificationBlockers: Array<{ id: string; kind: string; title: string; detail: string; state: string; learnerAction: boolean }>;
   lastActivityDate: string | null;
   lastLearningActivityDate?: string | null;
   lastSeenAt?: string | null;
@@ -184,6 +188,7 @@ type LearnerCourseGroup = {
   courseStatus: string;
   totalLearners: number;
   completedLearners: number;
+  courseworkCompleteLearners: number;
   inProgressLearners: number;
   atRiskLearners: number;
   averageProgress: number;
@@ -197,6 +202,7 @@ type LearnerOverviewPayload = {
     enrolments: number;
     courses: number;
     completed: number;
+    courseworkCompleteAwaitingCertificate: number;
     inProgress: number;
     atRisk: number;
     certificatesIssued: number;
@@ -465,7 +471,13 @@ export function StudentAnalyticsDashboard() {
     const matchesCourse = courseFilter === "all" || learner.courseId === courseFilter;
     const matchesStatus = statusFilter === "all" || learner.status === statusFilter;
     const matchesRisk = riskFilter === "all" || (riskFilter === "none" ? !learner.riskLevel : learner.riskLevel === riskFilter);
-    const matchesCertificate = certificateFilter === "all" || (certificateFilter === "issued" ? learner.certificateStatus === "ACTIVE" : learner.certificateStatus !== "ACTIVE");
+    const matchesCertificate = certificateFilter === "all"
+      || (certificateFilter === "issued" && learner.certificateStatus === "ACTIVE")
+      || (certificateFilter === "missing" && learner.certificateStatus !== "ACTIVE")
+      || (certificateFilter === "coursework-complete" && learner.status === "COURSEWORK_COMPLETE")
+      || (certificateFilter === "awaiting-review" && learner.certificationStatus === "AWAITING_REVIEW")
+      || (certificateFilter === "action-required" && learner.certificationStatus === "ACTION_REQUIRED")
+      || (certificateFilter === "admin-blocked" && learner.certificationStatus === "ISSUANCE_BLOCKED");
     return matchesSearch && matchesCourse && matchesStatus && matchesRisk && matchesCertificate;
   });
   const filteredCourseGroups = courseOptions
@@ -782,13 +794,34 @@ function LearnerWorkspace({
   onViewProgress: (learnerId: string) => void;
   onViewQuiz: (learnerId: string) => void;
 }) {
+  const [recheckingKey, setRecheckingKey] = useState<string | null>(null);
+  const [recheckMessage, setRecheckMessage] = useState<string | null>(null);
+
+  async function recheckCertificate(learner: LearnerCourseRow) {
+    const key = `${learner.learnerId}:${learner.courseId}`;
+    setRecheckingKey(key);
+    setRecheckMessage(null);
+    const result = await apiFetch<{ certificateIssued: boolean; eligibility?: { statusLabel?: string; summary?: string } }>("/api/v1/admin/academy/certificates/reconcile", {
+      method: "POST",
+      body: JSON.stringify({ learnerId: learner.learnerId, courseId: learner.courseId }),
+    });
+    setRecheckingKey(null);
+    if (result.error) {
+      setRecheckMessage(result.error.message);
+      return;
+    }
+    setRecheckMessage(result.data?.certificateIssued ? "Certificate issued successfully." : result.data?.eligibility?.summary ?? "Eligibility rechecked.");
+    onRefresh();
+  }
+
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <AdminStatPill label="Learners" value={String(overview?.totals.learners ?? 0)} />
         <AdminStatPill label="Course Enrolments" value={String(overview?.totals.enrolments ?? 0)} />
         <AdminStatPill label="Average Progress" value={`${overview?.totals.averageProgress ?? 0}%`} tone="info" />
         <AdminStatPill label="Certificates Issued" value={String(overview?.totals.certificatesIssued ?? 0)} tone="success" />
+        <AdminStatPill label="Coursework Done / No Certificate" value={String(overview?.totals.courseworkCompleteAwaitingCertificate ?? 0)} tone="warning" />
       </div>
 
       <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
@@ -812,7 +845,8 @@ function LearnerWorkspace({
             <option value="all">All progress</option>
             <option value="ACTIVE">Not started</option>
             <option value="IN_PROGRESS">In progress</option>
-            <option value="COMPLETED">Completed</option>
+            <option value="COURSEWORK_COMPLETE">Coursework complete</option>
+            <option value="CERTIFIED">Certified</option>
           </FilterSelect>
           <FilterSelect label="Risk" value={riskFilter} onChange={setRiskFilter}>
             <option value="all">All risk</option>
@@ -825,6 +859,10 @@ function LearnerWorkspace({
             <option value="all">All certificates</option>
             <option value="issued">Issued</option>
             <option value="missing">Missing</option>
+            <option value="coursework-complete">Coursework done / missing</option>
+            <option value="awaiting-review">Awaiting review</option>
+            <option value="action-required">Learner action required</option>
+            <option value="admin-blocked">Admin setup blocked</option>
           </FilterSelect>
           <Button className="h-11 w-full lg:w-auto" variant="secondary" onClick={onRefresh}>
             <RefreshCw className="mr-2 size-4" />
@@ -834,12 +872,13 @@ function LearnerWorkspace({
         <p className="mt-3 text-xs text-slate-500">
           Showing {filteredLearners.length} real enrolment records grouped by course.
         </p>
+        {recheckMessage ? <p className="mt-2 text-sm font-semibold text-amber-200">{recheckMessage}</p> : null}
       </div>
 
       {filteredCourseGroups.length ? (
         <div className="space-y-4">
           {filteredCourseGroups.map((course) => (
-            <CourseLearnerGroup key={course.courseId} course={course} onViewProgress={onViewProgress} onViewQuiz={onViewQuiz} />
+            <CourseLearnerGroup key={course.courseId} course={course} onViewProgress={onViewProgress} onViewQuiz={onViewQuiz} onRecheckCertificate={recheckCertificate} recheckingKey={recheckingKey} />
           ))}
         </div>
       ) : (
@@ -868,7 +907,7 @@ function FilterSelect({ label, value, onChange, children }: { label: string; val
   );
 }
 
-function CourseLearnerGroup({ course, onViewProgress, onViewQuiz }: { course: LearnerCourseGroup; onViewProgress: (learnerId: string) => void; onViewQuiz: (learnerId: string) => void }) {
+function CourseLearnerGroup({ course, onViewProgress, onViewQuiz, onRecheckCertificate, recheckingKey }: { course: LearnerCourseGroup; onViewProgress: (learnerId: string) => void; onViewQuiz: (learnerId: string) => void; onRecheckCertificate: (learner: LearnerCourseRow) => void; recheckingKey: string | null }) {
   return (
     <section className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/60">
       <div className="border-b border-white/10 bg-slate-950/50 p-4">
@@ -881,9 +920,10 @@ function CourseLearnerGroup({ course, onViewProgress, onViewQuiz }: { course: Le
             </div>
             <p className="mt-1 text-sm text-slate-500">{course.learners.length} visible learner records in this course</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 lg:min-w-[460px]">
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5 lg:min-w-[580px]">
             <MiniMetric label="Learners" value={course.totalLearners} />
-            <MiniMetric label="Completed" value={course.completedLearners} />
+            <MiniMetric label="Certified" value={course.completedLearners} />
+            <MiniMetric label="Coursework done" value={course.courseworkCompleteLearners} />
             <MiniMetric label="At risk" value={course.atRiskLearners} />
             <MiniMetric label="Avg progress" value={`${course.averageProgress}%`} />
           </div>
@@ -891,7 +931,7 @@ function CourseLearnerGroup({ course, onViewProgress, onViewQuiz }: { course: Le
       </div>
       <div className="grid gap-3 p-3 xl:grid-cols-2">
         {course.learners.map((learner) => (
-          <LearnerCourseCard key={`${learner.learnerId}:${learner.courseId}`} learner={learner} onViewProgress={onViewProgress} onViewQuiz={onViewQuiz} />
+          <LearnerCourseCard key={`${learner.learnerId}:${learner.courseId}`} learner={learner} onViewProgress={onViewProgress} onViewQuiz={onViewQuiz} onRecheckCertificate={onRecheckCertificate} rechecking={recheckingKey === `${learner.learnerId}:${learner.courseId}`} />
         ))}
       </div>
     </section>
@@ -907,7 +947,7 @@ function MiniMetric({ label, value }: { label: string; value: string | number })
   );
 }
 
-function LearnerCourseCard({ learner, onViewProgress, onViewQuiz }: { learner: LearnerCourseRow; onViewProgress: (learnerId: string) => void; onViewQuiz: (learnerId: string) => void }) {
+function LearnerCourseCard({ learner, onViewProgress, onViewQuiz, onRecheckCertificate, rechecking }: { learner: LearnerCourseRow; onViewProgress: (learnerId: string) => void; onViewQuiz: (learnerId: string) => void; onRecheckCertificate: (learner: LearnerCourseRow) => void; rechecking: boolean }) {
   const riskVariant = learner.riskLevel === "HIGH" ? "danger" : learner.riskLevel === "MEDIUM" ? "warning" : learner.riskLevel === "LOW" ? "success" : "muted";
   return (
     <article className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
@@ -917,8 +957,8 @@ function LearnerCourseCard({ learner, onViewProgress, onViewQuiz }: { learner: L
           <p className="break-words text-sm text-slate-400 [overflow-wrap:anywhere]">{learner.learnerEmail}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {learner.isOnline ? <AdminStatusBadge status="Online now" variant="success" /> : null}
-            <AdminStatusBadge status={formatStatus(learner.status)} variant={learner.status === "COMPLETED" ? "success" : learner.status === "IN_PROGRESS" ? "warning" : "info"} />
-            <AdminStatusBadge status={learner.certificateStatus === "ACTIVE" ? "Certificate issued" : "Certificate missing"} variant={learner.certificateStatus === "ACTIVE" ? "success" : "muted"} />
+            <AdminStatusBadge status={formatStatus(learner.status)} variant={learner.status === "CERTIFIED" ? "success" : learner.status === "COURSEWORK_COMPLETE" || learner.status === "IN_PROGRESS" ? "warning" : "info"} />
+            <AdminStatusBadge status={learner.certificationStatusLabel} variant={learner.certificateStatus === "ACTIVE" ? "success" : learner.certificationStatus === "AWAITING_REVIEW" ? "info" : learner.certificationStatus === "ACTION_REQUIRED" || learner.certificationStatus === "ISSUANCE_BLOCKED" ? "warning" : "muted"} />
             {learner.riskLevel ? <AdminStatusBadge status={`${learner.riskLevel} risk`} variant={riskVariant} /> : null}
           </div>
         </div>
@@ -950,6 +990,24 @@ function LearnerCourseCard({ learner, onViewProgress, onViewQuiz }: { learner: L
         <LearnerFact icon={Award} label="Reviewed" value={`${learner.assignmentsReviewed}/${learner.assignmentsSubmitted}`} />
         <LearnerFact icon={Clock} label={learner.isOnline ? "Presence" : "Last active"} value={formatActivityStatus(learner)} />
       </div>
+
+      {learner.certificateEnabled && learner.certificateStatus !== "ACTIVE" ? (
+        <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] p-3">
+          <p className="text-sm font-bold text-amber-100">{learner.certificationStatusLabel}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">{learner.certificationSummary}</p>
+          {learner.certificationBlockers.length ? (
+            <div className="mt-2 space-y-1.5">
+              {learner.certificationBlockers.slice(0, 4).map((blocker) => (
+                <p key={`${blocker.kind}-${blocker.id}`} className="text-xs text-slate-300"><span className="font-semibold text-white">{blocker.title}:</span> {blocker.detail}</p>
+              ))}
+            </div>
+          ) : null}
+          <Button className="mt-3 w-full sm:w-auto" variant="secondary" disabled={rechecking} onClick={() => onRecheckCertificate(learner)}>
+            <RefreshCw className={rechecking ? "mr-2 size-4 animate-spin" : "mr-2 size-4"} />
+            {rechecking ? "Rechecking..." : "Recheck certificate"}
+          </Button>
+        </div>
+      ) : null}
 
       {(learner.currentLesson || learner.riskDescription) && (
         <div className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm">

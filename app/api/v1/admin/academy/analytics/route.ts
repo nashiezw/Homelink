@@ -2,6 +2,7 @@ import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { identifyAtRiskLearners } from "@/lib/academy/at-risk-learner-identification";
+import { certificateEligibilityKey, getCertificateEligibilityBatch } from "@/lib/academy/certificate-eligibility";
 import {
   getStudentProgressAnalytics,
   getCourseWideAnalytics,
@@ -206,6 +207,9 @@ export async function GET(request: Request) {
       ]);
 
       const userMap = new Map(users.map((user) => [user.id, user]));
+      const certificationByLearnerCourse = await getCertificateEligibilityBatch(
+        enrolments.map((enrolment) => ({ learnerId: enrolment.agentId, courseId: enrolment.courseId })),
+      );
       const progressMap = new Map(courseProgress.map((progress) => [`${progress.agentId}:${progress.courseId}`, progress]));
       const sessionMap = new Map<string, Date>();
       activeSessions.forEach((session) => {
@@ -290,6 +294,7 @@ export async function GET(request: Request) {
         const assessments = assessmentStats.get(key) ?? { scores: [], quizAttempts: 0, examAttempts: 0, failedAttempts: 0 };
         const assignments = assignmentStats.get(key) ?? { submitted: 0, reviewed: 0, pending: 0, grades: [] };
         const certificate = certificateMap.get(key) ?? null;
+        const certification = certificationByLearnerCourse.get(certificateEligibilityKey(enrolment.agentId, enrolment.courseId)) ?? null;
         const risk = riskMap.get(key) ?? riskMap.get(`${enrolment.agentId}:`) ?? null;
         const lastSeenAt = sessionMap.get(enrolment.agentId) ?? null;
         const totalLessons = totalLessonsByCourse.get(enrolment.courseId) ?? 0;
@@ -301,9 +306,10 @@ export async function GET(request: Request) {
           : Number(progress?.averageScore ?? 0);
         const lastLearningActivity = [lesson?.lastActivity, progress?.updatedAt, certificate?.issuedAt].filter(Boolean).sort((a, b) => Number(b) - Number(a))[0] ?? null;
         const lastActivity = [lastLearningActivity, lastSeenAt].filter(Boolean).sort((a, b) => Number(b) - Number(a))[0] ?? null;
-        const status =
-          progress?.status === "COMPLETED" || completionPercentage >= 100
-            ? "COMPLETED"
+        const status = certificate?.status === "ACTIVE"
+          ? "CERTIFIED"
+          : progress?.status === "COMPLETED" || completionPercentage >= 100
+            ? "COURSEWORK_COMPLETE"
             : enrolment.status === "ACTIVE" && completionPercentage > 0
               ? "IN_PROGRESS"
               : enrolment.status;
@@ -336,6 +342,17 @@ export async function GET(request: Request) {
           certificateStatus: certificate?.status ?? "NOT_ISSUED",
           certificateIssuedAt: certificate?.issuedAt ?? null,
           certificateEnabled: enrolment.course.certificateEnabled,
+          certificationStatus: certification?.status ?? (enrolment.course.certificateEnabled ? "ACTION_REQUIRED" : "DISABLED"),
+          certificationStatusLabel: certification?.statusLabel ?? "Certificate unavailable",
+          certificationSummary: certification?.summary ?? "Certification details are unavailable.",
+          certificationBlockers: certification?.blockers.map((blocker) => ({
+            id: blocker.id,
+            kind: blocker.kind,
+            title: blocker.title,
+            detail: blocker.detail,
+            state: blocker.state,
+            learnerAction: blocker.learnerAction,
+          })) ?? [],
           lastActivityDate: lastActivity,
           lastLearningActivityDate: lastLearningActivity,
           lastSeenAt,
@@ -353,7 +370,8 @@ export async function GET(request: Request) {
           courseTitle: course.title,
           courseStatus: course.status,
           totalLearners: learners.length,
-          completedLearners: learners.filter((row) => row.status === "COMPLETED").length,
+          completedLearners: learners.filter((row) => row.status === "CERTIFIED").length,
+          courseworkCompleteLearners: learners.filter((row) => row.status === "COURSEWORK_COMPLETE").length,
           inProgressLearners: learners.filter((row) => row.status === "IN_PROGRESS").length,
           atRiskLearners: learners.filter((row) => row.riskLevel).length,
           averageProgress: learners.length ? Math.round(learners.reduce((sum, row) => sum + row.completionPercentage, 0) / learners.length) : 0,
@@ -367,7 +385,8 @@ export async function GET(request: Request) {
           learners: learnerIds.length,
           enrolments: learnerRows.length,
           courses: courseGroups.length,
-          completed: learnerRows.filter((row) => row.status === "COMPLETED").length,
+          completed: learnerRows.filter((row) => row.status === "CERTIFIED").length,
+          courseworkCompleteAwaitingCertificate: learnerRows.filter((row) => row.status === "COURSEWORK_COMPLETE").length,
           inProgress: learnerRows.filter((row) => row.status === "IN_PROGRESS").length,
           atRisk: learnerRows.filter((row) => row.riskLevel).length,
           certificatesIssued: learnerRows.filter((row) => row.certificateStatus === "ACTIVE").length,

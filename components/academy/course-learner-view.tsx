@@ -43,6 +43,7 @@ import {
   ROLEPLAY_ASSESSMENT_SCENARIOS,
 } from "@/lib/academy/academy-excellence";
 import { cn } from "@/lib/utils";
+import type { CertificateEligibility, CertificationRequirement } from "@/lib/academy/certificate-eligibility";
 
 type CourseDetail = {
   settings: { academyName: string; primaryColour: string; paymentInstructions?: string; community?: { enabled?: boolean; name?: string; whatsappUrl?: string; inviteText?: string; sharePrompt?: string } };
@@ -118,7 +119,7 @@ type CourseDetail = {
   assessments: {
     summary?: string | null;
     badgeName?: string | null;
-    totals?: { quizzes: number; quizzesPassed: number; assignments: number; assignmentsSubmitted: number; exams: number };
+    totals?: { quizzes: number; quizzesPassed: number; assignments: number; assignmentsSubmitted: number; assignmentsAccepted: number; assignmentsAwaitingReview: number; assignmentsActionRequired: number; exams: number };
     readiness?: {
       overall: number;
       status: "READY" | "DEVELOPING" | "NEEDS_PRACTICE";
@@ -133,6 +134,7 @@ type CourseDetail = {
   };
   materials: Array<{ id: string; title: string; subtitle: string; summary: string; moduleTitle: string; lessonTitle: string; estimatedMinutes: number; location: string; fileType: string; downloadUrl: string; viewUrl: string }>;
   certificate?: { id: string; certificateNumber: string; issuedAt: string; downloadUrl: string } | null;
+  certification?: CertificateEligibility | null;
   application?: { id: string; status: string; accessEndsAt?: string | null } | null;
 };
 
@@ -245,9 +247,15 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
           else showToast("Thanks. Your feedback was sent to the Academy team.", "success");
         }}
         onCompleteLesson={async (lessonId) => {
-          const result = await apiFetch<{ courseCompleted?: boolean }>("/api/v1/academy/progress", { method: "POST", body: JSON.stringify({ lessonId }) });
+          const result = await apiFetch<{ courseworkCompleted?: boolean; certificateIssued?: boolean; certification?: CertificateEligibility | null }>("/api/v1/academy/progress", { method: "POST", body: JSON.stringify({ lessonId }) });
           if (result.error) { showToast(result.error.message, "error"); return; }
-          showToast(result.data?.courseCompleted ? "Course completed!" : "Lesson marked complete!");
+          showToast(
+            result.data?.certificateIssued
+              ? "Course complete. Your certificate is ready!"
+              : result.data?.courseworkCompleted
+                ? `Course content complete. ${result.data.certification?.summary ?? "Check the remaining certificate requirements."}`
+                : "Lesson marked complete!",
+          );
           setViewingLessonId(null);
           clearLessonQuery();
           await load();
@@ -332,6 +340,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
   const communityInviteText = String(community?.inviteText ?? "").trim();
   const communityWhatsappUrl = String(community?.whatsappUrl ?? "").trim();
   const communitySharePrompt = String(community?.sharePrompt ?? "").trim();
+  const assessmentActionCount = data.certification?.blockers.filter((blocker) => blocker.kind !== "lesson" && blocker.learnerAction).length ?? 0;
   const tabItems: Array<{ id: Tab; label: string; icon: typeof BookOpen }> = [
     { id: "curriculum", label: "Curriculum", icon: BookOpen },
     { id: "toolkit", label: "Toolkit", icon: ClipboardCheck },
@@ -376,7 +385,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
             </div>
             {data.course.certificateEnabled && (
               <p className="mt-3 flex items-center gap-2 text-sm font-medium text-amber-200">
-                <Award className="size-4" /> Certificate on completion
+                <Award className="size-4" /> Certificate after lessons and assessments
               </p>
             )}
           </div>
@@ -402,6 +411,9 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
               >
                 <Icon className="size-4 shrink-0" />
                 {item.label}
+                {item.id === "assessments" && assessmentActionCount > 0 ? (
+                  <span className={cn("min-w-5 rounded-full px-1.5 py-0.5 text-[10px] font-black", tab === item.id ? "bg-white text-amber-700" : "bg-amber-100 text-amber-800")}>{assessmentActionCount}</span>
+                ) : null}
               </button>
             );
           })}
@@ -593,7 +605,7 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
           {data.assessments.totals && (
             <div className="grid gap-3 sm:grid-cols-3">
               <AssessmentStat label="Module Quizzes" value={`${data.assessments.totals.quizzesPassed}/${data.assessments.totals.quizzes} passed`} accent={accent} />
-              <AssessmentStat label="Assignments" value={`${data.assessments.totals.assignmentsSubmitted}/${data.assessments.totals.assignments} submitted`} accent={accent} />
+              <AssessmentStat label="Assignments" value={`${data.assessments.totals.assignmentsAccepted}/${data.assessments.totals.assignments} accepted`} accent={accent} />
               <AssessmentStat label="Final Exam" value={data.assessments.totals.exams ? "1 capstone exam" : "Certificate checkpoint"} accent={accent} />
             </div>
           )}
@@ -751,11 +763,22 @@ export function CourseLearnerView({ courseId }: { courseId: string }) {
 
       {tab === "progress" && (
         <div className="mt-6 space-y-5">
-          <CertificateUnlockPanel data={data} accent={accent} learnerName={user.name || "Learner Name"} onOpenTab={setTab} />
+          <CertificateUnlockPanel
+            data={data}
+            accent={accent}
+            learnerName={user.name || "Learner Name"}
+            onOpenTab={setTab}
+            onOpenRequirement={(requirement) => {
+              if (requirement.kind === "quiz") setActiveQuizId(requirement.id);
+              else if (requirement.kind === "assignment") setActiveAssignmentId(requirement.id);
+              else if (requirement.kind === "exam") setActiveExamId(requirement.id);
+              else setTab(requirement.kind === "lesson" ? "curriculum" : "assessments");
+            }}
+          />
           <div className="academy-panel rounded-xl p-6">
             <p className="text-3xl font-bold text-emerald-600">{data.course.progress}%</p>
-            <p className="text-slate-600 mt-1">Course completion / Status: {data.course.status.replace(/_/g, " ")}</p>
-            <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all training sessions{data.course.certificateEnabled ? " to earn your course certificate" : ""}.</p>
+            <p className="text-slate-600 mt-1">Lesson progress / Certification: {data.certification?.statusLabel ?? "Not available"}</p>
+            <p className="text-sm text-slate-500 mt-4">Pass mark: {data.course.passingPercentage}% / Complete all lessons and required assessments{data.course.certificateEnabled ? " to earn your course certificate" : ""}.</p>
           </div>
         </div>
       )}
@@ -772,22 +795,10 @@ function AssessmentStat({ label, value, accent }: { label: string; value: string
   );
 }
 
-function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab }: { data: CourseDetail; accent: string; learnerName: string; onOpenTab: (tab: Tab) => void }) {
-  const completedLessons = data.course.modules.reduce((sum, module) => sum + module.completedCount, 0);
-  const totalLessons = data.course.modules.reduce((sum, module) => sum + module.lessonCount, 0);
-  const quizzesPassed = data.assessments.quizzes.filter((quiz) => quiz.passed).length;
-  const assignmentsAccepted = data.assessments.assignments.filter((assignment) => assignment.passed).length;
-  const examsPassed = data.assessments.exams.filter((exam) => exam.passed).length;
+function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab, onOpenRequirement }: { data: CourseDetail; accent: string; learnerName: string; onOpenTab: (tab: Tab) => void; onOpenRequirement: (requirement: CertificationRequirement) => void }) {
   const certificateUnlocked = Boolean(data.certificate);
-  const requirements = [
-    { label: `Complete lessons (${completedLessons}/${totalLessons})`, complete: totalLessons === 0 || completedLessons >= totalLessons, href: "#curriculum" },
-    { label: `Pass quizzes (${quizzesPassed}/${data.assessments.quizzes.length})`, complete: data.assessments.quizzes.length === 0 || quizzesPassed >= data.assessments.quizzes.length, href: "#assessments" },
-    { label: `Submit approved assignments (${assignmentsAccepted}/${data.assessments.assignments.length})`, complete: data.assessments.assignments.length === 0 || assignmentsAccepted >= data.assessments.assignments.length, href: "#assessments" },
-    { label: data.assessments.exams.length ? `Pass final exam (${examsPassed}/${data.assessments.exams.length})` : "Final exam not required", complete: data.assessments.exams.length === 0 || examsPassed >= data.assessments.exams.length, href: "#assessments" },
-    { label: "Reach 100% course completion", complete: data.course.progress >= 100, href: "#progress" },
-  ];
-  const remaining = requirements.filter((item) => !item.complete).length;
-  const nextRequirement = requirements.find((item) => !item.complete);
+  const requirements = data.certification?.requirements ?? [];
+  const nextRequirement = data.certification?.nextAction ?? null;
 
   return (
     <section className="academy-panel overflow-hidden rounded-xl p-0">
@@ -797,14 +808,12 @@ function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab }: { data
           <div className="relative">
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-200">Your certificate</p>
             <h3 className="mt-2 text-xl font-black leading-tight sm:text-2xl">
-              {certificateUnlocked ? "Certificate ready to view" : "Locked until completion"}
+              {certificateUnlocked ? "Certificate ready to view" : data.certification?.statusLabel ?? "Certificate requirements"}
             </h3>
             <p className="mt-2 text-sm leading-6 text-slate-300">
               {certificateUnlocked
                 ? `Your real certificate ${data.certificate?.certificateNumber ?? ""} is issued from the database and ready to open.`
-                : nextRequirement
-                  ? `${remaining} requirement${remaining === 1 ? "" : "s"} left. Next: ${nextRequirement.label}.`
-                  : "Final certificate checks are being prepared."}
+                : data.certification?.summary ?? "Complete the lessons and required assessments to unlock your certificate."}
             </p>
             <LockedCertificateMini
               learnerName={learnerName}
@@ -825,9 +834,12 @@ function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab }: { data
           </div>
           <div className="mt-5 space-y-3">
             {requirements.map((item) => (
-              <div key={item.label} className={cn("flex items-start gap-3 rounded-xl border p-3", item.complete ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100" : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300")}>
+              <div key={`${item.kind}-${item.id}`} className={cn("flex items-start gap-3 rounded-xl border p-3", item.complete ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-100" : item.state === "AWAITING_REVIEW" ? "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-100" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100")}>
                 <CheckCircle2 className={cn("mt-0.5 size-4 shrink-0", item.complete ? "text-emerald-600" : "text-slate-300")} />
-                <span className="text-sm font-semibold leading-5">{item.label}</span>
+                <span className="min-w-0 flex-1 text-sm leading-5"><span className="block font-semibold">{item.title}</span><span className="block text-xs opacity-80">{item.detail}</span></span>
+                {!item.complete && item.learnerAction && (
+                  <button type="button" className="shrink-0 text-xs font-black underline" onClick={() => onOpenRequirement(item)}>Open</button>
+                )}
               </div>
             ))}
           </div>
@@ -843,13 +855,13 @@ function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab }: { data
             <button
               type="button"
               onClick={() => {
-                if (nextRequirement?.href === "#assessments") onOpenTab("assessments");
-                else if (nextRequirement?.href === "#curriculum") onOpenTab("curriculum");
+                if (nextRequirement) onOpenRequirement(nextRequirement);
+                else onOpenTab("progress");
               }}
               className="mt-5 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-sm font-black text-white sm:w-auto"
               style={{ backgroundColor: accent }}
             >
-              Continue toward certificate
+              {nextRequirement?.state === "AWAITING_REVIEW" ? "View review status" : "Continue toward certificate"}
             </button>
           )}
         </div>

@@ -71,11 +71,15 @@ export async function PATCH(
       ?? submission.assignment.lesson?.section.module.courseId
       ?? null;
     const rules = courseId ? await getCourseRetakeRules(courseId) : DEFAULT_COURSE_RETAKE_RULES;
+    const course = courseId ? await prisma.trainingCourse.findUnique({ where: { id: courseId }, select: { passingPercentage: true } }) : null;
     const submissionCount = await prisma.assignmentSubmission.count({
       where: { assignmentId: submission.assignmentId, agentId: submission.agentId },
     });
     const remainingSubmissions = attemptsRemaining(rules.assignmentSubmissionLimit, submissionCount);
-    const passedReview = status === "APPROVED" || status === "GRADED";
+    const gradePercent = numericGrade !== null && submission.assignment.points > 0
+      ? Math.round((numericGrade / submission.assignment.points) * 100)
+      : null;
+    const passedReview = status === "APPROVED" || (status === "GRADED" && (gradePercent ?? 0) >= (course?.passingPercentage ?? 80));
 
     // Create notification for the student
     await prisma.trainingNotification.create({
@@ -107,7 +111,7 @@ export async function PATCH(
       },
     });
 
-    if ((status === "APPROVED" || status === "GRADED") && courseId) {
+    if (passedReview && courseId) {
       await tryCompleteCourseCertification(submission.agentId, courseId);
     }
 

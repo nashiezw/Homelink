@@ -1290,7 +1290,13 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       },
     });
     const courseId = assignment?.courseId ?? assignment?.module?.courseId ?? assignment?.lesson?.section.module.courseId ?? null;
-    if (courseId && (status === AssignmentSubmissionStatus.APPROVED || status === AssignmentSubmissionStatus.GRADED)) {
+    const course = courseId ? await prisma.trainingCourse.findUnique({ where: { id: courseId }, select: { passingPercentage: true } }) : null;
+    const gradePercent = submission.grade != null && (assignment?.points ?? 0) > 0
+      ? Math.round((Number(submission.grade) / assignment!.points) * 100)
+      : null;
+    const passedReview = status === AssignmentSubmissionStatus.APPROVED
+      || (status === AssignmentSubmissionStatus.GRADED && (gradePercent ?? 0) >= (course?.passingPercentage ?? 80));
+    if (courseId && passedReview) {
       await tryCompleteCourseCertification(submission.agentId, courseId);
     }
     await audit(actor, "academy.assignment_submission.review", submission.id, {

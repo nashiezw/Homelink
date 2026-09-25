@@ -27,6 +27,7 @@ import {
   releaseExpiredFirstLessonReservations,
 } from "@/lib/academy/activation-deadline";
 import { releaseAcademyCouponUsageByPayment } from "@/lib/academy/coupon-usage";
+import { certificateEligibilityKey, getCertificateEligibility, getCertificateEligibilityBatch } from "@/lib/academy/certificate-eligibility";
 
 export type AcademyRegistrationIntent = "TRAINING_ONLY" | "AGENT_TRAINING";
 
@@ -350,6 +351,9 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
   const manualAccess = await getManualAccessView(learnerId, isAgent);
   const toolkitDownloadCount = courseToolkits.reduce((sum, toolkit) => sum + toolkit.itemCount, 0);
   const badgeById = new Map(agentBadges.map((entry) => [entry.badgeId, entry.badge]));
+  const dashboardEligibility = await getCertificateEligibilityBatch(
+    dashboardCourses.map((course) => ({ learnerId, courseId: course.id })),
+  );
   const certificateByCourseId = new Map(
     certificates
       .filter((certificate) => certificate.courseId)
@@ -369,6 +373,7 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
     const programme = getProgrammeCourse(course.id);
     const certificate = certificateByCourseId.get(course.id);
     const courseProgress = courseProgressRows.find((row) => row.courseId === course.id);
+    const certification = dashboardEligibility.get(certificateEligibilityKey(learnerId, course.id)) ?? null;
     const badge = programme ? badgeById.get(programme.badgeId) : null;
     const programmeAccess = programme ? await canAccessProgrammeCourse(learnerId, course.id) : { allowed: true as const };
     return {
@@ -379,7 +384,8 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
       sortOrder: programme?.sortOrder ?? 999,
       unlocked: approvedApplication || !programme || programmeAccess.allowed,
       progress: courseProgress?.percentComplete ?? 0,
-      completed: Boolean(certificate) || courseProgress?.status === "COMPLETED" || (courseProgress?.percentComplete ?? 0) >= 100,
+      completed: Boolean(certificate),
+      courseworkComplete: (courseProgress?.percentComplete ?? 0) >= 100,
       badgeEarned: programme ? existingBadgeIds.has(programme.badgeId) : Boolean(certificate),
       badgeName: badge?.name ?? programme?.badgeName ?? `${course.title} completion`,
       certificate: certificate
@@ -403,12 +409,16 @@ export async function getLearnerAcademyDashboard(learnerId: string, options?: { 
         learnerName: learner?.name || "Learner Name",
         courseTitle: course.title,
         progress: Number(courseProgress?.percentComplete ?? 0),
-        requirements: buildDashboardCertificateRequirements({
-          progress: Number(courseProgress?.percentComplete ?? 0),
-          completed: Boolean(certificate) || courseProgress?.status === "COMPLETED" || Number(courseProgress?.percentComplete ?? 0) >= 100,
-          certificateIssued: Boolean(certificate),
-        }),
+        requirements: certification?.requirements.map((requirement) => ({
+          id: requirement.id,
+          kind: requirement.kind,
+          label: requirement.title,
+          detail: requirement.detail,
+          complete: requirement.complete,
+          state: requirement.state,
+        })) ?? [],
       },
+      certification,
       firstLesson: firstLessonByCourseId.get(course.id) ?? null,
     };
   }))).sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
@@ -988,14 +998,6 @@ function buildAssessmentSummary(input: {
   return `Complete the lessons, ${joined}, and meet the ${input.passMark}% course pass requirement${input.certificateEnabled ? " to unlock the certificate" : ""}.`;
 }
 
-function buildDashboardCertificateRequirements(input: { progress: number; completed: boolean; certificateIssued: boolean }) {
-  return [
-    { label: "Reach 100% course progress", complete: input.completed || input.progress >= 100 },
-    { label: "Complete required assessments", complete: input.completed },
-    { label: "Certificate record issued", complete: input.certificateIssued },
-  ];
-}
-
 function buildIssuedCertificatePreviewPayload(input: {
   certificate: {
     id: string;
@@ -1202,10 +1204,12 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
     chip: "bg-emerald-100 text-emerald-900",
   };
   const assignmentStatuses = Object.fromEntries(
-    course.assignments.map((assignment) => [
-      assignment.id,
-      assignmentSubmissions.find((submission) => submission.assignmentId === assignment.id)?.status ?? null,
-    ]),
+    course.assignments.map((assignment) => {
+      const latest = assignmentSubmissions.find((submission) => submission.assignmentId === assignment.id);
+      const gradePercent = latest?.grade == null || assignment.points <= 0 ? null : Math.round((Number(latest.grade) / assignment.points) * 100);
+      const passed = latest?.status === "APPROVED" || (latest?.status === "GRADED" && (gradePercent ?? 0) >= course.passingPercentage);
+      return [assignment.id, passed ? "PASSED" : latest?.status ?? null];
+    }),
   );
   const quizScores = Object.fromEntries(course.quizzes.map((quiz) => [quiz.id, bestQuizScores.get(quiz.id) ?? null]));
   const readiness = buildReadinessScore(programme, {
@@ -1227,6 +1231,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
   const assignmentGateEntries = await Promise.all(course.assignments.map(async (assignment) => [assignment.id, await getAssessmentGateState(learnerId, courseId, assignment.id, "assignment")] as const));
   const quizGateById = new Map(quizGateEntries);
   const assignmentGateById = new Map(assignmentGateEntries);
+  const certification = await getCertificateEligibility(learnerId, courseId);
   const moduleTitleById = new Map(course.modules.map((module) => [module.id, module.title]));
   const lessonPlacementById = new Map(
     course.modules.flatMap((module) =>
@@ -1289,6 +1294,9 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
         assignmentsSubmitted: course.assignments.filter(
           (assignment) => assignmentSubmissions.some((s) => s.assignmentId === assignment.id),
         ).length,
+        assignmentsAccepted: certification?.counts.assignmentsAccepted ?? 0,
+        assignmentsAwaitingReview: certification?.counts.assignmentsAwaitingReview ?? 0,
+        assignmentsActionRequired: certification?.counts.assignmentsActionRequired ?? 0,
         exams: programme?.requiresFinalExam === false ? 0 : course.finalExams.length,
       },
       quizzes: course.quizzes
@@ -1387,6 +1395,7 @@ export async function getLearnerCourseDetail(learnerId: string, courseId: string
           : null,
       readiness,
     },
+    certification,
     materials: flattenCourseMaterials(course),
     certificate: certificate
       ? {

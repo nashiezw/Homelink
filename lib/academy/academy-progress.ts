@@ -1,9 +1,10 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
-import { awardProgrammeBadge, hasPassedCourseAssessments } from "@/lib/academy/academy-completion";
+import { awardProgrammeBadge } from "@/lib/academy/academy-completion";
 import { getProgrammeCourse } from "@/lib/academy/academy-programme";
 import { CertificateIssue } from "@/lib/academy/certificate-repository";
 import { getLessonCompletionGateState, getLessonGateState } from "@/lib/academy/academy-gates";
 import { createCertificateTestimonialPrompt } from "@/lib/academy/engagement-repository";
+import { getCertificateEligibility } from "@/lib/academy/certificate-eligibility";
 
 type CourseWithLessons = {
   id: string;
@@ -128,18 +129,23 @@ export async function completeLessonForLearner(learnerId: string, lessonId: stri
     },
   });
 
-  if (courseCompleted && course.certificateEnabled) {
-    await tryCompleteCourseCertification(learnerId, course.id);
-  }
+  const issuedCertificate = courseCompleted && course.certificateEnabled
+    ? await tryCompleteCourseCertification(learnerId, course.id)
+    : null;
+  const certification = courseCompleted && course.certificateEnabled
+    ? await getCertificateEligibility(learnerId, course.id)
+    : null;
 
   await prisma.trainingNotification.create({
     data: {
       userId: learnerId,
-      eventType: courseCompleted ? "COURSE_COMPLETED" : "LESSON_COMPLETED",
+      eventType: issuedCertificate ? "COURSE_CERTIFIED" : courseCompleted ? "COURSEWORK_COMPLETED" : "LESSON_COMPLETED",
       channel: "IN_APP",
-      subject: courseCompleted ? "Course completed" : "Lesson completed",
-      body: courseCompleted
-        ? `Congratulations! You completed ${course.title}.`
+      subject: issuedCertificate ? "Course complete - certificate issued" : courseCompleted ? "Course content completed" : "Lesson completed",
+      body: issuedCertificate
+        ? `Congratulations! You completed ${course.title} and your certificate is ready.`
+        : courseCompleted
+          ? `You completed all lessons in ${course.title}. ${certification?.summary ?? "Check your certification requirements for the remaining assessments."}`
         : `You completed "${lesson.title}" in ${course.title}.`,
     },
   });
@@ -149,6 +155,9 @@ export async function completeLessonForLearner(learnerId: string, lessonId: stri
     courseId: course.id,
     percentComplete,
     courseCompleted,
+    courseworkCompleted: courseCompleted,
+    certificateIssued: Boolean(issuedCertificate),
+    certification,
   };
 }
 
@@ -313,16 +322,8 @@ export async function tryCompleteCourseCertification(learnerId: string, courseId
       return null;
     }
 
-    const completedIds = await getCompletedLessonIds(learnerId, courseId);
-    const { percentComplete } = calculateCourseProgress(course, completedIds);
-    
-    if (percentComplete < 100) {
-      return null;
-    }
-
-    const assessmentsPassed = await hasPassedCourseAssessments(learnerId, courseId);
-    
-    if (!assessmentsPassed) {
+    const eligibility = await getCertificateEligibility(learnerId, courseId);
+    if (!eligibility?.eligibleForIssuance) {
       return null;
     }
 
