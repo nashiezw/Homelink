@@ -1,9 +1,9 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { registerPublicLearner } from "@/lib/academy/public-academy-repository";
-import { randomBytes } from "crypto";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
+import { issueEmailVerificationToken } from "@/lib/auth/email-verification-token";
 import { getPostgresPublicUserById, shouldUsePostgresAuth } from "@/lib/auth/postgres-auth";
 import { getStore } from "@/lib/store/app-store";
 import { getRuntimePlatformSettings } from "@/lib/settings/runtime";
@@ -43,18 +43,14 @@ export async function POST(request: Request) {
   if (requireEmailVerification && !userRecord?.emailVerifiedAt) {
     if (!userRecord) return problem(400, "USER_NOT_FOUND", "User record not found.");
     
-    // Generate and send verification token
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
-
     const redirectUrl = "/dashboard/academy";
-
-    await prisma.emailVerificationToken.upsert({
-      where: { userId },
-      create: { userId, token, expiresAt, ipAddress, userAgent, redirectUrl },
-      update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
+    const { token } = await issueEmailVerificationToken({
+      userId,
+      ipAddress,
+      userAgent,
+      redirectUrl,
     });
 
     // Send verification email

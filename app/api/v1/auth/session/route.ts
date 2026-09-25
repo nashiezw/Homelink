@@ -28,9 +28,9 @@ import {
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { isDatabaseUnavailableError } from "@/lib/db/production-schema";
 import { getStore } from "@/lib/store/app-store";
-import { randomBytes } from "crypto";
 import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
 import { sendWelcomeEmail } from "@/lib/academy/welcome-email";
+import { issueEmailVerificationToken } from "@/lib/auth/email-verification-token";
 
 export async function POST(request: Request) {
   try {
@@ -127,17 +127,14 @@ async function handlePost(request: Request) {
       if (existing) {
         // If email exists but is not verified, resend verification email
         if (!existing.emailVerifiedAt) {
-          const prisma = getMainPrisma();
-          const token = randomBytes(32).toString("hex");
-          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
           const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
           const userAgent = request.headers.get("user-agent") || "unknown";
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw";
-
-          await prisma.emailVerificationToken.upsert({
-            where: { userId: existing.id },
-            create: { userId: existing.id, token, expiresAt, ipAddress, userAgent, redirectUrl },
-            update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
+          const { token } = await issueEmailVerificationToken({
+            userId: existing.id,
+            ipAddress,
+            userAgent,
+            redirectUrl,
           });
 
           // Send verification email
@@ -181,16 +178,13 @@ async function handlePost(request: Request) {
       
       // If email verification is required, generate token and send email
       if (requireEmailVerification) {
-        const prisma = getMainPrisma();
-        const token = randomBytes(32).toString("hex");
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
         const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
         const userAgent = request.headers.get("user-agent") || "unknown";
-
-        await prisma.emailVerificationToken.upsert({
-          where: { userId: user.id },
-          create: { userId: user.id, token, expiresAt, ipAddress, userAgent, redirectUrl },
-          update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
+        const { token } = await issueEmailVerificationToken({
+          userId: user.id,
+          ipAddress,
+          userAgent,
+          redirectUrl,
         });
 
         // Send verification email
@@ -257,17 +251,13 @@ async function handlePost(request: Request) {
     
     // If email verification is required, generate token and send email
     if (requireEmailVerification) {
-      const prisma = getMainPrisma();
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
       const userAgent = request.headers.get("user-agent") || "unknown";
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw";
-
-      await prisma.emailVerificationToken.upsert({
-        where: { userId: user.id },
-        create: { userId: user.id, token, expiresAt, ipAddress, userAgent },
-        update: { token, expiresAt, ipAddress, userAgent, usedAt: null },
+      const { token } = await issueEmailVerificationToken({
+        userId: user.id,
+        ipAddress,
+        userAgent,
       });
 
       // Send verification email
@@ -344,18 +334,14 @@ async function handlePost(request: Request) {
     const platformSettings = await getHydratedRuntimePlatformSettings();
     const requireEmailVerification = platformSettings.emailVerificationRequired;
     if (requireEmailVerification && !user.emailVerifiedAt) {
-      // Generate and send new verification token
-      const prisma = getMainPrisma();
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
       const userAgent = request.headers.get("user-agent") || "unknown";
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.houselink.co.zw";
-
-      await prisma.emailVerificationToken.upsert({
-        where: { userId: user.id },
-        create: { userId: user.id, token, expiresAt, ipAddress, userAgent, redirectUrl },
-        update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
+      const { token } = await issueEmailVerificationToken({
+        userId: user.id,
+        ipAddress,
+        userAgent,
+        redirectUrl,
       });
 
       // Send verification email

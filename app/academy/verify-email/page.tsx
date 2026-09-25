@@ -3,22 +3,26 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, XCircle, Home } from "lucide-react";
+import { CheckCircle2, XCircle, Home, Mail, RefreshCw } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "check-email" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  const [resending, setResending] = useState(false);
 
   const token = searchParams?.get("token");
+  const pending = searchParams?.get("pending") === "true";
 
   useEffect(() => {
     if (!token) {
-      setStatus("error");
-      setMessage("No verification token provided");
+      setStatus(pending ? "check-email" : "error");
+      setMessage(pending
+        ? "We sent a verification link to the email address on your account."
+        : "Open the verification link from your email, or request a new one below.");
       return;
     }
 
@@ -43,7 +47,28 @@ function VerifyEmailContent() {
     }
 
     verifyEmail();
-  }, [token]);
+  }, [pending, token]);
+
+  async function resendVerification() {
+    setResending(true);
+    try {
+      const result = await apiFetch("/api/v1/academy/send-verification", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+
+      if (result.error) {
+        setMessage(result.error.message);
+      } else {
+        setStatus("check-email");
+        setMessage("Verification email sent. Use the link in the newest email; your earlier unexpired link will also remain valid.");
+      }
+    } catch {
+      setMessage("We could not send the verification email. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  }
 
   return (
     <PageShell eyebrow="HouseLink Academy" title="Email Verification" description="">
@@ -52,6 +77,23 @@ function VerifyEmailContent() {
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4" />
             <p className="text-slate-600 dark:text-slate-400">Verifying your email...</p>
+          </div>
+        )}
+
+        {status === "check-email" && (
+          <div className="flex flex-col items-center">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-900/20 w-20 h-20 flex items-center justify-center mb-6">
+              <Mail className="size-10 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Check Your Email</h1>
+            <p className="text-lg text-slate-600 dark:text-slate-400 mb-2">{message}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-500 mb-6">
+              Click the link in that email to verify your account, then return to the Academy to finish registration.
+            </p>
+            <Button variant="secondary" onClick={resendVerification} disabled={resending}>
+              <RefreshCw className={`size-4 mr-2 ${resending ? "animate-spin" : ""}`} />
+              {resending ? "Sending..." : "Resend Verification Email"}
+            </Button>
           </div>
         )}
 
@@ -82,6 +124,10 @@ function VerifyEmailContent() {
             </div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Verification Failed</h1>
             <p className="text-lg text-slate-600 dark:text-slate-400 mb-6">{message}</p>
+            <Button variant="secondary" className="mb-6" onClick={resendVerification} disabled={resending}>
+              <RefreshCw className={`size-4 mr-2 ${resending ? "animate-spin" : ""}`} />
+              {resending ? "Sending..." : "Send a New Verification Email"}
+            </Button>
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <Link href="/academy" className="flex-1">
                 <Button variant="secondary" className="w-full">

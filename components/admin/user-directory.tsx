@@ -7,6 +7,8 @@ import {
   Download,
   History,
   Mail,
+  MailCheck,
+  MailWarning,
   MessageSquare,
   Search,
   Trash2,
@@ -58,8 +60,9 @@ export function UserDirectory() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole | "ALL">("ALL");
   const [status, setStatus] = useState<AccountStatus | "ALL">("ALL");
+  const [emailVerification, setEmailVerification] = useState("ALL");
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState("recent");
+  const [sort, setSort] = useState("joined");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<PublicAdminUser | null>(null);
   const [detail, setDetail] = useState<UserDetail | null>(null);
@@ -76,11 +79,12 @@ export function UserDirectory() {
     const params = new URLSearchParams();
     if (role !== "ALL") params.set("role", role);
     if (status !== "ALL") params.set("status", status);
+    if (emailVerification !== "ALL") params.set("emailVerification", emailVerification);
     if (q.trim()) params.set("q", q.trim());
     const result = await apiFetch<UserListResponse>(`/api/v1/admin/users?${params}`);
     if (result.data) setData(result.data);
     setLoading(false);
-  }, [role, status, q]);
+  }, [role, status, emailVerification, q]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -94,12 +98,14 @@ export function UserDirectory() {
     const users = [...(data?.users ?? [])];
     if (sort === "name") users.sort((a, b) => a.name.localeCompare(b.name));
     else if (sort === "score") users.sort((a, b) => b.performanceScore - a.performanceScore);
-    else {
+    else if (sort === "activity") {
       users.sort((a, b) => {
         const dateA = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
         const dateB = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
         return dateB - dateA;
       });
+    } else {
+      users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
     return users;
   }, [data?.users, sort]);
@@ -261,10 +267,11 @@ export function UserDirectory() {
   return (
     <div className="space-y-6">
       <AdminActionDialog config={dialog} onClose={() => setDialog(null)} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <AdminKpiCard label="Total users" value={totals?.totalUsers ?? totals?.total ?? "-"} icon={UserCog} />
         <AdminKpiCard label="Active today" value={totals?.activeToday ?? "-"} icon={CheckCircle2} tone="success" />
         <AdminKpiCard label="Premium" value={totals?.premium ?? "-"} icon={Crown} />
+        <AdminKpiCard label="Unverified emails" value={totals?.unverifiedEmails ?? "-"} icon={MailWarning} tone="warning" />
         <AdminKpiCard label="Suspended / blocked" value={(totals?.suspended ?? 0) + (totals?.blocked ?? 0)} icon={Ban} tone="warning" />
       </div>
 
@@ -276,10 +283,20 @@ export function UserDirectory() {
         <AdminSelect value={role} onChange={(v) => setRole(v as UserRole | "ALL")} options={ROLES.map((r) => ({ value: r, label: r === "ALL" ? "All roles" : r }))} />
         <AdminSelect value={status} onChange={(v) => setStatus(v as AccountStatus | "ALL")} options={STATUSES.map((s) => ({ value: s, label: s === "ALL" ? "All statuses" : s }))} />
         <AdminSelect
+          value={emailVerification}
+          onChange={setEmailVerification}
+          options={[
+            { value: "ALL", label: "All email states" },
+            { value: "UNVERIFIED", label: "Email unverified" },
+            { value: "VERIFIED", label: "Email verified" },
+          ]}
+        />
+        <AdminSelect
           value={sort}
           onChange={setSort}
           options={[
-            { value: "recent", label: "Last login" },
+            { value: "joined", label: "Newest sign-ups" },
+            { value: "activity", label: "Recent activity" },
             { value: "name", label: "Name A-Z" },
             { value: "score", label: "Performance score" },
           ]}
@@ -374,6 +391,11 @@ export function UserDirectory() {
                 },
                 { key: "score", header: "Score", render: (user) => <span className="text-slate-300">{user.performanceScore}</span> },
                 {
+                  key: "joined",
+                  header: "Joined",
+                  render: (user) => <span className="text-xs text-slate-500">{new Date(user.createdAt).toLocaleDateString()}</span>,
+                },
+                {
                   key: "login",
                   header: "Last login",
                   render: (user) => {
@@ -410,6 +432,10 @@ export function UserDirectory() {
             <div className="grid gap-2 sm:flex sm:flex-wrap">
               <AdminStatusBadge status={selected.accountStatus} variant={selected.accountStatus === "ACTIVE" ? "success" : "warning"} />
               {selected.verification.identity === "VERIFIED" && <AdminStatusBadge status="verified" variant="info" />}
+              <AdminStatusBadge
+                status={selected.verification.email === "VERIFIED" ? "Email verified" : "Email unverified"}
+                variant={selected.verification.email === "VERIFIED" ? "success" : "warning"}
+              />
               {selected.premium && <AdminStatusBadge status="premium" variant="info" />}
             </div>
 
@@ -455,6 +481,12 @@ export function UserDirectory() {
                     <Button variant="secondary" onClick={() => requestUserAction("warn", "Warn user")}>
                       Warn
                     </Button>
+                    {selected.verification.email !== "VERIFIED" && (
+                      <Button variant="secondary" onClick={() => requestUserAction("verify_email", "Verify email")}>
+                        <MailCheck className="size-4" />
+                        Verify email
+                      </Button>
+                    )}
                     <Button variant="secondary" onClick={() => void runAction(selected.id, "set_premium", { premium: !selected.premium })}>
                       {selected.premium ? "Remove premium" : "Grant premium"}
                     </Button>

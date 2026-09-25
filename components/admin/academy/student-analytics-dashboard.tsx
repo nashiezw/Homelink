@@ -304,6 +304,7 @@ export function StudentAnalyticsDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [riskFilter, setRiskFilter] = useState("all");
   const [certificateFilter, setCertificateFilter] = useState("all");
+  const [learnerSort, setLearnerSort] = useState("enrolled");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -480,6 +481,14 @@ export function StudentAnalyticsDashboard() {
       || (certificateFilter === "admin-blocked" && learner.certificationStatus === "ISSUANCE_BLOCKED");
     return matchesSearch && matchesCourse && matchesStatus && matchesRisk && matchesCertificate;
   });
+  filteredLearnerRows.sort((a, b) => {
+    if (learnerSort === "name") return a.learnerName.localeCompare(b.learnerName);
+    if (learnerSort === "progress") return b.completionPercentage - a.completionPercentage;
+    if (learnerSort === "activity") {
+      return dateValue(b.lastActivityDate) - dateValue(a.lastActivityDate);
+    }
+    return dateValue(b.enrolledAt) - dateValue(a.enrolledAt);
+  });
   const filteredCourseGroups = courseOptions
     .map((course) => ({ ...course, learners: filteredLearnerRows.filter((learner) => learner.courseId === course.courseId) }))
     .filter((course) => course.learners.length > 0);
@@ -564,6 +573,8 @@ export function StudentAnalyticsDashboard() {
           setRiskFilter={setRiskFilter}
           certificateFilter={certificateFilter}
           setCertificateFilter={setCertificateFilter}
+          learnerSort={learnerSort}
+          setLearnerSort={setLearnerSort}
           onRefresh={loadOverviewData}
           onViewProgress={(learnerId) => {
             setSelectedStudentId(learnerId);
@@ -596,6 +607,8 @@ export function StudentAnalyticsDashboard() {
             setRiskFilter={setRiskFilter}
             certificateFilter={certificateFilter}
             setCertificateFilter={setCertificateFilter}
+            learnerSort={learnerSort}
+            setLearnerSort={setLearnerSort}
             onRefresh={loadOverviewData}
             onViewProgress={(learnerId) => {
               setSelectedStudentId(learnerId);
@@ -772,6 +785,8 @@ function LearnerWorkspace({
   setRiskFilter,
   certificateFilter,
   setCertificateFilter,
+  learnerSort,
+  setLearnerSort,
   onRefresh,
   onViewProgress,
   onViewQuiz,
@@ -790,6 +805,8 @@ function LearnerWorkspace({
   setRiskFilter: (value: string) => void;
   certificateFilter: string;
   setCertificateFilter: (value: string) => void;
+  learnerSort: string;
+  setLearnerSort: (value: string) => void;
   onRefresh: () => void;
   onViewProgress: (learnerId: string) => void;
   onViewQuiz: (learnerId: string) => void;
@@ -825,7 +842,7 @@ function LearnerWorkspace({
       </div>
 
       <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(130px,1fr))_auto]">
+        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(130px,1fr))_auto]">
           <label className="relative min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <input
@@ -835,6 +852,12 @@ function LearnerWorkspace({
               className="h-11 w-full rounded-lg border border-white/10 bg-slate-950 pl-10 pr-3 text-white placeholder:text-slate-600 focus:border-emerald-500/40 focus:outline-none"
             />
           </label>
+          <FilterSelect label="Sort learners" value={learnerSort} onChange={setLearnerSort}>
+            <option value="enrolled">Newest enrolled</option>
+            <option value="activity">Recent activity</option>
+            <option value="name">Name A-Z</option>
+            <option value="progress">Highest progress</option>
+          </FilterSelect>
           <FilterSelect label="Course" value={courseFilter} onChange={setCourseFilter}>
             <option value="all">All courses</option>
             {courseOptions.map((course) => (
@@ -1050,6 +1073,12 @@ function formatRelativeDate(value: string | null) {
 function formatActivityStatus(learner: LearnerCourseRow) {
   if (learner.isOnline) return "Online now";
   return formatRelativeDate(learner.lastActivityDate);
+}
+
+function dateValue(value: string | null | undefined) {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 function StudentQuizDetailView({ analytics }: { analytics: StudentQuizAnalytics }) {

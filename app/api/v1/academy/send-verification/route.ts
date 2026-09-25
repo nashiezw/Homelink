@@ -1,8 +1,8 @@
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
-import { randomBytes } from "crypto";
 import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
+import { issueEmailVerificationToken } from "@/lib/auth/email-verification-token";
 
 export const dynamic = "force-dynamic";
 
@@ -11,13 +11,6 @@ export async function POST(request: Request) {
   if (!userId) return problem(401, "UNAUTHORIZED", "Sign in to verify your email.");
 
   try {
-    const body = await request.json();
-    const email = typeof body.email === "string" ? body.email.trim() : null;
-    
-    if (!email) {
-      return problem(400, "EMAIL_REQUIRED", "Email address is required.");
-    }
-
     const prisma = getMainPrisma();
     
     // Check if email is already verified
@@ -34,19 +27,14 @@ export async function POST(request: Request) {
       return ok({ verified: true, message: "Email is already verified." });
     }
 
-    // Generate verification token
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
-
-    // Store verification token
     const redirectUrl = "/dashboard/academy";
-
-    await prisma.emailVerificationToken.upsert({
-      where: { userId },
-      create: { userId, token, expiresAt, ipAddress, userAgent, redirectUrl },
-      update: { token, expiresAt, ipAddress, userAgent, redirectUrl, usedAt: null },
+    const { token } = await issueEmailVerificationToken({
+      userId,
+      ipAddress,
+      userAgent,
+      redirectUrl,
     });
 
     // Send verification email

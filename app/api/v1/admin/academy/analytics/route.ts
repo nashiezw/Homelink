@@ -95,7 +95,7 @@ export async function GET(request: Request) {
             },
           },
         },
-        orderBy: [{ course: { title: "asc" } }, { enrolledAt: "desc" }],
+        orderBy: { enrolledAt: "desc" },
       });
 
       const learnerIds = [...new Set(enrolments.map((enrolment) => enrolment.agentId))];

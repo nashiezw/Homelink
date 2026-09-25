@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const role = (searchParams.get("role") ?? "ALL") as UserRole | "ALL";
   const status = (searchParams.get("status") ?? "ALL") as AccountStatus | "ALL";
+  const emailVerification = searchParams.get("emailVerification") ?? "ALL";
   const q = searchParams.get("q") ?? undefined;
   const includeDeleted = searchParams.get("includeDeleted") === "true";
 
@@ -27,6 +28,11 @@ export async function GET(request: Request) {
         ...(!includeDeleted && status === "ALL" ? { accountStatus: { not: "DELETED" } } : {}),
         ...(role !== "ALL" ? { roles: { has: role as never } } : {}),
         ...(status !== "ALL" ? { accountStatus: status } : {}),
+        ...(emailVerification === "VERIFIED"
+          ? { emailVerifiedAt: { not: null } }
+          : emailVerification === "UNVERIFIED"
+            ? { emailVerifiedAt: null }
+            : {}),
         ...(q
           ? {
               OR: [
@@ -39,7 +45,7 @@ export async function GET(request: Request) {
       },
       orderBy: { createdAt: "desc" },
     });
-    const all = await prisma.user.findMany({ select: { roles: true, accountStatus: true, lastLoginAt: true } });
+    const all = await prisma.user.findMany({ select: { roles: true, accountStatus: true, lastLoginAt: true, emailVerifiedAt: true } });
     const visible = includeDeleted ? all : all.filter((u) => u.accountStatus !== "DELETED");
     
     // Calculate active today (users who logged in within the last 24 hours)
@@ -60,12 +66,19 @@ export async function GET(request: Request) {
         agents: visible.filter((u) => u.roles.includes("AGENT")).length,
         seekers: visible.filter((u) => u.roles.includes("SEEKER")).length,
         premium: 0,
+        unverifiedEmails: visible.filter((u) => !u.emailVerifiedAt).length,
       },
     });
   }
 
   const store = getStore();
-  const users = store.listUsers({ role, status, q });
+  const users = store.listUsers({ role, status, q }).filter((user) =>
+    emailVerification === "VERIFIED"
+      ? user.verification.email === "VERIFIED"
+      : emailVerification === "UNVERIFIED"
+        ? user.verification.email !== "VERIFIED"
+        : true,
+  );
   const visibleUsers = store.listUsers();
   
   // Calculate active today for non-Postgres store
@@ -86,6 +99,7 @@ export async function GET(request: Request) {
       agents: store.listUsers({ role: "AGENT" }).length,
       seekers: store.listUsers({ role: "SEEKER" }).length,
       premium: store.listUsers().filter((u) => u.premium).length,
+      unverifiedEmails: visibleUsers.filter((u) => u.verification.email !== "VERIFIED").length,
     },
   });
 }

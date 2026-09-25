@@ -94,6 +94,31 @@ export async function PATCH(request: Request, context: RouteContext) {
         case "verify":
           await prisma.user.update({ where: { id }, data: { identityStatus: "VERIFIED" } });
           break;
+        case "verify_email": {
+          if (!existing.emailVerifiedAt) {
+            const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+            if (!reason) return problem(400, "REASON_REQUIRED", "Explain why the email is being manually verified.");
+            const verifiedAt = new Date();
+            await prisma.$transaction([
+              prisma.user.update({ where: { id }, data: { emailVerifiedAt: verifiedAt } }),
+              prisma.emailVerificationToken.updateMany({
+                where: { userId: id, usedAt: null },
+                data: { usedAt: verifiedAt },
+              }),
+            ]);
+            await recordPostgresAuditEvent({
+              actorId: auth.user.id,
+              action: "ADMIN_EMAIL_VERIFIED",
+              target: id,
+              metadata: {
+                email: existing.email,
+                reason,
+                verifiedAt: verifiedAt.toISOString(),
+              },
+            });
+          }
+          break;
+        }
         case "assign_role":
           if (typeof body.role === "string") roles.add(body.role as never);
           await prisma.user.update({ where: { id }, data: { roles: [...roles] as never[] } });
@@ -164,6 +189,13 @@ export async function PATCH(request: Request, context: RouteContext) {
         break;
       case "verify":
         store.verifyLandlord(id, actor);
+        break;
+      case "verify_email":
+        store.updateUser(
+          id,
+          { verification: { ...user.verification, email: "VERIFIED" } },
+          actor,
+        );
         break;
       case "warn":
         store.warnUser(id, actor, body.reason);

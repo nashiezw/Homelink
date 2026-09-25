@@ -101,7 +101,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
         category: true,
         modules: { include: { sections: { include: { lessons: true } } } },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.trainingLesson.count(),
     compact
@@ -156,7 +156,7 @@ export async function getAcademyDashboard(options: { compact?: boolean } = {}) {
     prisma.trainingAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
     prisma.academyLearnerApplication.findMany({
       include: { course: true, payment: true, learner: { select: { id: true, name: true, email: true, phone: true, roles: true } } },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { createdAt: "desc" },
       ...(compact ? { take: 100 } : {}),
     }),
     prisma.academyResourceAccess.findMany({

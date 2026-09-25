@@ -2,6 +2,7 @@ import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { createPostgresSession } from "@/lib/auth/postgres-auth";
 import { cookies } from "next/headers";
+import { normalizeEmailVerificationToken } from "@/lib/auth/email-verification-token";
 import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const token = typeof body.token === "string" ? body.token : null;
+    const token = normalizeEmailVerificationToken(body.token);
     
     if (!token) {
       return problem(400, "TOKEN_REQUIRED", "Verification token is required.");
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
     });
 
     if (!verificationToken) {
-      return problem(404, "TOKEN_NOT_FOUND", "Invalid verification token.");
+      return problem(404, "TOKEN_NOT_FOUND", "This verification link is no longer current. Please request a new one.");
     }
 
     // Check if token is expired

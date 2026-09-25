@@ -1,8 +1,8 @@
-import { randomBytes } from "crypto";
 import { ok, problem } from "@/lib/api/response";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
+import { issueEmailVerificationToken } from "@/lib/auth/email-verification-token";
 
 export const dynamic = "force-dynamic";
 
@@ -56,33 +56,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // Generate new verification token
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
-
-    // Store verification token
     const redirectUrl = "/dashboard/academy";
-
-    await prisma.emailVerificationToken.upsert({
-      where: { userId },
-      create: {
-        userId,
-        token,
-        expiresAt,
-        ipAddress,
-        userAgent,
-        redirectUrl,
-      },
-      update: {
-        token,
-        expiresAt,
-        ipAddress,
-        userAgent,
-        redirectUrl,
-        usedAt: null,
-      },
+    const { token } = await issueEmailVerificationToken({
+      userId,
+      ipAddress,
+      userAgent,
+      redirectUrl,
     });
 
     // Send verification email

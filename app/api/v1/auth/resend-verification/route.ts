@@ -1,9 +1,9 @@
 import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getPostgresUserByEmail, shouldUsePostgresAuth } from "@/lib/auth/postgres-auth";
-import { randomBytes } from "crypto";
 import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
 import { getStore } from "@/lib/store/app-store";
+import { issueEmailVerificationToken } from "@/lib/auth/email-verification-token";
 
 export const dynamic = "force-dynamic";
 
@@ -46,17 +46,12 @@ export async function POST(request: Request) {
       return ok({ verified: true, message: "Email is already verified. You can sign in." });
     }
     
-    // Generate verification token
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
-
-    // Store verification token
-    await prisma.emailVerificationToken.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id, token, expiresAt, ipAddress, userAgent },
-      update: { token, expiresAt, ipAddress, userAgent },
+    const { token } = await issueEmailVerificationToken({
+      userId: user.id,
+      ipAddress,
+      userAgent,
     });
 
     // Send verification email

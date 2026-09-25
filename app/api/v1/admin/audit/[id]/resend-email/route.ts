@@ -1,10 +1,10 @@
-import { randomBytes } from "crypto";
 import type { Prisma } from "@prisma/client";
 import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { sendEmailVerificationEmail } from "@/lib/academy/academy-email";
 import { sendWelcomeEmail } from "@/lib/academy/welcome-email";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { issueEmailVerificationToken } from "@/lib/auth/email-verification-token";
 
 export const dynamic = "force-dynamic";
 
@@ -48,28 +48,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return ok({ resent: false, verified: true, message: "User email is already verified." });
     }
 
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await prisma.emailVerificationToken.upsert({
-      where: { userId: user.id },
-      create: {
-        userId: user.id,
-        token,
-        expiresAt,
-        ipAddress: getClientIp(request),
-        userAgent: request.headers.get("user-agent") || "admin-resend",
-      },
-      update: {
-        token,
-        expiresAt,
-        ipAddress: getClientIp(request),
-        userAgent: request.headers.get("user-agent") || "admin-resend",
-        usedAt: null,
-      },
+    const { token } = await issueEmailVerificationToken({
+      userId: user.id,
+      ipAddress: getClientIp(request),
+      userAgent: request.headers.get("user-agent") || "admin-resend",
     });
     const verificationPath = normalizeVerificationPath(stringValue(metadata.verificationPath, "/auth/verify-email"));
     result = await sendEmailVerificationEmail(user.email, user.name, token, { verificationPath });
-    responseMessage = "Verification email resent with a fresh 24-hour token.";
+    responseMessage = "Verification email resent with the current valid link.";
   } else {
     result = await sendWelcomeEmail(user.email, user.name);
     responseMessage = "Welcome email resent.";
