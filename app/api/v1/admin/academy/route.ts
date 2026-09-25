@@ -1,5 +1,6 @@
 import { requireAdminAsync } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
+import { getAcademyEnrollmentOptions } from "@/lib/academy/admin-enrollment";
 import { getAcademyDashboard, runAcademyAction } from "@/lib/academy/postgres-academy-repository";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +9,9 @@ export async function GET(request: Request) {
   const auth = await requireAdminAsync(request);
   if ("error" in auth && auth.error) return auth.error;
   try {
-    const compact = new URL(request.url).searchParams.get("compact") === "1";
+    const searchParams = new URL(request.url).searchParams;
+    if (searchParams.get("view") === "enrollment-options") return ok(await getAcademyEnrollmentOptions());
+    const compact = searchParams.get("compact") === "1";
     return ok(await getAcademyDashboard({ compact }));
   } catch (error) {
     console.error("Failed to load HouseLink Agent Academy", error);
@@ -21,7 +24,7 @@ export async function PATCH(request: Request) {
   if ("error" in auth && auth.error) return auth.error;
   try {
     const body = await request.json();
-    const result = await runAcademyAction(body, { id: auth.user.id, name: auth.user.name });
+    const result = await runAcademyAction({ ...body, requestUrl: request.url }, { id: auth.user.id, name: auth.user.name });
     if (!result) return problem(400, "INVALID_ACADEMY_ACTION", "Unknown Academy action.");
     return ok(result);
   } catch (error) {

@@ -10,6 +10,7 @@ import { getHydratedRuntimePlatformSettings, getRegistrationPolicy } from "@/lib
 import { getStore } from "@/lib/store/app-store";
 
 const RESET_TTL_MINUTES = 30;
+const SETUP_TTL_MINUTES = 24 * 60;
 
 type LocalResetToken = {
   userId: string;
@@ -33,8 +34,22 @@ export type PasswordResetApplyResult =
   | { ok: false; code: "INVALID_TOKEN" | "WEAK_PASSWORD"; message: string };
 
 export async function requestPasswordReset(email: string, requestUrl: string, exposeResetUrl = false): Promise<PasswordResetRequestResult> {
+  return requestPasswordLink(email, requestUrl, { exposeResetUrl, purpose: "reset" });
+}
+
+export async function requestPasswordSetup(email: string, requestUrl: string, exposeResetUrl = false): Promise<PasswordResetRequestResult> {
+  return requestPasswordLink(email, requestUrl, { exposeResetUrl, purpose: "setup" });
+}
+
+async function requestPasswordLink(
+  email: string,
+  requestUrl: string,
+  options: { exposeResetUrl: boolean; purpose: "reset" | "setup" },
+): Promise<PasswordResetRequestResult> {
   const normalizedEmail = email.trim().toLowerCase();
-  const genericMessage = "If this email is linked to a HouseLink account, we have sent reset instructions. Check your inbox and spam folder.";
+  const genericMessage = options.purpose === "setup"
+    ? "The learner account was created. Check the invitation delivery status before closing this screen."
+    : "If this email is linked to a HouseLink account, we have sent reset instructions. Check your inbox and spam folder.";
   if (!isEmail(normalizedEmail)) {
     return { accepted: true, delivered: false, message: genericMessage };
   }
@@ -48,7 +63,8 @@ export async function requestPasswordReset(email: string, requestUrl: string, ex
 
   const token = randomBytes(32).toString("base64url");
   const tokenHash = hashResetToken(token);
-  const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000);
+  const ttlMinutes = options.purpose === "setup" ? SETUP_TTL_MINUTES : RESET_TTL_MINUTES;
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
   const resetUrl = `${appOrigin(requestUrl)}/auth/reset-password?token=${encodeURIComponent(token)}`;
 
   if (shouldUsePostgresAuth()) {
@@ -60,22 +76,24 @@ export async function requestPasswordReset(email: string, requestUrl: string, ex
     `;
     await recordPostgresAuditEvent({
       actorId: user.id,
-      action: "AUTH_PASSWORD_RESET_REQUEST",
+      action: options.purpose === "setup" ? "AUTH_PASSWORD_SETUP_REQUEST" : "AUTH_PASSWORD_RESET_REQUEST",
       target: user.id,
-      metadata: { email: normalizedEmail },
+      metadata: { email: normalizedEmail, purpose: options.purpose },
     });
   } else {
     localResetTokens.set(tokenHash, { userId: user.id, email: normalizedEmail, tokenHash, expiresAt });
   }
 
-  const delivered = await sendPasswordResetEmail(normalizedEmail, user.name, resetUrl);
+  const delivered = options.purpose === "setup"
+    ? await sendPasswordSetupEmail(normalizedEmail, user.name, resetUrl)
+    : await sendPasswordResetEmail(normalizedEmail, user.name, resetUrl);
   return {
     accepted: true,
     delivered,
-    resetUrl: shouldExposeDevResetUrl(delivered, exposeResetUrl) ? resetUrl : undefined,
+    resetUrl: shouldExposeDevResetUrl(delivered, options.exposeResetUrl) ? resetUrl : undefined,
     message: delivered
       ? genericMessage
-      : shouldExposeDevResetUrl(delivered, exposeResetUrl)
+      : shouldExposeDevResetUrl(delivered, options.exposeResetUrl)
         ? "Email is not configured locally. Use the reset link returned for development."
         : genericMessage,
   };
@@ -102,8 +120,18 @@ export async function applyPasswordReset(token: string, password: string): Promi
       return { ok: false, code: "INVALID_TOKEN", message: "This password reset link is invalid or has expired." };
     }
     const updated = await setPostgresUserPassword(row.userId, hashPassword(password));
-    await prisma.$executeRaw`UPDATE "PasswordResetToken" SET "usedAt" = ${new Date()} WHERE "id" = ${row.id}`;
-    await prisma.$executeRaw`UPDATE "PasswordResetToken" SET "usedAt" = ${new Date()} WHERE "userId" = ${row.userId} AND "usedAt" IS NULL`;
+    const completedAt = new Date();
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: row.userId },
+        data: { emailVerifiedAt: updated.emailVerifiedAt ?? completedAt },
+      }),
+      prisma.emailVerificationToken.updateMany({
+        where: { userId: row.userId, usedAt: null },
+        data: { usedAt: completedAt },
+      }),
+      prisma.$executeRaw`UPDATE "PasswordResetToken" SET "usedAt" = ${completedAt} WHERE "userId" = ${row.userId} AND "usedAt" IS NULL`,
+    ]);
     await recordPostgresAuditEvent({
       actorId: row.userId,
       action: "AUTH_PASSWORD_RESET_COMPLETE",
@@ -128,19 +156,34 @@ export async function applyPasswordReset(token: string, password: string): Promi
   return { ok: true, message: "Your password has been reset. You can sign in with the new password." };
 }
 
-async function sendPasswordResetEmail(email: string, name: string, resetUrl: string) {
-  console.log('Sending password reset email to:', email);
+async function sendPasswordLinkEmail(email: string, name: string, resetUrl: string, purpose: "reset" | "setup", ttlMinutes: number) {
   const settings = await getHydratedRuntimePlatformSettings();
-  console.log('SMTP settings configured:', !!settings.integrations.smtpHost, !!settings.integrations.smtpUser, !!settings.integrations.smtpPass);
-  const body = [
-    `Hi ${name || "there"},`,
-    "We received a request to reset your HouseLink password.",
-    `Reset your password using this secure link: ${resetUrl}`,
-    `This link expires in ${RESET_TTL_MINUTES} minutes. If you did not request this, you can safely ignore this email.`,
-  ].join("\n\n");
-  const result = await sendSmtpPlainEmail(settings.integrations, email, "Reset your HouseLink password", body);
-  console.log('Password reset email result:', result);
+  const isSetup = purpose === "setup";
+  const expiryLabel = ttlMinutes >= 60 ? `${Math.round(ttlMinutes / 60)} hours` : `${ttlMinutes} minutes`;
+  const body = isSetup
+    ? [
+        `Hi ${name || "there"},`,
+        "A HouseLink Academy administrator created a learning account for you.",
+        `Set up your password using this secure, single-use link: ${resetUrl}`,
+        `This link expires in ${expiryLabel}. Setting your password also verifies this email address.`,
+      ].join("\n\n")
+    : [
+        `Hi ${name || "there"},`,
+        "We received a request to reset your HouseLink password.",
+        `Reset your password using this secure link: ${resetUrl}`,
+        `This link expires in ${expiryLabel}. If you did not request this, you can safely ignore this email.`,
+      ].join("\n\n");
+  const subject = isSetup ? "Set up your HouseLink Academy password" : "Reset your HouseLink password";
+  const result = await sendSmtpPlainEmail(settings.integrations, email, subject, body);
   return result.ok;
+}
+
+async function sendPasswordResetEmail(email: string, name: string, resetUrl: string) {
+  return sendPasswordLinkEmail(email, name, resetUrl, "reset", RESET_TTL_MINUTES);
+}
+
+async function sendPasswordSetupEmail(email: string, name: string, resetUrl: string) {
+  return sendPasswordLinkEmail(email, name, resetUrl, "setup", SETUP_TTL_MINUTES);
 }
 
 async function ensurePasswordResetSchema() {

@@ -67,11 +67,13 @@ requireIncludes("lib/auth/password-reset.ts", [
   "shouldExposeDevResetUrl",
 ]);
 
-requireIncludes("prisma/schema.prisma", [
-  "passwordResetTokens PasswordResetToken[]",
+const schema = requireIncludes("prisma/schema.prisma", [
   "model PasswordResetToken",
   "tokenHash String    @unique",
 ]);
+if (!/passwordResetTokens\s+PasswordResetToken\[\]/.test(schema)) {
+  issues.push("prisma/schema.prisma missing passwordResetTokens PasswordResetToken[] relation");
+}
 
 requireIncludes("lib/db/production-schema.ts", [
   "ensureBlogProductionSchema",

@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin/require-admin";
 import { ok, problem } from "@/lib/api/response";
 import { getSessionUserIdFromRequest } from "@/lib/auth/session";
 import { getPostgresUserById, recordPostgresAuditEvent, shouldUsePostgresAuth, toPublicPostgresUser } from "@/lib/auth/postgres-auth";
+import { requestPasswordSetup } from "@/lib/auth/password-reset";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getStore } from "@/lib/store/app-store";
 import type { UserRole } from "@/lib/store/types";
@@ -118,6 +119,18 @@ export async function PATCH(request: Request, context: RouteContext) {
             });
           }
           break;
+        }
+        case "send_password_setup": {
+          if (existing.passwordHash) return problem(400, "PASSWORD_ALREADY_SET", "This user already has a password. Use the password reset flow instead.");
+          const invitation = await requestPasswordSetup(existing.email, request.url, false);
+          await recordPostgresAuditEvent({
+            actorId: auth.user.id,
+            action: "ADMIN_PASSWORD_SETUP_SENT",
+            target: id,
+            metadata: { email: existing.email, delivered: invitation.delivered },
+          });
+          const user = await prisma.user.findUniqueOrThrow({ where: { id } });
+          return ok({ user: toPublicPostgresUser(user), invitation });
         }
         case "assign_role":
           if (typeof body.role === "string") roles.add(body.role as never);

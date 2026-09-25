@@ -14,6 +14,7 @@ import {
 } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { reviewPublicLearnerApplication } from "@/lib/academy/public-academy-repository";
+import { adminEnrollLearners } from "@/lib/academy/admin-enrollment";
 import { reviewResourceAccessApplication } from "@/lib/academy/academy-resource-access";
 import { fetchCourseTree, resolveLessonSectionId } from "@/lib/academy/course-tree";
 import { tryCompleteCourseCertification } from "@/lib/academy/academy-progress";
@@ -1663,6 +1664,27 @@ export async function runAcademyAction(body: Record<string, any>, actor: Actor) 
       status: body.status === "REJECTED" ? "REJECTED" : body.status === "REFUNDED" ? "REFUNDED" : body.status === "EXPIRED" ? "EXPIRED" : "APPROVED",
       adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
     });
+  }
+  if (action === "admin_enroll_learners") {
+    return adminEnrollLearners(
+      {
+        userIds: Array.isArray(body.userIds) ? body.userIds.map(String) : undefined,
+        newLearner: body.newLearner && typeof body.newLearner === "object"
+          ? {
+              fullName: String(body.newLearner.fullName ?? ""),
+              email: String(body.newLearner.email ?? ""),
+              phone: typeof body.newLearner.phone === "string" ? body.newLearner.phone : undefined,
+              organisation: typeof body.newLearner.organisation === "string" ? body.newLearner.organisation : undefined,
+            }
+          : undefined,
+        courseId: required(body.courseId, "Course"),
+        couponCode: typeof body.couponCode === "string" ? body.couponCode : undefined,
+        accessMode: body.accessMode === "PENDING_PAYMENT" ? "PENDING_PAYMENT" : "GRANT_NOW",
+        adminNote: required(body.adminNote, "Admin enrollment note"),
+        requestUrl: required(body.requestUrl, "Request URL"),
+      },
+      actor,
+    );
   }
   if (action === "apply_admin_coupon_to_learner") {
     return applyAdminCouponToLearner({

@@ -610,10 +610,17 @@ export async function registerPublicLearner(input: {
   paymentMethod?: string;
   couponCode?: string;
   referralCode?: string;
+  adminCreated?: boolean;
+  allowClosedRegistration?: boolean;
+  requireValidCoupon?: boolean;
 }) {
   const prisma = getMainPrisma();
   const course = await prisma.trainingCourse.findFirst({
-    where: { id: input.courseId, status: TrainingCourseStatus.PUBLISHED, registrationOpen: true },
+    where: {
+      id: input.courseId,
+      status: TrainingCourseStatus.PUBLISHED,
+      ...(input.allowClosedRegistration ? {} : { registrationOpen: true }),
+    },
   });
   if (!course) return "COURSE_NOT_AVAILABLE" as const;
 
@@ -733,17 +740,23 @@ export async function registerPublicLearner(input: {
   if (user && !user.roles.includes(Role.PUBLIC_LEARNER)) {
     await prisma.user.update({ where: { id: input.learnerId }, data: { roles: [...user.roles, Role.PUBLIC_LEARNER] } });
   }
-  await prisma.trainingNotification.create({
-    data: {
-      userId: input.learnerId,
-      eventType: "ACADEMY_REGISTRATION",
-      channel: "IN_APP",
-      subject: isFree ? "Academy access activated" : "Academy payment pending",
-      body: isFree
-        ? await buildStartLessonNotificationBody(course.id, course.title)
-        : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
-    },
-  });
+  if (!input.adminCreated) {
+    await prisma.trainingNotification.create({
+      data: {
+        userId: input.learnerId,
+        eventType: "ACADEMY_REGISTRATION",
+        channel: "IN_APP",
+        subject: isFree ? "Academy access activated" : "Academy payment pending",
+        body: isFree
+          ? await buildStartLessonNotificationBody(course.id, course.title)
+          : `Upload proof of payment for ${course.title} so an admin can activate your access.`,
+      },
+    });
+  }
+
+  if (input.couponCode && courseHasPrice && input.requireValidCoupon && !couponId) {
+    return "INVALID_COUPON" as const;
+  }
   await recordAcademyReferralRegistration({
     referralCode: input.referralCode,
     learnerId: input.learnerId,
@@ -763,7 +776,7 @@ export async function registerPublicLearner(input: {
   // Send registration confirmation email if payment is required
   let emailSent = false;
   let emailError = null;
-  if (!isFree && user) {
+  if (!isFree && user && !input.adminCreated) {
     const emailResult = await sendRegistrationConfirmationEmail(
       input.email || user.email,
       input.fullName || user.name,

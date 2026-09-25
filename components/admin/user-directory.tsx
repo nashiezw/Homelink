@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Crown,
   Download,
+  GraduationCap,
   History,
   Mail,
   MailCheck,
@@ -33,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/components/providers/app-provider";
 import { apiFetch } from "@/lib/api/client";
 import { AdminActionDialog, type AdminDialogConfig } from "@/components/admin/action-dialog";
+import { AdminEnrollmentDrawer, type EnrollmentUser } from "@/components/admin/academy/admin-enrollment-drawer";
 import type { PublicAdminUser } from "@/lib/store/types";
 import type { AccountStatus, UserRole } from "@/lib/store/types";
 
@@ -73,6 +75,7 @@ export function UserDirectory() {
   const [notifySubject, setNotifySubject] = useState("Message from HouseLink");
   const [notifyBody, setNotifyBody] = useState("");
   const [dialog, setDialog] = useState<AdminDialogConfig | null>(null);
+  const [enrollmentTargets, setEnrollmentTargets] = useState<EnrollmentUser[] | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -145,6 +148,18 @@ export function UserDirectory() {
     }
     void load();
     if (selected?.id === userId) void loadDetail(userId);
+  }
+
+  async function sendPasswordSetup(userId: string) {
+    const result = await apiFetch<{ invitation?: { delivered: boolean; resetUrl?: string } }>(`/api/v1/admin/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ action: "send_password_setup" }),
+    });
+    if (result.error) {
+      showToast(result.error.message ?? "Password setup invitation failed.", "error");
+      return;
+    }
+    showToast(result.data?.invitation?.delivered ? "Password setup invitation sent." : "Invitation was created, but email delivery failed.", result.data?.invitation?.delivered ? undefined : "error");
   }
 
   async function toggleRole(user: PublicAdminUser, roleName: UserRole, checked: boolean) {
@@ -267,6 +282,15 @@ export function UserDirectory() {
   return (
     <div className="space-y-6">
       <AdminActionDialog config={dialog} onClose={() => setDialog(null)} />
+      <AdminEnrollmentDrawer
+        open={enrollmentTargets !== null}
+        initialUsers={enrollmentTargets ?? []}
+        onClose={() => setEnrollmentTargets(null)}
+        onComplete={() => {
+          setBulkSelected(new Set());
+          void load();
+        }}
+      />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <AdminKpiCard label="Total users" value={totals?.totalUsers ?? totals?.total ?? "-"} icon={UserCog} />
         <AdminKpiCard label="Active today" value={totals?.activeToday ?? "-"} icon={CheckCircle2} tone="success" />
@@ -309,6 +333,9 @@ export function UserDirectory() {
           <div className="grid gap-2 sm:flex sm:flex-wrap">
             <Button variant="secondary" onClick={() => setNotifyOpen(true)}>
               <Mail className="size-4" /> Notify selected
+            </Button>
+            <Button variant="secondary" onClick={() => setEnrollmentTargets(sortedUsers.filter((user) => bulkSelected.has(user.id)))}>
+              <GraduationCap className="size-4" /> Enroll in Academy
             </Button>
             <Button variant="secondary" onClick={() => requestBulkAction("suspend", "Suspend selected users")}>
               <UserX className="size-4" /> Suspend
@@ -463,6 +490,14 @@ export function UserDirectory() {
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Admin actions</p>
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    <Button className="col-span-2 sm:col-span-1" onClick={() => { setDrawerOpen(false); setEnrollmentTargets([selected]); }}>
+                      <GraduationCap className="size-4" /> Enroll in Academy
+                    </Button>
+                    {selected.hasPassword === false && (
+                      <Button variant="secondary" onClick={() => void sendPasswordSetup(selected.id)}>
+                        <Mail className="size-4" /> Resend password setup
+                      </Button>
+                    )}
                     {selected.accountStatus !== "ACTIVE" && (
                       <Button className="col-span-2 sm:col-span-1" onClick={() => void runAction(selected.id, "activate")}>
                         Activate

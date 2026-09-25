@@ -85,6 +85,7 @@ export type PublicAdminUser = {
   verification: StoreUser["verification"];
   createdAt: string;
   lastLoginAt: string;
+  hasPassword?: boolean;
   listingCount?: number;
   enquiryCount?: number;
   revenue?: number;

@@ -37,6 +37,7 @@ import {
   Upload,
   XCircle,
   Users,
+  UserPlus,
   Ticket,
   AlertTriangle,
   Target,
@@ -48,6 +49,7 @@ import { useSearchParams } from "next/navigation";
 import { CertificateTemplateManagement } from "@/components/admin/academy/certificate-template-management";
 import { CertificateMonitoringDashboard } from "@/components/admin/academy/certificate-monitoring-dashboard";
 import { AssignmentReviewPanel } from "@/components/admin/academy/assignment-review-panel";
+import { AdminEnrollmentDrawer } from "@/components/admin/academy/admin-enrollment-drawer";
 import { StudentAnalyticsDashboard } from "@/components/admin/academy/student-analytics-dashboard";
 import { AnalyticsDateRangeFilter } from "@/components/admin/analytics-date-range-filter";
 import {
@@ -163,6 +165,7 @@ type AcademyData = {
     course: { id: string; title: string } | null;
     learner: { id: string; name: string; email: string; phone?: string; roles: string[] };
     payment: { id: string; status: string; proofStatus?: string; proofUrl?: string } | null;
+    createdAt: string;
     updatedAt: string;
   }>;
   trainingSettings?: { id: string; payload: Record<string, unknown>; updatedAt: string } | null;
@@ -848,6 +851,7 @@ export function AgentAcademyHub() {
           analytics={analytics}
           openDrawer={(next) => setDrawer(next)}
           action={action}
+          onRefresh={load}
           query={query}
           setQuery={setQuery}
           setSelectedLesson={setSelectedLesson}
@@ -1585,6 +1589,7 @@ function FeatureWorkbench({
   analytics,
   openDrawer,
   action,
+  onRefresh,
   query: _query,
   setQuery: _setQuery,
   setSelectedLesson: _setSelectedLesson,
@@ -1604,6 +1609,7 @@ function FeatureWorkbench({
   analytics: Record<string, unknown> | null;
   openDrawer: (drawer: "quiz" | "exam" | "assignment" | "path" | "announcement" | "badge" | null) => void;
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+  onRefresh: () => Promise<void>;
   query: string;
   setQuery: (query: string) => void;
   setSelectedLesson: (lesson: AcademyLesson | null) => void;
@@ -1653,6 +1659,7 @@ function FeatureWorkbench({
         courses={data.courses}
         coupons={data.coupons ?? []}
         action={action}
+        onRefresh={onRefresh}
       />
     );
   }
@@ -2352,6 +2359,7 @@ function PublicLearnersPanel({
   courses,
   coupons,
   action,
+  onRefresh,
 }: {
   applications: AcademyData["publicLearnerApplications"];
   resourceApplications: NonNullable<AcademyData["resourceAccessApplications"]>;
@@ -2361,11 +2369,14 @@ function PublicLearnersPanel({
   courses: AcademyCourse[];
   coupons: AcademyCoupon[];
   action: (body: Record<string, unknown>, success: string) => Promise<unknown>;
+  onRefresh: () => Promise<void>;
 }) {
   const { showToast } = useApp();
   const messageSettings = getAcademyMessageSettings(settings);
   const [couponTarget, setCouponTarget] = useState<(typeof applications)[number] | null>(null);
   const [couponCode, setCouponCode] = useState("");
+  const [enrollmentOpen, setEnrollmentOpen] = useState(false);
+  const [registrationSort, setRegistrationSort] = useState<"newest" | "oldest" | "pending" | "name">("newest");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     fullName: string;
@@ -2390,6 +2401,7 @@ function PublicLearnersPanel({
     currency: row.currency,
     proofUrl: row.proofUrl,
     adminNote: row.adminNote,
+    createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     coupon: null,
     productLabel:
@@ -2429,7 +2441,16 @@ function PublicLearnersPanel({
     deleteIdKey: "applicationId" as const,
   }));
 
-  const rows = [...enrolmentRows, ...resourceRows];
+  const rows = useMemo(() => [...enrolmentRows, ...resourceRows].sort((left, right) => {
+    if (registrationSort === "name") return left.fullName.localeCompare(right.fullName);
+    if (registrationSort === "pending") {
+      const pending = (status: string) => status === "PENDING_PAYMENT" || status === "PAYMENT_UPLOADED" ? 0 : 1;
+      const statusDifference = pending(left.status) - pending(right.status);
+      if (statusDifference) return statusDifference;
+    }
+    const difference = new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    return registrationSort === "oldest" ? -difference : difference;
+  }), [enrolmentRows, registrationSort, resourceRows]);
   const firstLessonDropoffByLearnerCourse = new Map(firstLessonDropoffs.map((dropoff) => [`${dropoff.learnerId}:${dropoff.courseId}`, dropoff]));
   const learningFollowUpByLearnerCourse = new Map(learningFollowUps.map((followUp) => [`${followUp.learnerId}:${followUp.courseId}`, followUp]));
   const certificateEnabledByCourseId = new Map(courses.map((course) => [course.id, course.certificateEnabled]));
@@ -2564,12 +2585,30 @@ function PublicLearnersPanel({
 
   return (
     <section className="rounded-xl border border-white/10 bg-slate-900/60">
+      <AdminEnrollmentDrawer
+        open={enrollmentOpen}
+        onClose={() => setEnrollmentOpen(false)}
+        onComplete={onRefresh}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
         <div>
           <h3 className="font-semibold text-white">Learner Registrations & Resource Access</h3>
           <p className="mt-1 text-sm text-slate-400">Review course enrolments, field toolkit purchases, and training manual access.</p>
         </div>
-        <AdminStatusBadge status={`${pendingCount} pending`} variant="warning" />
+        <div className="flex flex-wrap items-center gap-2">
+          <AdminSelect
+            value={registrationSort}
+            onChange={(value) => setRegistrationSort(value as typeof registrationSort)}
+            options={[
+              { value: "newest", label: "Newest registrations" },
+              { value: "oldest", label: "Oldest registrations" },
+              { value: "pending", label: "Pending first" },
+              { value: "name", label: "Learner name" },
+            ]}
+          />
+          <Button onClick={() => setEnrollmentOpen(true)}><UserPlus className="size-4" /> Enroll learner</Button>
+          <AdminStatusBadge status={`${pendingCount} pending`} variant="warning" />
+        </div>
       </div>
       <AdminDataTable
         rows={pagination.pageItems}
@@ -2585,6 +2624,7 @@ function PublicLearnersPanel({
             ),
           },
           { key: "product", header: "Product", render: (row) => <span className="text-sm text-slate-300">{row.productLabel}</span> },
+          { key: "registered", header: "Registered", render: (row) => <span className="text-xs text-slate-400">{formatShortDate(row.createdAt)}</span> },
           { key: "type", header: "Type", render: (row) => <AdminStatusBadge status={row.learnerType === "PUBLIC_LEARNER" ? "Training only" : "Agent training"} variant={row.learnerType === "PUBLIC_LEARNER" ? "info" : "success"} /> },
           {
             key: "amount",

@@ -19,6 +19,7 @@ export async function GET(request: Request) {
   const status = (searchParams.get("status") ?? "ALL") as AccountStatus | "ALL";
   const emailVerification = searchParams.get("emailVerification") ?? "ALL";
   const q = searchParams.get("q") ?? undefined;
+  const limit = Math.min(50, Math.max(0, Number(searchParams.get("limit") ?? 0) || 0));
   const includeDeleted = searchParams.get("includeDeleted") === "true";
 
   if (shouldUsePostgresAuth()) {
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
           : {}),
       },
       orderBy: { createdAt: "desc" },
+      ...(limit ? { take: limit } : {}),
     });
     const all = await prisma.user.findMany({ select: { roles: true, accountStatus: true, lastLoginAt: true, emailVerifiedAt: true } });
     const visible = includeDeleted ? all : all.filter((u) => u.accountStatus !== "DELETED");
@@ -72,13 +74,14 @@ export async function GET(request: Request) {
   }
 
   const store = getStore();
-  const users = store.listUsers({ role, status, q }).filter((user) =>
+  const matchingUsers = store.listUsers({ role, status, q }).filter((user) =>
     emailVerification === "VERIFIED"
       ? user.verification.email === "VERIFIED"
       : emailVerification === "UNVERIFIED"
         ? user.verification.email !== "VERIFIED"
         : true,
   );
+  const users = limit ? matchingUsers.slice(0, limit) : matchingUsers;
   const visibleUsers = store.listUsers();
   
   // Calculate active today for non-Postgres store
