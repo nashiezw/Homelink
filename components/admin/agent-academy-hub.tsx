@@ -2612,114 +2612,111 @@ function PublicLearnersPanel({
       </div>
       <AdminDataTable
         rows={pagination.pageItems}
+        dense
+        tableClassName="min-w-[760px] table-fixed"
         columns={[
           {
             key: "learner",
             header: "Learner",
+            className: "w-[23%]",
             render: (row) => (
-              <div>
-                <p className="font-semibold text-white">{row.fullName}</p>
-                <p className="text-xs text-slate-500">{row.email}{row.phone ? ` - ${row.phone}` : ""}</p>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-white" title={row.fullName}>{row.fullName}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-500" title={row.email}>{row.email}</p>
+                <p className="mt-1 text-[11px] font-medium text-slate-400">
+                  Registered {formatShortDate(row.createdAt)}{row.phone ? ` · ${row.phone}` : ""}
+                </p>
               </div>
             ),
           },
-          { key: "product", header: "Product", render: (row) => <span className="text-sm text-slate-300">{row.productLabel}</span> },
-          { key: "registered", header: "Registered", render: (row) => <span className="text-xs text-slate-400">{formatShortDate(row.createdAt)}</span> },
-          { key: "type", header: "Type", render: (row) => <AdminStatusBadge status={row.learnerType === "PUBLIC_LEARNER" ? "Training only" : "Agent training"} variant={row.learnerType === "PUBLIC_LEARNER" ? "info" : "success"} /> },
           {
-            key: "amount",
-            header: "Amount",
+            key: "enrollment",
+            header: "Enrollment",
+            className: "w-[22%]",
             render: (row) => (
-              <div className="min-w-24 text-sm">
+              <div className="min-w-0">
+                <p className="line-clamp-2 text-sm font-medium leading-5 text-slate-200" title={row.productLabel}>{row.productLabel}</p>
+                <div className="mt-1.5">
+                  <AdminStatusBadge status={row.learnerType === "PUBLIC_LEARNER" ? "Training only" : "Agent training"} variant={row.learnerType === "PUBLIC_LEARNER" ? "info" : "success"} />
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: "payment",
+            header: "Payment",
+            className: "w-[19%]",
+            render: (row) => (
+              <div className="min-w-0 text-sm">
                 {row.coupon?.originalAmount && row.coupon.originalAmount > row.amount ? (
                   <>
                     <p className="font-semibold text-emerald-200">{row.currency} {row.amount.toFixed(2)}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">was <span className="line-through">{row.currency} {row.coupon.originalAmount.toFixed(2)}</span></p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">was <span className="line-through">{row.currency} {row.coupon.originalAmount.toFixed(2)}</span></p>
                   </>
                 ) : (
-                  <p className="text-slate-300">{row.currency} {row.amount.toFixed(2)}</p>
+                  <p className="font-semibold text-slate-300">{row.currency} {row.amount.toFixed(2)}</p>
+                )}
+                {row.coupon ? (
+                  <p className="mt-1.5 flex min-w-0 items-center gap-1 text-[11px] font-semibold text-emerald-300" title={`${row.coupon.code} - ${row.currency} ${row.coupon.discountAmount.toFixed(2)} off`}>
+                    <Ticket className="size-3 shrink-0" />
+                    <span className="truncate">{row.coupon.code} · -{row.currency} {row.coupon.discountAmount.toFixed(2)}</span>
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-[11px] text-slate-500">No coupon</p>
                 )}
               </div>
             ),
           },
           {
-            key: "coupon",
-            header: "Coupon",
-            render: (row) => row.coupon ? (
-              <div className="min-w-32">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-100">
-                  <Ticket className="size-3" />
-                  {row.coupon.code} - {row.currency} {row.coupon.discountAmount.toFixed(2)} off
-                </span>
-                {row.coupon.appliedByAdmin && <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Admin applied</p>}
-              </div>
-            ) : <span className="text-xs font-semibold text-slate-500">No coupon</span>,
-          },
-          {
-            key: "status",
-            header: "Status",
+            key: "state",
+            header: "Status & proof",
+            className: "w-[18%]",
             render: (row) => (
-              <span
-                className={cn(
-                  "inline-flex max-w-32 items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em]",
-                  row.status === "APPROVED"
-                    ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
-                    : row.status === "REJECTED"
-                      ? "border-red-400/25 bg-red-400/10 text-red-200"
-                      : "border-amber-400/20 bg-amber-400/10 text-amber-200",
-                )}
-              >
-                {row.status.replace(/_/g, " ")}
-              </span>
+              <div className="min-w-0">
+                <span
+                  className={cn(
+                    "inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[9px] font-black uppercase",
+                    row.status === "APPROVED"
+                      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
+                      : row.status === "REJECTED"
+                        ? "border-red-400/25 bg-red-400/10 text-red-200"
+                        : "border-amber-400/20 bg-amber-400/10 text-amber-200",
+                  )}
+                >
+                  {row.status.replace(/_/g, " ")}
+                </span>
+                <div className="mt-1.5">{proofDisplay(row)}</div>
+              </div>
             ),
-          },
-          {
-            key: "proof",
-            header: "Proof",
-            render: proofDisplay,
           },
           {
             key: "actions",
             header: "Actions",
+            className: "w-[18%] text-right",
             render: (row) => {
               const canReview = row.status !== "APPROVED" && row.status !== "REJECTED";
               const couponCanAdjust = canAdjustCoupon(row);
               return (
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openRegistrationWhatsApp(row)}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 text-sm font-semibold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-400/20"
-                  >
-                    <MessageCircle className="size-4" /> WhatsApp
-                  </button>
-                  {canReview ? (
-                    <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-slate-950/35 p-1">
-                      <Button onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved.")}>
-                        Approve
-                      </Button>
-                      <Button variant="secondary" onClick={() => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "REJECTED", adminNote: "Payment proof could not be verified. Please upload a clearer proof of payment." }, "Registration rejected.")}>
-                        Reject
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="inline-flex min-h-10 flex-col justify-center rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-400">
-                      <span>{row.status === "APPROVED" ? "Already approved" : "Rejected"}</span>
-                      <span className="mt-0.5 text-[10px] font-medium text-slate-500">Updated {formatShortDate(row.updatedAt)}</span>
-                    </span>
-                  )}
-                  <ActionToolbar
-                    actions={[
-                      ...("courseId" in row && !row.coupon && couponCanAdjust
-                        ? [{ label: "Apply coupon", icon: Ticket, more: true, onClick: () => openCouponDrawer(row) }]
-                        : []),
-                      ...("courseId" in row && row.coupon && couponCanAdjust
-                        ? [{ label: "Remove coupon", icon: RotateCcw, tone: "danger" as const, more: true, onClick: () => void removeCoupon(row) }]
-                        : []),
-                      { label: "Delete", icon: Trash2, tone: "danger", more: true, onClick: () => setDeleteTarget(row) },
-                    ]}
-                  />
-                </div>
+                <ActionToolbar
+                  primary={canReview ? {
+                    label: "Approve",
+                    icon: CheckCircle2,
+                    onClick: () => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "APPROVED" }, "Access approved."),
+                  } : undefined}
+                  actions={[
+                    { label: "WhatsApp learner", icon: MessageCircle, onClick: () => openRegistrationWhatsApp(row) },
+                    ...(canReview
+                      ? [{ label: "Reject", icon: XCircle, tone: "danger" as const, more: true, onClick: () => void action({ action: row.reviewAction, [row.reviewIdKey]: row.id, status: "REJECTED", adminNote: "Payment proof could not be verified. Please upload a clearer proof of payment." }, "Registration rejected.") }]
+                      : []),
+                    ...("courseId" in row && !row.coupon && couponCanAdjust
+                      ? [{ label: "Apply coupon", icon: Ticket, more: true, onClick: () => openCouponDrawer(row) }]
+                      : []),
+                    ...("courseId" in row && row.coupon && couponCanAdjust
+                      ? [{ label: "Remove coupon", icon: RotateCcw, tone: "danger" as const, more: true, onClick: () => void removeCoupon(row) }]
+                      : []),
+                    { label: "Delete", icon: Trash2, tone: "danger", more: true, onClick: () => setDeleteTarget(row) },
+                  ]}
+                />
               );
             },
           },

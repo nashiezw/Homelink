@@ -417,6 +417,8 @@ export function AdminDataTable<T extends { id?: string }>({
   allSelected,
   paginate,
   pageSize = 12,
+  dense = false,
+  tableClassName,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -430,6 +432,8 @@ export function AdminDataTable<T extends { id?: string }>({
   allSelected?: boolean;
   paginate?: boolean;
   pageSize?: number;
+  dense?: boolean;
+  tableClassName?: string;
 }) {
   const [page, setPage] = useState(1);
   const shouldPaginate = paginate ?? rows.length > pageSize;
@@ -507,7 +511,7 @@ export function AdminDataTable<T extends { id?: string }>({
       </div>
 
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className={cn("w-full min-w-[640px] text-left text-sm", tableClassName)}>
           <thead className="border-b border-white/[0.08] bg-slate-950/40 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             <tr>
               {selectable && (
@@ -521,7 +525,7 @@ export function AdminDataTable<T extends { id?: string }>({
                 </th>
               )}
               {columns.map((col) => (
-                <th key={col.key} className={cn("px-4 py-3", col.className)}>
+                <th key={col.key} className={cn(dense ? "px-3 py-2.5" : "px-4 py-3", col.className)}>
                   {col.header}
                 </th>
               ))}
@@ -553,7 +557,7 @@ export function AdminDataTable<T extends { id?: string }>({
                     </td>
                   )}
                   {columns.map((col) => (
-                    <td key={col.key} className={cn("px-4 py-3", col.className)}>
+                    <td key={col.key} className={cn(dense ? "px-3 py-2.5 align-middle" : "px-4 py-3", col.className)}>
                       {col.render(row)}
                     </td>
                   ))}
