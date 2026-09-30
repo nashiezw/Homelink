@@ -1,5 +1,6 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { getProgrammeCourse } from "@/lib/academy/academy-programme";
+import { completedLessonProgressWhere } from "@/lib/academy/lesson-completion";
 
 export type CertificationStatus =
   | "DISABLED"
@@ -31,7 +32,12 @@ export type CertificateEligibility = {
   summary: string;
   eligibleForIssuance: boolean;
   certificateIssued: boolean;
-  lessonProgress: { completed: number; total: number; percent: number };
+  lessonProgress: {
+    completed: number;
+    total: number;
+    percent: number;
+    incomplete: Array<{ id: string; number: number; title: string; moduleTitle: string; sectionTitle: string }>;
+  };
   assessmentProgress: { completed: number; total: number; percent: number };
   overallScore: number | null;
   passMark: number;
@@ -77,10 +83,16 @@ export async function getCertificateEligibilityBatch(targets: EligibilityTarget[
         certificateEnabled: true,
         passingPercentage: true,
         modules: {
+          orderBy: { sortOrder: "asc" },
           select: {
             sections: {
-              select: { lessons: { select: { id: true, title: true } } },
+              orderBy: { sortOrder: "asc" },
+              select: {
+                title: true,
+                lessons: { orderBy: { sortOrder: "asc" }, select: { id: true, title: true } },
+              },
             },
+            title: true,
           },
         },
         quizzes: { where: { active: true }, select: { id: true, title: true, passingPercentage: true } },
@@ -91,7 +103,7 @@ export async function getCertificateEligibilityBatch(targets: EligibilityTarget[
     prisma.lessonProgress.findMany({
       where: {
         agentId: { in: learnerIds },
-        status: "COMPLETED",
+        ...completedLessonProgressWhere,
         lesson: { section: { module: { courseId: { in: courseIds } } } },
       },
       select: { agentId: true, lessonId: true, lesson: { select: { section: { select: { module: { select: { courseId: true } } } } } } },
@@ -126,8 +138,20 @@ export async function getCertificateEligibilityBatch(targets: EligibilityTarget[
     const key = certificateEligibilityKey(target.learnerId, target.courseId);
     const course = courseById.get(target.courseId);
     if (!course) continue;
-    const lessons = course.modules.flatMap((module) => module.sections.flatMap((section) => section.lessons));
+    const lessons = course.modules.flatMap((module) =>
+      module.sections.flatMap((section) =>
+        section.lessons.map((lesson) => ({
+          ...lesson,
+          moduleTitle: module.title,
+          sectionTitle: section.title,
+        })),
+      ),
+    );
     const completedLessons = lessons.filter((lesson) => completedLessonKeys.has(`${key}:${lesson.id}`)).length;
+    const incompleteLessons = lessons
+      .map((lesson, index) => ({ ...lesson, number: index + 1 }))
+      .filter((lesson) => !completedLessonKeys.has(`${key}:${lesson.id}`))
+      .map(({ id, number, title, moduleTitle, sectionTitle }) => ({ id, number, title, moduleTitle, sectionTitle }));
     const targetQuizAttempts = quizAttempts.filter((attempt) => attempt.agentId === target.learnerId);
     const targetAssignmentSubmissions = assignmentSubmissions.filter((submission) => submission.agentId === target.learnerId);
     const targetExamAttempts = examAttempts.filter((attempt) => attempt.agentId === target.learnerId);
@@ -140,6 +164,7 @@ export async function getCertificateEligibilityBatch(targets: EligibilityTarget[
       passMark: course.passingPercentage,
       completedLessons,
       totalLessons: lessons.length,
+      incompleteLessons,
       quizzes: course.quizzes.map((quiz) => {
         const attempts = targetQuizAttempts.filter((attempt) => attempt.quizId === quiz.id);
         const bestScore = attempts.length ? Math.max(...attempts.map((attempt) => Number(attempt.score))) : null;
@@ -173,6 +198,7 @@ export function evaluateCertificateEligibility(input: {
   passMark: number;
   completedLessons: number;
   totalLessons: number;
+  incompleteLessons?: Array<{ id: string; number: number; title: string; moduleTitle: string; sectionTitle: string }>;
   quizzes: Array<{ id: string; title: string; passMark: number; bestScore: number | null }>;
   assignments: Array<{ id: string; title: string; status: string | null; gradePercent: number | null }>;
   exams: Array<{ id: string; title: string; passMark: number; bestScore: number | null }>;
@@ -181,11 +207,15 @@ export function evaluateCertificateEligibility(input: {
 }): CertificateEligibility {
   const lessonComplete = input.totalLessons === 0 || input.completedLessons >= input.totalLessons;
   const lessonPercent = input.totalLessons ? Math.round((input.completedLessons / input.totalLessons) * 100) : 100;
+  const incompleteLessons = input.incompleteLessons ?? [];
+  const incompleteLessonSummary = incompleteLessons.length
+    ? incompleteLessons.map((lesson) => `Lesson ${lesson.number}: ${lesson.title}`).join("; ")
+    : `${input.totalLessons - input.completedLessons} lesson${input.totalLessons - input.completedLessons === 1 ? "" : "s"} remaining.`;
   const requirements: CertificationRequirement[] = [{
     id: "lessons",
     kind: "lesson",
     title: `Complete all lessons (${input.completedLessons}/${input.totalLessons})`,
-    detail: lessonComplete ? "All course content is complete." : `${input.totalLessons - input.completedLessons} lesson${input.totalLessons - input.completedLessons === 1 ? "" : "s"} remaining.`,
+    detail: lessonComplete ? "All course content is complete." : incompleteLessonSummary,
     complete: lessonComplete,
     state: lessonComplete ? "COMPLETE" : "ACTION_REQUIRED",
     learnerAction: !lessonComplete,
@@ -296,7 +326,7 @@ export function evaluateCertificateEligibility(input: {
     summary: statusCopy.summary,
     eligibleForIssuance,
     certificateIssued: input.certificateIssued,
-    lessonProgress: { completed: input.completedLessons, total: input.totalLessons, percent: lessonPercent },
+    lessonProgress: { completed: input.completedLessons, total: input.totalLessons, percent: lessonPercent, incomplete: incompleteLessons },
     assessmentProgress: {
       completed: assessmentCompleted,
       total: assessmentRequirements.length,

@@ -799,6 +799,7 @@ function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab, onOpenRe
   const certificateUnlocked = Boolean(data.certificate);
   const requirements = data.certification?.requirements ?? [];
   const nextRequirement = data.certification?.nextAction ?? null;
+  const incompleteLessons = data.certification?.lessonProgress.incomplete ?? [];
 
   return (
     <section className="academy-panel overflow-hidden rounded-xl p-0">
@@ -843,6 +844,16 @@ function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab, onOpenRe
               </div>
             ))}
           </div>
+          {incompleteLessons.length ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+              <p className="text-xs font-black uppercase tracking-[0.12em]">Lessons still to complete</p>
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {incompleteLessons.map((lesson) => (
+                  <li key={lesson.id}><span className="font-bold">Lesson {lesson.number}:</span> {lesson.title}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {certificateUnlocked && data.certificate ? (
             <Link
               href={data.certificate.downloadUrl}

@@ -3,6 +3,7 @@ import { ok, problem } from "@/lib/api/response";
 import { getMainPrisma } from "@/lib/db/main-prisma";
 import { identifyAtRiskLearners } from "@/lib/academy/at-risk-learner-identification";
 import { certificateEligibilityKey, getCertificateEligibilityBatch } from "@/lib/academy/certificate-eligibility";
+import { isLessonProgressComplete } from "@/lib/academy/lesson-completion";
 import {
   getStudentProgressAnalytics,
   getCourseWideAnalytics,
@@ -228,10 +229,10 @@ export async function GET(request: Request) {
         const courseIdForLesson = progress.lesson.section.module.courseId;
         const key = `${progress.agentId}:${courseIdForLesson}`;
         const current = lessonStats.get(key) ?? { completed: 0, lastActivity: null, currentLesson: null };
-        if (progress.status === "COMPLETED" || progress.completedAt) current.completed += 1;
+        if (isLessonProgressComplete(progress)) current.completed += 1;
         if (!current.lastActivity || progress.lastViewedAt > current.lastActivity) {
           current.lastActivity = progress.lastViewedAt;
-          current.currentLesson = progress.status === "COMPLETED" ? current.currentLesson : progress.lesson.title;
+          current.currentLesson = isLessonProgressComplete(progress) ? current.currentLesson : progress.lesson.title;
         }
         lessonStats.set(key, current);
       });
@@ -345,6 +346,7 @@ export async function GET(request: Request) {
           certificationStatus: certification?.status ?? (enrolment.course.certificateEnabled ? "ACTION_REQUIRED" : "DISABLED"),
           certificationStatusLabel: certification?.statusLabel ?? "Certificate unavailable",
           certificationSummary: certification?.summary ?? "Certification details are unavailable.",
+          incompleteLessons: certification?.lessonProgress.incomplete ?? [],
           certificationBlockers: certification?.blockers.map((blocker) => ({
             id: blocker.id,
             kind: blocker.kind,

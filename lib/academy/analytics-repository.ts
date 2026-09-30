@@ -1,4 +1,5 @@
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { isLessonProgressComplete } from "@/lib/academy/lesson-completion";
 
 // Simple in-memory cache for analytics queries
 const analyticsCache = new Map<string, { data: any; timestamp: number }>();
@@ -332,7 +333,7 @@ export async function getSessionMetrics(studentId: string, days: number = 30): P
     existing.count++;
     existing.duration += lp.readingSeconds / 60;
     existing.viewed++;
-    if (lp.status === "COMPLETED") existing.completed++;
+    if (isLessonProgressComplete(lp)) existing.completed++;
     sessionsByDay.set(dayKey, existing);
   });
   
@@ -671,7 +672,7 @@ export async function getStudentProgressAnalytics(studentId: string): Promise<St
       m.sections.flatMap(s => s.lessons)
     );
     const completedLessons = lessonProgress.filter(lp => 
-      lp.lesson.section.module.courseId === enrolment.courseId && lp.status === "COMPLETED"
+      lp.lesson.section.module.courseId === enrolment.courseId && isLessonProgressComplete(lp)
     );
 
     const totalLessons = courseLessons.length;
@@ -859,7 +860,7 @@ export async function getCourseWideAnalytics(courseId: string): Promise<CourseWi
     module.sections.forEach(section => {
       section.lessons.forEach(lesson => {
         const lessonProgressForLesson = lessonProgress.filter(lp => lp.lessonId === lesson.id);
-        const completed = lessonProgressForLesson.filter(lp => lp.status === "COMPLETED").length;
+        const completed = lessonProgressForLesson.filter(isLessonProgressComplete).length;
         lessonCompletionCounts.set(lesson.id, { completed, total: lessonProgressForLesson.length });
       });
     });
@@ -1484,7 +1485,7 @@ export async function getComparativeAnalytics(courseId: string, currentPeriodDay
     const averageLessonsPerSession = uniqueDays > 0 ? lessonProgressData.length / uniqueDays : 0;
 
     // Video completion rate (lessons marked as completed)
-    const completedLessons = lessonProgressData.filter(lp => lp.status === "COMPLETED").length;
+    const completedLessons = lessonProgressData.filter(isLessonProgressComplete).length;
     const videoCompletionRate = lessonProgressData.length > 0 ? (completedLessons / lessonProgressData.length) * 100 : 0;
 
     // Resource download rate - calculate from actual download data if studentId provided
@@ -1665,7 +1666,7 @@ export async function predictCourseCompletion(studentId: string, courseId: strin
   }
 
   // Factor 4: Lesson completion consistency
-  const completedLessons = lessonProgress.filter(lp => lp.status === "COMPLETED").length;
+  const completedLessons = lessonProgress.filter(isLessonProgressComplete).length;
   const totalLessonsViewed = lessonProgress.length;
   const completionConsistency = totalLessonsViewed > 0 ? (completedLessons / totalLessonsViewed) * 100 : 0;
   
@@ -1796,8 +1797,8 @@ export async function getStudentActivityLog(studentId: string, limit: number = 5
   lessonProgress.forEach(lp => {
     activities.push({
       id: `lesson-${lp.id}`,
-      activityType: lp.status === "COMPLETED" ? "LESSON_COMPLETED" : "LESSON_VIEWED",
-      description: lp.status === "COMPLETED" 
+      activityType: isLessonProgressComplete(lp) ? "LESSON_COMPLETED" : "LESSON_VIEWED",
+      description: isLessonProgressComplete(lp)
         ? `Completed lesson: ${lp.lesson.title}` 
         : `Viewed lesson: ${lp.lesson.title}`,
       timestamp: lp.lastViewedAt,

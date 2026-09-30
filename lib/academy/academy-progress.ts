@@ -5,6 +5,7 @@ import { CertificateIssue } from "@/lib/academy/certificate-repository";
 import { getLessonCompletionGateState, getLessonGateState } from "@/lib/academy/academy-gates";
 import { createCertificateTestimonialPrompt } from "@/lib/academy/engagement-repository";
 import { getCertificateEligibility } from "@/lib/academy/certificate-eligibility";
+import { completedLessonProgressWhere } from "@/lib/academy/lesson-completion";
 
 type CourseWithLessons = {
   id: string;
@@ -27,7 +28,7 @@ export async function getCompletedLessonIds(learnerId: string, courseId: string)
   const rows = await prisma.lessonProgress.findMany({
     where: {
       agentId: learnerId,
-      status: "COMPLETED",
+      ...completedLessonProgressWhere,
       lesson: { section: { module: { courseId } } },
     },
     select: { lessonId: true },

@@ -1,5 +1,6 @@
 import { AssignmentSubmissionStatus, TrainingAttemptStatus } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { completedLessonProgressWhere } from "@/lib/academy/lesson-completion";
 
 export type AcademyGateRequirement = {
   id: string;
@@ -103,7 +104,7 @@ async function getGateStateForTarget(learnerId: string, courseId: string, target
 
   const [lessonProgress, quizAttempts, assignmentSubmissions] = await Promise.all([
     prerequisiteLessonIds.length
-      ? prisma.lessonProgress.findMany({ where: { agentId: learnerId, lessonId: { in: prerequisiteLessonIds }, status: "COMPLETED" }, select: { lessonId: true } })
+      ? prisma.lessonProgress.findMany({ where: { agentId: learnerId, lessonId: { in: prerequisiteLessonIds }, ...completedLessonProgressWhere }, select: { lessonId: true } })
       : Promise.resolve([]),
     prerequisiteQuizzes.length
       ? prisma.quizAttempt.findMany({ where: { agentId: learnerId, quizId: { in: prerequisiteQuizzes.map((quiz) => quiz.id) }, status: TrainingAttemptStatus.PASSED }, select: { quizId: true } })

@@ -13,6 +13,7 @@ import {
   TrainingVisibility,
 } from "@prisma/client";
 import { getMainPrisma } from "@/lib/db/main-prisma";
+import { completedLessonProgressWhere } from "@/lib/academy/lesson-completion";
 import { reviewPublicLearnerApplication } from "@/lib/academy/public-academy-repository";
 import { adminEnrollLearners } from "@/lib/academy/admin-enrollment";
 import { reviewResourceAccessApplication } from "@/lib/academy/academy-resource-access";
@@ -2342,7 +2343,7 @@ async function recalculateCourseProgress(courseId: string, learnerId: string) {
         where: {
           agentId: learnerId,
           lessonId: { in: lessons.map((lesson) => lesson.id) },
-          status: "COMPLETED",
+          ...completedLessonProgressWhere,
         },
         select: { lessonId: true },
       })

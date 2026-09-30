@@ -172,6 +172,7 @@ type LearnerCourseRow = {
   certificationStatus: string;
   certificationStatusLabel: string;
   certificationSummary: string;
+  incompleteLessons: Array<{ id: string; number: number; title: string; moduleTitle: string; sectionTitle: string }>;
   certificationBlockers: Array<{ id: string; kind: string; title: string; detail: string; state: string; learnerAction: boolean }>;
   lastActivityDate: string | null;
   lastLearningActivityDate?: string | null;
@@ -1018,6 +1019,16 @@ function LearnerCourseCard({ learner, onViewProgress, onViewQuiz, onRecheckCerti
         <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] p-3">
           <p className="text-sm font-bold text-amber-100">{learner.certificationStatusLabel}</p>
           <p className="mt-1 text-xs leading-5 text-slate-400">{learner.certificationSummary}</p>
+          {learner.incompleteLessons?.length ? (
+            <div className="mt-3 rounded-md border border-amber-300/15 bg-black/10 p-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Incomplete lessons</p>
+              <ul className="mt-1.5 space-y-1 text-xs text-slate-300">
+                {learner.incompleteLessons.map((lesson) => (
+                  <li key={lesson.id}><span className="font-semibold text-white">Lesson {lesson.number}:</span> {lesson.title}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {learner.certificationBlockers.length ? (
             <div className="mt-2 space-y-1.5">
               {learner.certificationBlockers.slice(0, 4).map((blocker) => (
