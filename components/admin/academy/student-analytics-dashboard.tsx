@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Search, Filter, AlertTriangle, User, BarChart3, Download, BookOpen, Award, Clock, RefreshCw, type LucideIcon } from "lucide-react";
+import { Search, Filter, AlertTriangle, User, BarChart3, Download, BookOpen, Award, Clock, RefreshCw, ChevronDown, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api/client";
 import { AdminStatPill, AdminStatusBadge } from "@/components/admin/ui/admin-ui";
@@ -973,6 +973,9 @@ function MiniMetric({ label, value }: { label: string; value: string | number })
 
 function LearnerCourseCard({ learner, onViewProgress, onViewQuiz, onRecheckCertificate, rechecking }: { learner: LearnerCourseRow; onViewProgress: (learnerId: string) => void; onViewQuiz: (learnerId: string) => void; onRecheckCertificate: (learner: LearnerCourseRow) => void; rechecking: boolean }) {
   const riskVariant = learner.riskLevel === "HIGH" ? "danger" : learner.riskLevel === "MEDIUM" ? "warning" : learner.riskLevel === "LOW" ? "success" : "muted";
+  const incompleteLessons = learner.incompleteLessons ?? [];
+  const otherCertificationBlockers = learner.certificationBlockers.filter((blocker) => blocker.kind !== "lesson");
+  const certificationDetailCount = incompleteLessons.length + otherCertificationBlockers.length;
   return (
     <article className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1019,22 +1022,33 @@ function LearnerCourseCard({ learner, onViewProgress, onViewQuiz, onRecheckCerti
         <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] p-3">
           <p className="text-sm font-bold text-amber-100">{learner.certificationStatusLabel}</p>
           <p className="mt-1 text-xs leading-5 text-slate-400">{learner.certificationSummary}</p>
-          {learner.incompleteLessons?.length ? (
-            <div className="mt-3 rounded-md border border-amber-300/15 bg-black/10 p-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Incomplete lessons</p>
-              <ul className="mt-1.5 space-y-1 text-xs text-slate-300">
-                {learner.incompleteLessons.map((lesson) => (
-                  <li key={lesson.id}><span className="font-semibold text-white">Lesson {lesson.number}:</span> {lesson.title}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {learner.certificationBlockers.length ? (
-            <div className="mt-2 space-y-1.5">
-              {learner.certificationBlockers.slice(0, 4).map((blocker) => (
-                <p key={`${blocker.kind}-${blocker.id}`} className="text-xs text-slate-300"><span className="font-semibold text-white">{blocker.title}:</span> {blocker.detail}</p>
-              ))}
-            </div>
+          {certificationDetailCount ? (
+            <details className="group mt-2 border-t border-amber-300/15 pt-2">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-amber-100 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                <span className="group-open:hidden">Show {certificationDetailCount} requirement{certificationDetailCount === 1 ? "" : "s"}</span>
+                <span className="hidden group-open:inline">Hide requirements</span>
+              </summary>
+              <div className="mt-2 space-y-3 border-l border-amber-300/15 pl-3">
+                {incompleteLessons.length ? (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-amber-200">Incomplete lessons</p>
+                    <ul className="mt-1.5 space-y-1 text-xs text-slate-300">
+                      {incompleteLessons.map((lesson) => (
+                        <li key={lesson.id}><span className="font-semibold text-white">Lesson {lesson.number}:</span> {lesson.title}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {otherCertificationBlockers.length ? (
+                  <div className="space-y-1.5">
+                    {otherCertificationBlockers.map((blocker) => (
+                      <p key={`${blocker.kind}-${blocker.id}`} className="text-xs text-slate-300"><span className="font-semibold text-white">{blocker.title}:</span> {blocker.detail}</p>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </details>
           ) : null}
           <Button className="mt-3 w-full sm:w-auto" variant="secondary" disabled={rechecking} onClick={() => onRecheckCertificate(learner)}>
             <RefreshCw className={rechecking ? "mr-2 size-4 animate-spin" : "mr-2 size-4"} />

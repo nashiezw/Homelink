@@ -208,9 +208,8 @@ export function evaluateCertificateEligibility(input: {
   const lessonComplete = input.totalLessons === 0 || input.completedLessons >= input.totalLessons;
   const lessonPercent = input.totalLessons ? Math.round((input.completedLessons / input.totalLessons) * 100) : 100;
   const incompleteLessons = input.incompleteLessons ?? [];
-  const incompleteLessonSummary = incompleteLessons.length
-    ? incompleteLessons.map((lesson) => `Lesson ${lesson.number}: ${lesson.title}`).join("; ")
-    : `${input.totalLessons - input.completedLessons} lesson${input.totalLessons - input.completedLessons === 1 ? "" : "s"} remaining.`;
+  const incompleteLessonCount = incompleteLessons.length || Math.max(0, input.totalLessons - input.completedLessons);
+  const incompleteLessonSummary = `${incompleteLessonCount} lesson${incompleteLessonCount === 1 ? "" : "s"} remaining.`;
   const requirements: CertificationRequirement[] = [{
     id: "lessons",
     kind: "lesson",

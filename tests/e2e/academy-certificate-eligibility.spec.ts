@@ -33,5 +33,5 @@ test("certificate eligibility identifies incomplete lessons by course order and 
     number: 2,
     title: "How to Use This Academy",
   })]);
-  expect(eligibility.blockers[0]?.detail).toContain("Lesson 2: How to Use This Academy");
+  expect(eligibility.blockers[0]?.detail).toBe("1 lesson remaining.");
 });

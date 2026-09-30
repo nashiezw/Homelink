@@ -845,14 +845,18 @@ function CertificateUnlockPanel({ data, accent, learnerName, onOpenTab, onOpenRe
             ))}
           </div>
           {incompleteLessons.length ? (
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
-              <p className="text-xs font-black uppercase tracking-[0.12em]">Lessons still to complete</p>
-              <ul className="mt-2 space-y-1.5 text-sm">
+            <details className="group mt-4 border-t border-amber-200 pt-3 text-amber-950 dark:border-amber-900/40 dark:text-amber-100">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                <span className="group-open:hidden">Show {incompleteLessons.length} incomplete lesson{incompleteLessons.length === 1 ? "" : "s"}</span>
+                <span className="hidden group-open:inline">Hide incomplete lessons</span>
+              </summary>
+              <ul className="mt-2 space-y-1.5 border-l border-amber-200 pl-3 text-sm dark:border-amber-900/40">
                 {incompleteLessons.map((lesson) => (
                   <li key={lesson.id}><span className="font-bold">Lesson {lesson.number}:</span> {lesson.title}</li>
                 ))}
               </ul>
-            </div>
+            </details>
           ) : null}
           {certificateUnlocked && data.certificate ? (
             <Link
